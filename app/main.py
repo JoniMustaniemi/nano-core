@@ -5,14 +5,18 @@ from fastapi import FastAPI
 
 from app.api.chat import router as chat_router
 from app.api.health import router as health_router
+from app.api.memory import router as memory_router
+from app.api.runtime import router as runtime_router
 from app.config import get_settings
 from app.memory.db import create_db_and_tables
-from app.scheduler.jobs import scheduler
+from app.scheduler.jobs import register_jobs, scheduler
+from app.web.home import router as home_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     create_db_and_tables()
+    register_jobs()
     scheduler.start()
     yield
     scheduler.shutdown(wait=False)
@@ -21,5 +25,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 settings = get_settings()
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
+app.include_router(home_router)
 app.include_router(health_router)
+app.include_router(memory_router)
+app.include_router(runtime_router)
 app.include_router(chat_router, prefix="/chat", tags=["chat"])

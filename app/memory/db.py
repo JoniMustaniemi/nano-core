@@ -3,6 +3,7 @@ from pathlib import Path
 from sqlmodel import SQLModel, create_engine
 
 from app.config import get_settings
+from app.memory import models  # noqa: F401
 
 
 def _sqlite_path(database_url: str) -> Path | None:
