@@ -24,409 +24,358 @@ def home() -> str:
             <style>
               :root {{
                 color-scheme: dark;
-                --bg: #081019;
-                --panel: rgba(12, 20, 32, 0.88);
-                --panel-border: rgba(151, 191, 158, 0.18);
-                --text: #e8f4ea;
-                --muted: #9cb4a3;
+                --bg-top: #050b12;
+                --bg-bottom: #09131d;
+                --panel: rgba(7, 14, 22, 0.84);
+                --panel-border: rgba(118, 211, 155, 0.16);
+                --panel-strong: rgba(118, 211, 155, 0.26);
+                --text: #ecfff3;
+                --muted: #8ea99a;
                 --accent: #76d39b;
-                --accent-strong: #98f0bb;
+                --accent-strong: #b5ffd0;
                 --warning: #f4c15d;
                 --error: #ff8a7a;
-                --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+                --shadow: 0 24px 80px rgba(0, 0, 0, 0.44);
               }}
-              * {{ box-sizing: border-box; }}
+              * {{
+                box-sizing: border-box;
+              }}
               body {{
                 margin: 0;
                 min-height: 100vh;
-                font-family: Inter, "Segoe UI", system-ui, sans-serif;
+                font-family: "Segoe UI", system-ui, sans-serif;
                 color: var(--text);
                 background:
-                  radial-gradient(circle at top left, rgba(118, 211, 155, 0.18), transparent 28%),
-                  radial-gradient(circle at top right, rgba(53, 130, 97, 0.18), transparent 24%),
-                  linear-gradient(180deg, #071018 0%, #0a1320 52%, #04070b 100%);
+                  radial-gradient(circle at 50% 0%, rgba(118, 211, 155, 0.16), transparent 22%),
+                  radial-gradient(circle at 10% 10%, rgba(118, 211, 155, 0.08), transparent 24%),
+                  linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
               }}
               .shell {{
-                width: min(1080px, calc(100vw - 32px));
+                width: min(880px, calc(100vw - 32px));
                 margin: 0 auto;
-                padding: 32px 0 48px;
+                padding: 54px 0 64px;
               }}
-              .hero {{
-                display: grid;
-                gap: 12px;
-                margin-bottom: 24px;
+              .masthead {{
+                text-align: center;
+                margin-bottom: 28px;
               }}
-              .eyebrow {{
-                color: var(--accent);
-                text-transform: uppercase;
-                letter-spacing: 0.22em;
-                font-size: 12px;
-                font-weight: 700;
-              }}
-              h1 {{
+              .title {{
                 margin: 0;
-                font-size: clamp(2.5rem, 7vw, 5.2rem);
-                line-height: 0.95;
-                letter-spacing: -0.05em;
+                font-size: clamp(3.2rem, 11vw, 7rem);
+                line-height: 0.9;
+                letter-spacing: -0.08em;
+                font-weight: 800;
               }}
-              .subhead {{
-                margin: 0;
-                max-width: 64ch;
+              .title span {{
+                display: inline-block;
+                color: var(--accent-strong);
+                text-shadow: 0 0 30px rgba(118, 211, 155, 0.18);
+              }}
+              .status-line {{
+                margin-top: 12px;
                 color: var(--muted);
-                font-size: 1rem;
-                line-height: 1.6;
+                font-size: 0.92rem;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
               }}
-              .grid {{
-                display: grid;
-                grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
-                gap: 20px;
-              }}
-              .card {{
+              .core {{
                 border: 1px solid var(--panel-border);
-                border-radius: 24px;
-                background: var(--panel);
+                border-radius: 30px;
+                padding: 22px;
+                background:
+                  linear-gradient(180deg, rgba(8, 15, 24, 0.94), rgba(7, 13, 20, 0.86)),
+                  radial-gradient(circle at top right, rgba(118, 211, 155, 0.08), transparent 30%);
                 box-shadow: var(--shadow);
                 backdrop-filter: blur(18px);
               }}
-              .status-card {{
-                padding: 24px;
+              .input-shell {{
                 display: grid;
-                gap: 18px;
+                gap: 14px;
               }}
-              .status-row {{
+              .prompt {{
                 display: flex;
-                flex-wrap: wrap;
                 align-items: center;
                 gap: 12px;
-              }}
-              .pill {{
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                border-radius: 999px;
-                padding: 10px 14px;
-                border: 1px solid rgba(118, 211, 155, 0.25);
-                background: rgba(118, 211, 155, 0.12);
                 color: var(--accent-strong);
-                font-weight: 700;
-                text-transform: uppercase;
+                font: 700 0.92rem/1 "Cascadia Mono", "Consolas", monospace;
                 letter-spacing: 0.08em;
-                font-size: 0.75rem;
+                text-transform: uppercase;
               }}
-              .dot {{
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-                background: var(--accent);
-                box-shadow: 0 0 0 6px rgba(118, 211, 155, 0.12);
-              }}
-              .status-state {{
-                margin: 0;
-                font-size: clamp(1.4rem, 3vw, 2.2rem);
-                letter-spacing: -0.03em;
-              }}
-              .status-detail {{
-                margin: 0;
-                color: var(--muted);
-                line-height: 1.6;
-              }}
-              .composer {{
-                display: grid;
-                gap: 12px;
-                padding: 24px;
-              }}
-              .composer label {{
-                font-weight: 600;
-                color: var(--muted);
+              .prompt::before {{
+                content: ">";
+                color: var(--accent);
               }}
               textarea {{
                 width: 100%;
-                min-height: 120px;
+                min-height: 132px;
                 resize: vertical;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 18px;
-                padding: 14px 16px;
-                background: rgba(3, 8, 14, 0.72);
+                border: 1px solid rgba(118, 211, 155, 0.18);
+                border-radius: 22px;
+                padding: 18px 20px;
+                background:
+                  linear-gradient(180deg, rgba(3, 8, 14, 0.98), rgba(5, 10, 17, 0.92));
                 color: var(--text);
-                font: inherit;
+                font: 500 1rem/1.6 "Segoe UI", system-ui, sans-serif;
                 outline: none;
+                transition: border-color 140ms ease, box-shadow 140ms ease;
               }}
               textarea:focus {{
-                border-color: rgba(118, 211, 155, 0.5);
-                box-shadow: 0 0 0 4px rgba(118, 211, 155, 0.12);
+                border-color: rgba(118, 211, 155, 0.46);
+                box-shadow: 0 0 0 4px rgba(118, 211, 155, 0.1);
+              }}
+              .actions {{
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px;
+                align-items: center;
               }}
               button {{
-                justify-self: start;
                 border: 0;
                 border-radius: 999px;
                 padding: 12px 18px;
                 background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-                color: #06110b;
+                color: #04110a;
                 font-weight: 800;
                 cursor: pointer;
+                transition: transform 140ms ease, filter 140ms ease, opacity 140ms ease;
+              }}
+              button:hover {{
+                transform: translateY(-1px);
+                filter: brightness(1.03);
               }}
               button:disabled {{
                 opacity: 0.55;
                 cursor: wait;
               }}
-              .feed {{
-                margin-top: 20px;
-                padding: 24px;
-              }}
-              .memory {{
-                margin-top: 20px;
-                padding: 24px;
-                display: grid;
-                gap: 18px;
-              }}
-              .memory-grid {{
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 18px;
-              }}
-              .memory h2 {{
-                margin: 0;
-                font-size: 1.1rem;
-              }}
-              .memory h3 {{
-                margin: 0 0 12px;
-                font-size: 0.95rem;
-                color: var(--accent-strong);
-                letter-spacing: 0.06em;
-                text-transform: uppercase;
-              }}
-              .memory-list {{
-                list-style: none;
-                margin: 0;
-                padding: 0;
-                display: grid;
-                gap: 10px;
-              }}
-              .memory-item {{
-                padding: 12px 14px;
-                border-radius: 14px;
+              .ghost {{
+                border: 1px solid rgba(255, 255, 255, 0.08);
                 background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.06);
+                color: var(--text);
               }}
-              .feed h2 {{
-                margin: 0 0 14px;
-                font-size: 1.1rem;
-              }}
-              .events {{
-                list-style: none;
-                margin: 0;
-                padding: 0;
-                display: grid;
-                gap: 12px;
-              }}
-              .event {{
-                padding: 14px 16px;
-                border-radius: 16px;
-                background: rgba(255, 255, 255, 0.03);
-                border: 1px solid rgba(255, 255, 255, 0.06);
-              }}
-              .event-top {{
-                display: flex;
-                justify-content: space-between;
-                gap: 12px;
-                align-items: center;
-                margin-bottom: 6px;
-              }}
-              .event-title {{
-                font-weight: 700;
-              }}
-              .event-meta {{
+              .reply-status {{
                 color: var(--muted);
-                font-size: 0.85rem;
-              }}
-              .event-detail {{
-                margin: 0;
-                color: var(--muted);
-                line-height: 1.5;
-              }}
-              .message {{
-                margin: 0;
-                color: var(--warning);
+                font-size: 0.92rem;
                 min-height: 1.4em;
               }}
-              @media (max-width: 900px) {{
-                .grid {{
-                  grid-template-columns: 1fr;
-                }}
+              .answer {{
+                margin-top: 18px;
+                padding: 18px;
+                border-radius: 24px;
+                border: 1px solid var(--panel-strong);
+                background:
+                  linear-gradient(180deg, rgba(3, 8, 14, 0.96), rgba(4, 9, 14, 0.9)),
+                  radial-gradient(circle at top left, rgba(118, 211, 155, 0.07), transparent 36%);
+              }}
+              .answer-output {{
+                margin: 0;
+                min-height: 92px;
+                color: var(--text);
+                white-space: pre-wrap;
+                font-size: 1.02rem;
+                line-height: 1.75;
+              }}
+              .answer-output.empty {{
+                color: var(--muted);
+              }}
+              details.brains {{
+                margin-top: 18px;
+                border: 1px solid rgba(118, 211, 155, 0.14);
+                border-radius: 24px;
+                background: rgba(6, 12, 19, 0.72);
+                overflow: hidden;
+              }}
+              details.brains > summary {{
+                list-style: none;
+                cursor: pointer;
+                padding: 16px 18px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                color: var(--accent-strong);
+                font: 700 0.92rem/1 "Cascadia Mono", "Consolas", monospace;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+              }}
+              details.brains > summary::-webkit-details-marker {{
+                display: none;
+              }}
+              .brains-meta {{
+                color: var(--muted);
+                font-size: 0.78rem;
+                letter-spacing: 0.08em;
+              }}
+              .brains-body {{
+                padding: 0 18px 18px;
+              }}
+              .terminal {{
+                width: 100%;
+                min-height: 260px;
+                resize: vertical;
+                border: 1px solid rgba(118, 211, 155, 0.12);
+                border-radius: 18px;
+                padding: 16px;
+                background: rgba(2, 6, 10, 0.96);
+                color: #dfffe7;
+                font: 600 0.91rem/1.55 "Cascadia Mono", "Consolas", monospace;
+                outline: none;
+                white-space: pre;
+                overflow: auto;
+              }}
+              .terminal::placeholder {{
+                color: rgba(142, 169, 154, 0.72);
+              }}
+              .sr-only {{
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border: 0;
               }}
             </style>
           </head>
           <body>
             <main class="shell">
-              <section class="hero">
-                <div class="eyebrow">{app_name}</div>
+              <section class="masthead">
+                <h1 class="title"><span>Nano</span></h1>
+                <div class="status-line" id="state-line">standby</div>
               </section>
 
-              <section class="grid">
-                <div class="card status-card">
-                  <div class="status-row">
-                    <span id="state-pill" class="pill">
-                      <span class="dot"></span><span id="state-label">standby</span>
-                    </span>
-                    <span class="event-meta" id="updated-at">waiting for status...</span>
-                  </div>
-                  <div>
-                    <h2 class="status-state" id="headline">Nano is in standby.</h2>
-                    <p class="status-detail" id="detail">Ready for the next task.</p>
-                  </div>
-                </div>
-
-                <div class="card composer">
-                  <label for="message">Try a chat action</label>
+              <section class="core">
+                <div class="input-shell">
+                  <div class="prompt">Transmit to Nano</div>
+                  <label class="sr-only" for="message">Message for Nano</label>
                   <textarea
                     id="message"
-                    placeholder="Ask Nano something, and watch the status change while it works."
+                    placeholder="Type to Nano..."
                   ></textarea>
-                  <button id="send" type="button">Send to Nano</button>
-                  <p class="message" id="reply"></p>
-                </div>
-              </section>
-
-              <section class="card feed">
-                <h2>Recent activity</h2>
-                <ul id="events" class="events"></ul>
-              </section>
-
-              <section class="card memory">
-                <h2>Database memory</h2>
-                <div class="memory-grid">
-                  <div>
-                    <h3>Notes</h3>
-                    <ul id="notes" class="memory-list"></ul>
+                  <div class="actions">
+                    <button id="send" type="button">Send</button>
+                    <button id="stop-audio" class="ghost" type="button">Stop Audio</button>
+                    <button id="copy-answer" class="ghost" type="button">Copy Answer</button>
                   </div>
-                  <div>
-                    <h3>Reminders</h3>
-                    <ul id="reminders" class="memory-list"></ul>
-                  </div>
+                  <div class="reply-status" id="reply-status"></div>
                 </div>
+
+                <section class="answer">
+                  <pre id="answer-output" class="answer-output empty">Awaiting signal.</pre>
+                  <audio id="voice-audio" hidden preload="none"></audio>
+                </section>
+
+                <details class="brains">
+                  <summary>
+                    <span>Nano's brains</span>
+                    <span class="brains-meta" id="brains-status">sealed</span>
+                  </summary>
+                  <div class="brains-body">
+                    <textarea
+                      id="activity-log"
+                      class="terminal"
+                      readonly
+                      spellcheck="false"
+                      placeholder="No internal activity yet."
+                    ></textarea>
+                  </div>
+                </details>
               </section>
             </main>
 
             <script>
-              const stateLabel = document.getElementById("state-label");
-              const headline = document.getElementById("headline");
-              const detail = document.getElementById("detail");
-              const updatedAt = document.getElementById("updated-at");
-              const eventsList = document.getElementById("events");
-              const notesList = document.getElementById("notes");
-              const remindersList = document.getElementById("reminders");
-              const reply = document.getElementById("reply");
+              const stateLine = document.getElementById("state-line");
+              const activityLog = document.getElementById("activity-log");
+              const replyStatus = document.getElementById("reply-status");
               const messageBox = document.getElementById("message");
               const sendButton = document.getElementById("send");
-
-              const stateStyles = {{
-                standby: {{
-                  pill: "rgba(118, 211, 155, 0.12)",
-                  border: "rgba(118, 211, 155, 0.25)",
-                  text: "#98f0bb",
-                  dot: "#76d39b",
-                }},
-                working: {{
-                  pill: "rgba(244, 193, 93, 0.12)",
-                  border: "rgba(244, 193, 93, 0.25)",
-                  text: "#f4c15d",
-                  dot: "#f4c15d",
-                }},
-                error: {{
-                  pill: "rgba(255, 138, 122, 0.12)",
-                  border: "rgba(255, 138, 122, 0.25)",
-                  text: "#ff8a7a",
-                  dot: "#ff8a7a",
-                }},
-              }};
-
-              function formatTime(value) {{
-                if (!value) {{
-                  return "waiting for status...";
-                }}
-                return new Date(value).toLocaleString();
-              }}
+              const stopAudioButton = document.getElementById("stop-audio");
+              const copyAnswerButton = document.getElementById("copy-answer");
+              const answerOutput = document.getElementById("answer-output");
+              const voiceAudio = document.getElementById("voice-audio");
+              const brainsPanel = document.querySelector(".brains");
+              const brainsStatus = document.getElementById("brains-status");
+              let currentVoiceUrl = null;
+              let voiceAvailable = false;
 
               function applyState(snapshot) {{
-                const state = snapshot.state || "standby";
-                const styles = stateStyles[state] || stateStyles.standby;
-                const pill = document.getElementById("state-pill");
-                pill.style.background = styles.pill;
-                pill.style.borderColor = styles.border;
-                pill.style.color = styles.text;
-                pill.querySelector(".dot").style.background = styles.dot;
-
-                stateLabel.textContent = state;
-                headline.textContent = snapshot.headline || "Nano is in standby.";
-                detail.textContent = snapshot.detail || "";
-                updatedAt.textContent = `Updated ${{formatTime(snapshot.updated_at)}}`;
+                stateLine.textContent = snapshot.state || "standby";
               }}
 
-              function renderEvent(event) {{
-                const item = document.createElement("li");
-                item.className = "event";
+              function formatEvent(event) {{
                 const stamp = event.created_at
                   ? new Date(event.created_at).toLocaleTimeString()
-                  : "";
-                item.innerHTML = `
-                  <div class="event-top">
-                    <span class="event-title">${{event.title || "Activity"}}</span>
-                    <span class="event-meta">
-                      ${{event.source || "system"}}${{stamp ? " | " + stamp : ""}}
-                    </span>
-                  </div>
-                  <p class="event-detail">${{event.detail || event.state || ""}}</p>
-                `;
-                eventsList.prepend(item);
-                while (eventsList.children.length > 8) {{
-                  eventsList.removeChild(eventsList.lastChild);
-                }}
+                  : "--:--:--";
+                const source = event.source || "system";
+                const title = event.title || "Activity";
+                const detailText = event.detail || event.state || "";
+                const detailSuffix = detailText ? `\\n    ${{detailText}}` : "";
+                return `[${{stamp}}] ${{source}} | ${{title}}${{detailSuffix}}`;
               }}
 
               function refreshEvents(snapshot) {{
-                eventsList.innerHTML = "";
                 const events = Array.isArray(snapshot.events)
                   ? snapshot.events.slice().reverse()
                   : [];
-                for (const event of events) {{
-                  renderEvent(event);
-                }}
+                activityLog.value = events.map((event) => formatEvent(event)).join("\\n\\n");
+                activityLog.scrollTop = activityLog.scrollHeight;
               }}
 
-              function renderMemoryList(list, items, emptyLabel) {{
-                list.innerHTML = "";
-                if (!items.length) {{
-                  const empty = document.createElement("li");
-                  empty.className = "memory-item";
-                  empty.textContent = emptyLabel;
-                  list.appendChild(empty);
+              function appendEvent(event) {{
+                const line = formatEvent(event);
+                activityLog.value = activityLog.value
+                  ? `${{activityLog.value}}\\n\\n${{line}}`
+                  : line;
+                activityLog.scrollTop = activityLog.scrollHeight;
+              }}
+
+              function setAnswer(text) {{
+                const content = text.trim();
+                if (!content) {{
+                  answerOutput.textContent = "Awaiting signal.";
+                  answerOutput.classList.add("empty");
                   return;
                 }}
-                for (const item of items) {{
-                  const entry = document.createElement("li");
-                  entry.className = "memory-item";
-                  entry.textContent = item;
-                  list.appendChild(entry);
-                }}
+                answerOutput.textContent = content;
+                answerOutput.classList.remove("empty");
               }}
 
-              async function loadMemory() {{
-                const [notesResponse, remindersResponse] = await Promise.all([
-                  fetch("/api/notes"),
-                  fetch("/api/reminders"),
-                ]);
-                const notes = notesResponse.ok ? await notesResponse.json() : [];
-                const reminders = remindersResponse.ok ? await remindersResponse.json() : [];
-                renderMemoryList(
-                  notesList,
-                  notes.map((note) => note.content),
-                  "No notes yet.",
-                );
-                renderMemoryList(
-                  remindersList,
-                  reminders.map((reminder) => reminder.content),
-                  "No reminders yet.",
-                );
+              function stopVoicePlayback() {{
+                voiceAudio.pause();
+                voiceAudio.currentTime = 0;
+                if (currentVoiceUrl) {{
+                  URL.revokeObjectURL(currentVoiceUrl);
+                  currentVoiceUrl = null;
+                }}
+                voiceAudio.removeAttribute("src");
+              }}
+
+              async function playVoice(text) {{
+                if (!voiceAvailable || !text.trim()) {{
+                  return;
+                }}
+                stopVoicePlayback();
+                try {{
+                  const response = await fetch("/api/voice", {{
+                    method: "POST",
+                    headers: {{
+                      "Content-Type": "application/json",
+                    }},
+                    body: JSON.stringify({{ text }}),
+                  }});
+                  if (!response.ok) {{
+                    const data = await response.json().catch(() => null);
+                    throw new Error(data?.detail || "Voice playback failed.");
+                  }}
+                  const blob = await response.blob();
+                  currentVoiceUrl = URL.createObjectURL(blob);
+                  voiceAudio.src = currentVoiceUrl;
+                  await voiceAudio.play();
+                }} catch (error) {{
+                  replyStatus.textContent =
+                    `Nano answered, but voice playback failed: ${{error.message}}`;
+                }}
               }}
 
               async function loadSnapshot() {{
@@ -442,9 +391,17 @@ def home() -> str:
                   const snapshot = await loadSnapshot();
                   applyState(snapshot);
                   refreshEvents(snapshot);
-                  await loadMemory();
+                  const voiceResponse = await fetch("/api/voice/status");
+                  if (voiceResponse.ok) {{
+                    const voice = await voiceResponse.json();
+                    voiceAvailable = Boolean(voice.available);
+                    stopAudioButton.disabled = !voiceAvailable;
+                    if (!voiceAvailable && typeof voice.detail === "string") {{
+                      replyStatus.textContent = voice.detail;
+                    }}
+                  }}
                 }} catch (error) {{
-                  reply.textContent = error.message;
+                  replyStatus.textContent = error.message;
                 }}
               }}
 
@@ -452,56 +409,73 @@ def home() -> str:
                 const source = new EventSource("/events");
                 source.addEventListener("activity", (event) => {{
                   const payload = JSON.parse(event.data);
-                  const snapshot = {{
-                    state: payload.state,
-                    headline: payload.title,
-                    detail: payload.detail,
-                    updated_at: payload.created_at,
-                  }};
-                  applyState(snapshot);
-                  renderEvent(payload);
+                  applyState({{ state: payload.state }});
+                  appendEvent(payload);
                 }});
                 source.onerror = () => {{
-                  updatedAt.textContent = "Live stream reconnecting...";
+                  stateLine.textContent = "reconnecting";
                 }};
               }}
 
               async function sendMessage() {{
                 const message = messageBox.value.trim();
                 if (!message) {{
-                  reply.textContent = "Write a message first.";
+                  replyStatus.textContent = "Write a message first.";
                   return;
                 }}
                 sendButton.disabled = true;
-                reply.textContent = "Sending...";
+                replyStatus.textContent = "Sending...";
                 try {{
                   const response = await fetch("/chat", {{
                     method: "POST",
                     headers: {{
                       "Content-Type": "application/json",
                     }},
-                    body: JSON.stringify({{ message }}),
+                    body: JSON.stringify({{
+                      message,
+                      mode: "chat",
+                    }}),
                   }});
                   const data = await response.json();
                   if (!response.ok) {{
                     throw new Error(data.detail || "Chat request failed.");
                   }}
-                  reply.textContent = data.content;
+                  setAnswer(data.content);
+                  replyStatus.textContent = "Nano answered.";
+                  await playVoice(data.content);
                   messageBox.value = "";
                 }} catch (error) {{
-                  reply.textContent = error.message;
+                  replyStatus.textContent = error.message;
                 }} finally {{
                   sendButton.disabled = false;
                 }}
               }}
 
-              document.getElementById("send").addEventListener("click", sendMessage);
+              sendButton.addEventListener("click", sendMessage);
+              stopAudioButton.addEventListener("click", () => {{
+                stopVoicePlayback();
+              }});
+              copyAnswerButton.addEventListener("click", async () => {{
+                try {{
+                  await navigator.clipboard.writeText(answerOutput.textContent);
+                  copyAnswerButton.textContent = "Copied";
+                  setTimeout(() => {{
+                    copyAnswerButton.textContent = "Copy Answer";
+                  }}, 1200);
+                }} catch (error) {{
+                  replyStatus.textContent = "Could not copy the answer.";
+                }}
+              }});
               messageBox.addEventListener("keydown", (event) => {{
                 if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {{
                   sendMessage();
                 }}
               }});
+              brainsPanel.addEventListener("toggle", () => {{
+                brainsStatus.textContent = brainsPanel.open ? "open" : "sealed";
+              }});
 
+              setAnswer("");
               bootstrap();
               listen();
             </script>

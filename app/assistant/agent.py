@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from app.assistant.prompts import AGENT_SYSTEM_PROMPT
+from app.assistant.prompts import AGENT_SYSTEM_PROMPT, SYSTEM_PROMPT
 from app.assistant.router import get_llm_client
 from app.config import get_settings
 from app.memory import repository
@@ -37,6 +37,10 @@ class AgentService:
         settings = get_settings()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
 
+        history = repository.list_chat_messages(
+            conversation_id=conversation_id,
+            limit=settings.chat_history_limit,
+        )
         messages: list[dict[str, str]] = [
             {
                 "role": "system",
@@ -44,10 +48,6 @@ class AgentService:
             }
         ]
 
-        history = repository.list_chat_messages(
-            conversation_id=conversation_id,
-            limit=settings.chat_history_limit,
-        )
         for entry in history:
             messages.append({"role": entry.role, "content": entry.content})
 
@@ -61,6 +61,7 @@ class AgentService:
             source="assistant.agent",
         )
 
+        invalid_json_attempts = 0
         for _ in range(8):
             raw = client.complete(messages=messages)
             decision = self._parse_decision(raw)
@@ -80,6 +81,14 @@ class AgentService:
                 return content
 
             if decision["type"] != "tool_call":
+                invalid_json_attempts += 1
+                if invalid_json_attempts >= 2:
+                    return self._fallback_to_chat(
+                        client=client,
+                        message=message,
+                        conversation_id=conversation_id,
+                        history=history,
+                    )
                 messages.append({"role": "assistant", "content": raw})
                 messages.append(
                     {
@@ -123,6 +132,35 @@ class AgentService:
             source="assistant.agent",
         )
         return fallback
+
+    def _fallback_to_chat(
+        self,
+        *,
+        client: Any,
+        message: str,
+        conversation_id: str,
+        history: list[Any],
+    ) -> str:
+        fallback_messages: list[dict[str, str]] = [
+            {"role": "system", "content": SYSTEM_PROMPT}
+        ]
+        for entry in history:
+            fallback_messages.append({"role": entry.role, "content": entry.content})
+        if not history or history[-1].role != "user" or history[-1].content != message:
+            fallback_messages.append({"role": "user", "content": message})
+
+        content = client.complete(messages=fallback_messages)
+        repository.add_chat_message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=content,
+        )
+        activity.standby(
+            title="Nano answered without tools.",
+            detail="The local model could not follow agent JSON, so Nano used plain chat mode.",
+            source="assistant.agent",
+        )
+        return content
 
     def _system_prompt(self) -> str:
         return AGENT_SYSTEM_PROMPT + "\n\n" + self._tool_list()

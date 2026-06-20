@@ -7,6 +7,7 @@ from app.api.chat import router as chat_router
 from app.api.health import router as health_router
 from app.api.memory import router as memory_router
 from app.api.runtime import router as runtime_router
+from app.api.voice import router as voice_router
 from app.config import get_settings
 from app.memory.db import create_db_and_tables
 from app.scheduler.jobs import register_jobs, scheduler
@@ -29,4 +30,5 @@ app.include_router(home_router)
 app.include_router(health_router)
 app.include_router(memory_router)
 app.include_router(runtime_router)
+app.include_router(voice_router)
 app.include_router(chat_router, prefix="/chat", tags=["chat"])

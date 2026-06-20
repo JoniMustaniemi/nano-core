@@ -8,8 +8,12 @@ def test_homepage_shows_standby_ui() -> None:
         response = client.get("/")
 
     assert response.status_code == 200
-    assert "Nano is in standby." in response.text
-    assert "Recent activity" in response.text
+    assert "Nano" in response.text
+    assert "Nano's brains" in response.text
+    assert "Type to Nano..." in response.text
+    assert "Stop Audio" in response.text
+    assert 'join("\\n\\n")' in response.text
+    assert 'mode: "chat"' in response.text
 
 
 def test_status_endpoint_starts_in_standby() -> None:

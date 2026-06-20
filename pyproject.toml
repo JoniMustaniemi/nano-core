@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nano-core"
 version = "0.1.0"
-description = "A local-first virtual assistant starter project."
+description = ""
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -34,9 +34,6 @@ vector = [
   "faiss-cpu>=1.8.0; platform_system != 'Windows'",
 ]
 voice = [
-  "openai-whisper>=20231117",
-  "openwakeword>=0.6.0",
-  "piper-tts>=1.2.0",
 ]
 
 [project.scripts]

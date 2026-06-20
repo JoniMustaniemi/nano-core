@@ -12,12 +12,13 @@ from app.runtime.activity import activity
 class AssistantService:
     def respond(self, message: str, mode: str = "agent") -> ChatResponse:
         if mode == "chat":
-            return ChatResponse(content=self._chat(message))
-        return ChatResponse(content=AgentService().respond(message))
+            return ChatResponse(content=self._chat(message, conversation_id="chat-default"))
+        return ChatResponse(
+            content=AgentService().respond(message, conversation_id="agent-default")
+        )
 
-    def _chat(self, message: str) -> str:
+    def _chat(self, message: str, conversation_id: str) -> str:
         settings = get_settings()
-        conversation_id = "default"
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
         messages = self._build_messages(
             user_message=message,
@@ -32,6 +33,20 @@ class AssistantService:
             source="assistant.chat",
         )
         content = client.complete(messages=messages)
+        if self._looks_like_capability_echo(message, content):
+            retry_messages: list[Mapping[str, str]] = [
+                {
+                    "role": "system",
+                    "content": (
+                        SYSTEM_PROMPT
+                        + " The last answer was wrong because it described capabilities "
+                        "instead of answering the user's question. Answer the user's last "
+                        "message directly."
+                    ),
+                },
+                {"role": "user", "content": message},
+            ]
+            content = client.complete(messages=retry_messages)
         repository.add_chat_message(
             conversation_id=conversation_id,
             role="assistant",
@@ -43,6 +58,20 @@ class AssistantService:
             source="assistant.chat",
         )
         return content
+
+    def _looks_like_capability_echo(self, message: str, content: str) -> bool:
+        lowered = content.lower()
+        if "i can execute local python code" not in lowered:
+            return False
+
+        capability_triggers = (
+            "what can you do",
+            "capabilities",
+            "what are you able to do",
+            "who are you",
+            "introduce yourself",
+        )
+        return not any(trigger in message.lower() for trigger in capability_triggers)
 
     def _build_messages(
         self,

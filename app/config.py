@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     llm_context_size: int = Field(default=4096, ge=512)
     llm_max_tokens: int = Field(default=512, ge=1)
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    voice_backend: Literal["glados"] = "glados"
+    voice_glados_repo_path: str = "./vendor/GLaDOS-TTS"
+    voice_sample_rate: int = Field(default=22050, ge=8000)
     chat_history_limit: int = Field(default=12, ge=0)
     note_context_limit: int = Field(default=5, ge=0)
     reminder_poll_interval_seconds: int = Field(default=30, ge=5)

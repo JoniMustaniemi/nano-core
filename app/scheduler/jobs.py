@@ -6,7 +6,7 @@ from app.config import get_settings
 from app.memory.repository import list_due_reminders, mark_reminder_sent
 from app.runtime.activity import activity
 
-scheduler = BackgroundScheduler()
+scheduler = BackgroundScheduler(daemon=True)
 
 
 def check_due_reminders() -> None:

@@ -13,7 +13,7 @@ Nano is a local-first virtual assistant.
 - Typer CLI
 - pytest, ruff, and mypy
 
-External local services such as Whisper, Piper, and systemd are installed and
+External local services such as GLaDOS-TTS and systemd are installed and
 managed outside the Python package.
 
 ## Raspberry Pi / Linux
@@ -38,9 +38,30 @@ For a true local model, set `LLM_PROVIDER=local` and point `LLM_MODEL_PATH`
 at a `.gguf` file on disk. Nano loads that model directly in-process through
 `llama-cpp-python`.
 
+The web UI now expects a local `GLaDOS-TTS` backend import on the server side.
+Clone the repository into `vendor/GLaDOS-TTS` or otherwise make the `glados`
+module importable to Python.
+
 If you still want to use a server-based backend for testing, you can switch
 `LLM_PROVIDER` to `ollama` or `llama_cpp_server`, but the default path is
 local.
+
+## Model Download
+
+Download the GGUF file into `models/` and keep it out of Git.
+
+Recommended source:
+
+- [Qwen2.5-1.5B-Instruct-GGUF](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)
+
+For a Raspberry Pi 5, start with a 4-bit or 5-bit quantization if available,
+such as `Q4_K_M` or `Q5_K_M`.
+
+Then point `LLM_MODEL_PATH` at the downloaded file, for example:
+
+```text
+LLM_MODEL_PATH=./models/qwen2.5-1.5b-instruct-q5_k_m.gguf
+```
 
 
 ## Setup
