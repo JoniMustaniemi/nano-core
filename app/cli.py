@@ -15,6 +15,11 @@ app.add_typer(notes_app, name="notes")
 app.add_typer(reminders_app, name="reminders")
 
 
+def start() -> None:
+    """Start Nano with default local dev settings."""
+    start_dev()
+
+
 @app.command()
 def health() -> None:
     """Print basic app health information."""
@@ -39,6 +44,15 @@ def dev(
     reload: bool = typer.Option(True, "--reload/--no-reload", help="Enable auto-reload."),
 ) -> None:
     """Start the full app locally."""
+    start_dev(host=host, port=port, reload=reload)
+
+
+def start_dev(
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    reload: bool = True,
+) -> None:
+    """Run the local web app through Uvicorn."""
     uvicorn.run("app.main:app", host=host, port=port, reload=reload)
 
 

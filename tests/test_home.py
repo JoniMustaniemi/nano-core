@@ -13,7 +13,7 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Type to Nano..." in response.text
     assert "Stop Audio" in response.text
     assert 'join("\\n\\n")' in response.text
-    assert 'mode: "chat"' in response.text
+    assert 'mode: "agent"' in response.text
 
 
 def test_status_endpoint_starts_in_standby() -> None:

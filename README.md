@@ -31,7 +31,7 @@ python -m pip install -e ".[dev,local-llm]"
 The app starts with:
 
 ```bash
-nano-core dev
+start-nano
 ```
 
 For a true local model, set `LLM_PROVIDER=local` and point `LLM_MODEL_PATH`
@@ -76,27 +76,58 @@ python -m pip install -e ".[dev,local-llm]"
 ## Run
 
 ```powershell
-uvicorn app.main:app --reload
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
 Or start the full app through the project CLI:
 
 ```powershell
-nano-core dev
+start-nano
 ```
 
 Or, from the project root, run the launcher directly:
 
 ```powershell
-.\nano-core.cmd
+.\start-nano.cmd
 ```
 
 ## CLI
 
 ```powershell
-nano-core health
-nano-core chat "Hello"
+.\.venv\Scripts\python.exe -m app.cli health
+.\.venv\Scripts\python.exe -m app.cli chat "Hello"
 ```
+
+If your virtual environment is not activated yet, activate it first so
+`start-nano` is on your shell `PATH`. You can still use `.\start-nano.cmd` on
+Windows or `./start-nano` from Git Bash at the project root without activation.
+
+## Adding Tools
+
+Model-callable tools now live in `app/tools/*_tools.py`.
+
+To add a new tool, create one file that:
+
+```python
+from app.tools import ToolSpec, register_tool
+
+
+def _my_tool(args: dict[str, object]) -> str:
+    return "done"
+
+
+register_tool(
+    ToolSpec(
+        name="my_tool",
+        description="say what the tool does.",
+        args_schema={"input": "Describe the expected argument."},
+        handler=_my_tool,
+    )
+)
+```
+
+Any `*_tools.py` module in `app/tools/` is auto-discovered by the agent, so
+you do not need to edit `AgentService` to expose a new tool.
 
 ## Test
 

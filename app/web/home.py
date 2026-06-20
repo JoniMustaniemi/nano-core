@@ -433,7 +433,7 @@ def home() -> str:
                     }},
                     body: JSON.stringify({{
                       message,
-                      mode: "chat",
+                      mode: "agent",
                     }}),
                   }});
                   const data = await response.json();

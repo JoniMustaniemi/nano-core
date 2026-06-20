@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
 from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, NotRequired, TypedDict, cast
 
 from app.assistant.prompts import AGENT_SYSTEM_PROMPT, SYSTEM_PROMPT
 from app.assistant.router import get_llm_client
 from app.config import get_settings
 from app.memory import repository
 from app.runtime.activity import activity
+from app.tools import get_tool, list_tools, render_tool_prompt
 
 AgentToolName = Literal[
     "run_python",
@@ -23,6 +20,8 @@ AgentToolName = Literal[
     "list_notes",
     "add_reminder",
     "list_reminders",
+    "start_timer",
+    "list_timers",
 ]
 
 
@@ -30,6 +29,27 @@ AgentToolName = Literal[
 class ToolResult:
     tool: str
     content: str
+
+
+class FinalDecision(TypedDict):
+    type: Literal["final"]
+    content: str
+
+
+class ToolCallDecision(TypedDict):
+    type: Literal["tool_call"]
+    tool: str
+    args: dict[str, Any]
+
+
+class InvalidDecision(TypedDict):
+    type: Literal["invalid"]
+    content: NotRequired[str]
+    tool: NotRequired[str]
+    args: NotRequired[dict[str, Any]]
+
+
+Decision = FinalDecision | ToolCallDecision | InvalidDecision
 
 
 class AgentService:
@@ -149,7 +169,7 @@ class AgentService:
         if not history or history[-1].role != "user" or history[-1].content != message:
             fallback_messages.append({"role": "user", "content": message})
 
-        content = client.complete(messages=fallback_messages)
+        content = cast(str, client.complete(messages=fallback_messages))
         repository.add_chat_message(
             conversation_id=conversation_id,
             role="assistant",
@@ -166,22 +186,9 @@ class AgentService:
         return AGENT_SYSTEM_PROMPT + "\n\n" + self._tool_list()
 
     def _tool_list(self) -> str:
-        return (
-            "Available tools:\n"
-            "- run_python(code): execute local Python code and return stdout/stderr.\n"
-            "- read_file(path): read a text file under the workspace root.\n"
-            "- write_file(path, content): write a text file under the workspace root.\n"
-            "- list_files(path): list files under the workspace root.\n"
-            "- add_note(content): save a note.\n"
-            "- list_notes(): list recent notes.\n"
-            "- add_reminder(content, due_at): save a reminder.\n"
-            "- list_reminders(): list reminders.\n"
-            "Return JSON only in one of these forms:\n"
-            '{"type":"final","content":"..."}\n'
-            '{"type":"tool_call","tool":"run_python","args":{"code":"..."} }\n'
-        )
+        return render_tool_prompt()
 
-    def _parse_decision(self, raw: str) -> dict[str, Any]:
+    def _parse_decision(self, raw: str) -> Decision:
         payload = self._extract_json(raw)
         if isinstance(payload, dict):
             decision_type = payload.get("type")
@@ -210,86 +217,11 @@ class AgentService:
             return None
 
     def _execute_tool(self, tool_name: str, args: dict[str, Any]) -> ToolResult:
-        if tool_name == "run_python":
-            return ToolResult(tool=tool_name, content=self._run_python(args))
-        if tool_name == "read_file":
-            return ToolResult(tool=tool_name, content=self._read_file(args))
-        if tool_name == "write_file":
-            return ToolResult(tool=tool_name, content=self._write_file(args))
-        if tool_name == "list_files":
-            return ToolResult(tool=tool_name, content=self._list_files(args))
-        if tool_name == "add_note":
-            content = str(args.get("content", ""))
-            note = repository.add_note(content)
-            return ToolResult(tool=tool_name, content=f"saved note {note.id}: {note.content}")
-        if tool_name == "list_notes":
-            notes = repository.list_notes()
-            rendered = "\n".join(f"{note.id}: {note.content}" for note in notes) or "No notes."
-            return ToolResult(tool=tool_name, content=rendered)
-        if tool_name == "add_reminder":
-            content = str(args.get("content", ""))
-            due_at_raw = str(args.get("due_at", ""))
-            due_at = datetime.fromisoformat(due_at_raw)
-            reminder = repository.add_reminder(content, due_at)
+        tool = get_tool(tool_name)
+        if tool is None:
+            available = ", ".join(tool_spec.name for tool_spec in list_tools())
             return ToolResult(
                 tool=tool_name,
-                content=f"saved reminder {reminder.id}: {reminder.content}",
+                content=f"Unknown tool: {tool_name}. Available tools: {available}",
             )
-        if tool_name == "list_reminders":
-            reminders = repository.list_reminders()
-            rendered = "\n".join(
-                f"{reminder.id}: {reminder.content} @ {reminder.due_at.isoformat()}"
-                for reminder in reminders
-            ) or "No reminders."
-            return ToolResult(tool=tool_name, content=rendered)
-        return ToolResult(tool=tool_name, content=f"Unknown tool: {tool_name}")
-
-    def _workspace_root(self) -> Path:
-        settings = get_settings()
-        return Path(settings.workspace_root).resolve()
-
-    def _resolve_workspace_path(self, raw_path: str) -> Path:
-        workspace = self._workspace_root()
-        path = (workspace / raw_path).resolve()
-        if workspace not in path.parents and path != workspace:
-            raise ValueError("Path must stay within the workspace root.")
-        return path
-
-    def _run_python(self, args: dict[str, Any]) -> str:
-        code = str(args.get("code", ""))
-        timeout_seconds = int(args.get("timeout_seconds", 30))
-        workspace = self._workspace_root()
-        process = subprocess.run(
-            [sys.executable, "-c", code],
-            cwd=workspace,
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds,
-        )
-        return self._format_process_output(process.returncode, process.stdout, process.stderr)
-
-    def _read_file(self, args: dict[str, Any]) -> str:
-        path = self._resolve_workspace_path(str(args.get("path", "")))
-        return path.read_text(encoding="utf-8")
-
-    def _write_file(self, args: dict[str, Any]) -> str:
-        path = self._resolve_workspace_path(str(args.get("path", "")))
-        content = str(args.get("content", ""))
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
-        return f"wrote {path}"
-
-    def _list_files(self, args: dict[str, Any]) -> str:
-        path = self._resolve_workspace_path(str(args.get("path", ".")))
-        if not path.exists():
-            return f"{path} does not exist"
-        entries = sorted(item.name for item in path.iterdir())
-        return "\n".join(entries) or "(empty)"
-
-    def _format_process_output(self, returncode: int, stdout: str, stderr: str) -> str:
-        parts = [f"exit code: {returncode}"]
-        if stdout.strip():
-            parts.append(f"stdout:\n{stdout.strip()}")
-        if stderr.strip():
-            parts.append(f"stderr:\n{stderr.strip()}")
-        return "\n".join(parts)
+        return ToolResult(tool=tool_name, content=tool.handler(args))

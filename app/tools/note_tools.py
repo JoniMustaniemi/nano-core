@@ -1,0 +1,38 @@
+from __future__ import annotations
+
+from typing import Any
+
+from app.memory import repository
+from app.tools.base import ToolSpec
+from app.tools.registry import register_tool
+
+
+def _add_note(args: dict[str, Any]) -> str:
+    content = str(args.get("content", ""))
+    note = repository.add_note(content)
+    return f"saved note {note.id}: {note.content}"
+
+
+def _list_notes(args: dict[str, Any]) -> str:
+    del args
+    notes = repository.list_notes()
+    return "\n".join(f"{note.id}: {note.content}" for note in notes) or "No notes."
+
+
+register_tool(
+    ToolSpec(
+        name="add_note",
+        description="save a note.",
+        args_schema={"content": "The note text to store."},
+        handler=_add_note,
+    )
+)
+
+register_tool(
+    ToolSpec(
+        name="list_notes",
+        description="list recent notes.",
+        args_schema={},
+        handler=_list_notes,
+    )
+)

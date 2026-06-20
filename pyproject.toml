@@ -38,6 +38,7 @@ voice = [
 
 [project.scripts]
 nano-core = "app.cli:app"
+start-nano = "app.cli:start"
 
 [tool.setuptools.packages.find]
 include = ["app*"]

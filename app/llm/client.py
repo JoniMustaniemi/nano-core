@@ -17,11 +17,11 @@ class LocalLLMClient:
         settings = get_settings()
 
         if settings.llm_provider == "local":
-            return self._complete_local(messages)
+            return self._complete_local(messages) or self._unavailable_message()
         if settings.llm_provider == "ollama":
-            return self._complete_ollama(messages)
+            return self._complete_ollama(messages) or self._unavailable_message()
         if settings.llm_provider in {"llama_cpp", "llama_cpp_server"}:
-            return self._complete_llama_cpp_server(messages)
+            return self._complete_llama_cpp_server(messages) or self._unavailable_message()
 
         return self._complete_auto(messages)
 
@@ -34,6 +34,9 @@ class LocalLLMClient:
             content = complete(messages, raise_on_error=False)
             if content is not None:
                 return content
+        return self._unavailable_message()
+
+    def _unavailable_message(self) -> str:
         return (
             "Local LLM is not available yet. Install a GGUF model and set "
             "LLM_MODEL_PATH, or point LLM_PROVIDER at a configured backend."
