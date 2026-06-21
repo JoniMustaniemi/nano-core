@@ -12,13 +12,13 @@ def test_dev_command_launches_uvicorn(monkeypatch) -> None:
     monkeypatch.setattr("app.cli.uvicorn.run", fake_run)
 
     runner = CliRunner()
-    result = runner.invoke(app, ["dev", "--host", "0.0.0.0", "--port", "9000", "--no-reload"])
+    result = runner.invoke(app, ["dev", "--host", "127.0.0.1", "--port", "9000", "--no-reload"])
 
     assert result.exit_code == 0
     assert calls == [
         (
             ("app.main:app",),
-            {"host": "0.0.0.0", "port": 9000, "reload": False, "reload_dirs": None},
+            {"host": "127.0.0.1", "port": 9000, "reload": False, "reload_dirs": None},
         )
     ]
 
