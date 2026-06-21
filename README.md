@@ -1,4 +1,6 @@
-# Nano Core
+# Nano Core 
+[![CodeFactor](https://www.codefactor.io/repository/github/jonimustaniemi/nano-core/badge)](https://www.codefactor.io/repository/github/jonimustaniemi/nano-core)
+
 
 Nano is a local-first personal assistant built in Python. It is designed as a
 practical everyday assistant, with a fully self-hosted architecture that works
@@ -9,3 +11,5 @@ responsive, and useful in day-to-day workflows. It is also being built with a
 long-term goal of running as an installable assistant on Raspberry Pi hardware.
 
 For technical details, see [docs/README.md](docs/README.md).
+
+
