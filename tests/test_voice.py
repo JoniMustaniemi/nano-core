@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.voice.service import GladosVoiceService
 
 
 def test_voice_status_reports_backend(monkeypatch) -> None:
@@ -33,3 +34,19 @@ def test_voice_endpoint_returns_wav(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.headers["content-type"] == "audio/wav"
     assert response.content == b"RIFFdemoWAVE"
+
+
+def test_voice_service_announce_synthesizes_and_plays(monkeypatch) -> None:
+    played: list[bytes] = []
+    monkeypatch.setattr(
+        "app.voice.service.GladosVoiceService.synthesize_wav",
+        lambda self, text: b"RIFFdemoWAVE",
+    )
+    monkeypatch.setattr(
+        "app.voice.service._play_wav_bytes",
+        lambda wav_bytes: played.append(wav_bytes),
+    )
+
+    GladosVoiceService().announce("timer complete")
+
+    assert played == [b"RIFFdemoWAVE"]

@@ -17,6 +17,32 @@ class AssistantService:
             content=AgentService().respond(message, conversation_id="agent-default")
         )
 
+    def wake_response(self) -> ChatResponse:
+        client = get_llm_client()
+        messages: list[Mapping[str, str]] = [
+            {
+                "role": "system",
+                "content": (
+                    SYSTEM_PROMPT
+                    + " You just heard your wake phrase. "
+                    + "Reply with one short sentence that confirms you are listening "
+                    + "and invites the user's command. "
+                    + "Stay in Nano's personality. "
+                    + "Do not greet warmly. "
+                    + "Do not mention capabilities, tools, JSON, or internal systems. "
+                    + "Keep it brief and natural to speak aloud."
+                ),
+            },
+            {
+                "role": "user",
+                "content": "The user said your wake phrase and is waiting for acknowledgment.",
+            },
+        ]
+        content = client.complete(messages=messages).strip()
+        if not content:
+            content = "I am listening. Proceed."
+        return ChatResponse(content=content)
+
     def _chat(self, message: str, conversation_id: str) -> str:
         settings = get_settings()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)

@@ -1,58 +1,51 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
-from typing import Any, Literal, NotRequired, TypedDict, cast
+from typing import Any, cast
 
-from app.assistant.prompts import AGENT_SYSTEM_PROMPT, SYSTEM_PROMPT
+from app.assistant.agent_rules import (
+    duration_args_from_message,
+    is_confirmation_message,
+    is_health_check_request,
+    is_rejection_message,
+    is_timer_cancel_request,
+    is_timer_start_request,
+    is_timer_status_request,
+    needs_timer_duration,
+    needs_wipe_confirmation,
+    parse_decision,
+    should_answer_without_tools,
+    timer_confirmation,
+    tool_matches_request,
+    tool_signature,
+    wipe_confirmation_prompt,
+)
+from app.assistant.agent_types import ToolResult
+from app.assistant.pending import PendingInteraction, pending_interactions
+from app.assistant.prompts import (
+    AGENT_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+    WIPE_CONFIRMATION_SYSTEM_PROMPT,
+)
+from app.assistant.result_summarizer import ToolResultSummarizer
 from app.assistant.router import get_llm_client
+from app.assistant.tool_runner import ToolRunner
 from app.config import get_settings
 from app.memory import repository
 from app.runtime.activity import activity
-from app.tools import get_tool, list_tools, render_tool_prompt
-
-AgentToolName = Literal[
-    "run_python",
-    "read_file",
-    "write_file",
-    "list_files",
-    "add_note",
-    "list_notes",
-    "add_reminder",
-    "list_reminders",
-    "start_timer",
-    "list_timers",
-]
-
-
-@dataclass(slots=True)
-class ToolResult:
-    tool: str
-    content: str
-
-
-class FinalDecision(TypedDict):
-    type: Literal["final"]
-    content: str
-
-
-class ToolCallDecision(TypedDict):
-    type: Literal["tool_call"]
-    tool: str
-    args: dict[str, Any]
-
-
-class InvalidDecision(TypedDict):
-    type: Literal["invalid"]
-    content: NotRequired[str]
-    tool: NotRequired[str]
-    args: NotRequired[dict[str, Any]]
-
-
-Decision = FinalDecision | ToolCallDecision | InvalidDecision
+from app.tools import render_tool_prompt
 
 
 class AgentService:
+    def __init__(
+        self,
+        *,
+        tool_runner: ToolRunner | None = None,
+        summarizer: ToolResultSummarizer | None = None,
+    ) -> None:
+        self.tool_runner = tool_runner or ToolRunner()
+        self.summarizer = summarizer or ToolResultSummarizer()
+
     def respond(self, message: str, conversation_id: str = "default") -> str:
         settings = get_settings()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
@@ -75,6 +68,101 @@ class AgentService:
             messages.append({"role": "user", "content": message})
 
         client = get_llm_client()
+        if is_timer_status_request(message):
+            pending_interactions.clear(conversation_id)
+            return self._run_direct_tool(
+                client=client,
+                conversation_id=conversation_id,
+                user_message=message,
+                tool_name="list_timers",
+                args={},
+            )
+
+        if is_timer_cancel_request(message):
+            pending_interactions.clear(conversation_id)
+            return self._run_direct_tool(
+                client=client,
+                conversation_id=conversation_id,
+                user_message=message,
+                tool_name="cancel_timers",
+                args={},
+            )
+
+        pending_response = self._handle_pending_interaction(
+            pending=pending_interactions.get(conversation_id),
+            message=message,
+            conversation_id=conversation_id,
+        )
+        if pending_response is not None:
+            return pending_response
+
+        if needs_wipe_confirmation(message):
+            confirmation_prompt = self._build_wipe_confirmation_prompt(
+                client=client,
+                message=message,
+            )
+            pending_interactions.set(
+                conversation_id=conversation_id,
+                kind="wipe_confirmation",
+                payload={"request": message},
+            )
+            repository.add_chat_message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=confirmation_prompt,
+            )
+            activity.standby(
+                title="Nano needs confirmation.",
+                detail="Waiting for confirmation before wiping the database.",
+                source="assistant.agent",
+            )
+            return confirmation_prompt
+
+        if needs_timer_duration(message):
+            follow_up = "How long should the timer run?"
+            pending_interactions.set(
+                conversation_id=conversation_id,
+                kind="timer_duration",
+                payload={"request": message},
+            )
+            repository.add_chat_message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=follow_up,
+            )
+            activity.standby(
+                title="Nano needs one detail.",
+                detail="Waiting for the timer duration.",
+                source="assistant.agent",
+            )
+            return follow_up
+
+        if is_timer_start_request(message):
+            duration_args = duration_args_from_message(message)
+            if duration_args is not None:
+                return self._run_timer_request(
+                    conversation_id=conversation_id,
+                    args=duration_args,
+                )
+
+        if is_health_check_request(message):
+            return self._run_direct_tool(
+                client=client,
+                conversation_id=conversation_id,
+                user_message=message,
+                tool_name="check_health",
+                args={},
+                summarize_result=True,
+            )
+
+        if should_answer_without_tools(message):
+            return self._fallback_to_chat(
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+                history=history,
+            )
+
         activity.working(
             title="Nano is planning an action.",
             detail="Using the local model to decide whether to answer or run a tool.",
@@ -82,9 +170,10 @@ class AgentService:
         )
 
         invalid_json_attempts = 0
+        executed_tools: dict[str, ToolResult] = {}
         for _ in range(8):
             raw = client.complete(messages=messages)
-            decision = self._parse_decision(raw)
+            decision = parse_decision(raw)
 
             if decision["type"] == "final":
                 content = decision["content"]
@@ -123,12 +212,41 @@ class AgentService:
 
             tool_name = decision["tool"]
             args = decision["args"]
+            if not tool_matches_request(message, tool_name):
+                messages.append({"role": "assistant", "content": raw})
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": (
+                            f"The tool call {tool_name} does not match the user's request. "
+                            "Do not call a tool here. Return a final answer directly."
+                        ),
+                    }
+                )
+                continue
+            signature = tool_signature(tool_name, args)
+            existing_result = executed_tools.get(signature)
+            if existing_result is not None:
+                messages.append({"role": "assistant", "content": raw})
+                messages.append(
+                    {
+                        "role": "system",
+                        "content": (
+                            f"Tool {tool_name} was already called with the same arguments and "
+                            f"returned:\n{existing_result.content}\n"
+                            "Do not call the same tool again. Return a final answer now."
+                        ),
+                    }
+                )
+                continue
             activity.log(
                 title=f"Nano called {tool_name}.",
                 detail=json.dumps(args, ensure_ascii=False),
                 source="assistant.agent",
             )
-            result = self._execute_tool(tool_name, args)
+            self.tool_runner.announce_call(tool_name)
+            result = self.tool_runner.execute(tool_name, args)
+            executed_tools[signature] = result
             messages.append({"role": "assistant", "content": raw})
             messages.append(
                 {
@@ -146,10 +264,10 @@ class AgentService:
             role="assistant",
             content=fallback,
         )
-        activity.error(
+        self.tool_runner.report_error(
             title="Nano could not finish the task.",
             detail=fallback,
-            source="assistant.agent",
+            spoken_message="I could not finish the task.",
         )
         return fallback
 
@@ -188,40 +306,179 @@ class AgentService:
     def _tool_list(self) -> str:
         return render_tool_prompt()
 
-    def _parse_decision(self, raw: str) -> Decision:
-        payload = self._extract_json(raw)
-        if isinstance(payload, dict):
-            decision_type = payload.get("type")
-            if decision_type == "final" and isinstance(payload.get("content"), str):
-                return {"type": "final", "content": payload["content"]}
-            if decision_type == "tool_call":
-                tool = payload.get("tool")
-                args = payload.get("args", {})
-                if isinstance(tool, str) and isinstance(args, dict):
-                    return {"type": "tool_call", "tool": tool, "args": args}
-        return {"type": "invalid"}
+    def _run_direct_tool(
+        self,
+        *,
+        client: Any,
+        conversation_id: str,
+        user_message: str,
+        tool_name: str,
+        args: dict[str, Any],
+        summarize_result: bool = False,
+    ) -> str:
+        activity.log(
+            title=f"Nano called {tool_name}.",
+            detail=json.dumps(args, ensure_ascii=False),
+            source="assistant.agent",
+        )
+        self.tool_runner.announce_call(tool_name)
+        result = self.tool_runner.execute(tool_name, args)
+        activity.log(
+            title=f"Tool {tool_name} returned.",
+            detail=result.content,
+            source="assistant.agent",
+        )
+        content = result.content
+        if summarize_result:
+            content = self.summarizer.summarize(
+                client=client,
+                user_message=user_message,
+                tool_name=tool_name,
+                tool_result=result.content,
+            )
+        repository.add_chat_message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=content,
+        )
+        activity.standby(
+            title="Nano finished the task.",
+            detail=f"{tool_name} completed.",
+            source="assistant.agent",
+        )
+        return content
 
-    def _extract_json(self, raw: str) -> Any:
-        text = raw.strip()
-        if text.startswith("```"):
-            text = text.strip("`")
-            if "\n" in text:
-                text = text.split("\n", 1)[1]
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            text = text[start : end + 1]
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
+    def _build_wipe_confirmation_prompt(self, *, client: Any, message: str) -> str:
+        prompt_messages = [
+            {"role": "system", "content": WIPE_CONFIRMATION_SYSTEM_PROMPT},
+            {"role": "user", "content": message},
+        ]
+        draft = cast(str, client.complete(messages=prompt_messages)).strip()
+        if not draft:
+            return wipe_confirmation_prompt(message)
+        cleaned = draft.replace("\n", " ").strip()
+        cleaned = cleaned.rstrip(". ")
+        return f"{cleaned}. Reply yes to proceed or no to cancel."
+
+    def _handle_pending_interaction(
+        self,
+        *,
+        pending: PendingInteraction | None,
+        message: str,
+        conversation_id: str,
+    ) -> str | None:
+        if pending is None:
             return None
 
-    def _execute_tool(self, tool_name: str, args: dict[str, Any]) -> ToolResult:
-        tool = get_tool(tool_name)
-        if tool is None:
-            available = ", ".join(tool_spec.name for tool_spec in list_tools())
-            return ToolResult(
-                tool=tool_name,
-                content=f"Unknown tool: {tool_name}. Available tools: {available}",
+        if pending.kind == "timer_duration":
+            return self._complete_pending_timer_request(
+                message=message,
+                conversation_id=conversation_id,
             )
-        return ToolResult(tool=tool_name, content=tool.handler(args))
+
+        if pending.kind == "wipe_confirmation":
+            return self._handle_pending_wipe_confirmation(
+                message=message,
+                conversation_id=conversation_id,
+            )
+
+        pending_interactions.clear(conversation_id)
+        return None
+
+    def _complete_pending_timer_request(
+        self,
+        *,
+        message: str,
+        conversation_id: str,
+    ) -> str | None:
+        duration_args = duration_args_from_message(message)
+        if duration_args is None:
+            follow_up = "Specify the timer duration in seconds or minutes."
+            repository.add_chat_message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=follow_up,
+            )
+            activity.standby(
+                title="Nano needs one detail.",
+                detail="Waiting for a valid timer duration.",
+                source="assistant.agent",
+            )
+            return follow_up
+
+        pending_interactions.clear(conversation_id)
+        return self._run_timer_request(
+            conversation_id=conversation_id,
+            args=duration_args,
+        )
+
+    def _run_timer_request(
+        self,
+        *,
+        conversation_id: str,
+        args: dict[str, Any],
+    ) -> str:
+        activity.log(
+            title="Nano called start_timer.",
+            detail=json.dumps(args, ensure_ascii=False),
+            source="assistant.agent",
+        )
+        self.tool_runner.announce_call("start_timer")
+        result = self.tool_runner.execute("start_timer", args)
+        confirmation = timer_confirmation(args)
+        repository.add_chat_message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=confirmation,
+        )
+        activity.standby(
+            title="Nano finished the task.",
+            detail=result.content,
+            source="assistant.agent",
+        )
+        return confirmation
+
+    def _handle_pending_wipe_confirmation(
+        self,
+        *,
+        message: str,
+        conversation_id: str,
+    ) -> str | None:
+        if is_rejection_message(message):
+            response = "Database wipe cancelled."
+            pending_interactions.clear(conversation_id)
+            repository.add_chat_message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=response,
+            )
+            activity.standby(
+                title="Nano cancelled the wipe.",
+                detail="The database was left intact.",
+                source="assistant.agent",
+            )
+            return response
+
+        if not is_confirmation_message(message):
+            response = "Reply yes to confirm the database wipe, or no to cancel."
+            repository.add_chat_message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=response,
+            )
+            activity.standby(
+                title="Nano still needs confirmation.",
+                detail="Waiting for a clear yes or no before wiping the database.",
+                source="assistant.agent",
+            )
+            return response
+
+        repository.wipe_database()
+        pending_interactions.clear(conversation_id)
+        response = "Database wiped."
+        activity.standby(
+            title="Nano wiped the database.",
+            detail="Notes, reminders, and chat history were deleted.",
+            source="assistant.agent",
+        )
+        return response

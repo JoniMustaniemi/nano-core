@@ -53,7 +53,13 @@ def start_dev(
     reload: bool = True,
 ) -> None:
     """Run the local web app through Uvicorn."""
-    uvicorn.run("app.main:app", host=host, port=port, reload=reload)
+    uvicorn.run(
+        "app.main:app",
+        host=host,
+        port=port,
+        reload=reload,
+        reload_dirs=["app"] if reload else None,
+    )
 
 
 @notes_app.command("add")

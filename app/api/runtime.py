@@ -2,7 +2,7 @@ import asyncio
 import json
 from collections.abc import AsyncGenerator
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import StreamingResponse
 
 from app.runtime.activity import activity
@@ -16,9 +16,9 @@ def status() -> dict[str, object]:
 
 
 @router.get("/events")
-async def events(request: Request) -> StreamingResponse:
+async def events(request: Request, since: int = Query(default=0, ge=0)) -> StreamingResponse:
     async def stream() -> AsyncGenerator[str, None]:
-        last_id = 0
+        last_id = since
         while True:
             if await request.is_disconnected():
                 break

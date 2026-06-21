@@ -57,6 +57,17 @@ def list_chat_messages(
     return list(reversed(rows))
 
 
+def list_recent_chat_messages(limit: int = 20) -> list[ChatMessage]:
+    statement = (
+        select(ChatMessage)
+        .order_by(desc(ChatMessage.created_at), desc(ChatMessage.id))
+        .limit(limit)
+    )
+    with Session(db.engine) as session:
+        rows = list(session.exec(statement))
+    return list(reversed(rows))
+
+
 def add_reminder(content: str, due_at: datetime) -> Reminder:
     with Session(db.engine) as session:
         reminder = Reminder(content=content, due_at=due_at)
@@ -71,8 +82,10 @@ def add_reminder(content: str, due_at: datetime) -> Reminder:
         return reminder
 
 
-def list_reminders() -> list[Reminder]:
+def list_reminders(*, include_sent: bool = False) -> list[Reminder]:
     statement = select(Reminder).order_by(desc(Reminder.due_at), desc(Reminder.id))
+    if not include_sent:
+        statement = statement.where(Reminder.sent_at.is_(None))
     with Session(db.engine) as session:
         return list(session.exec(statement))
 
@@ -100,3 +113,22 @@ def mark_reminder_sent(reminder_id: int, sent_at: datetime | None = None) -> Rem
         session.commit()
         session.refresh(reminder)
         return reminder
+
+
+def delete_reminder(reminder_id: int) -> bool:
+    with Session(db.engine) as session:
+        reminder = session.get(Reminder, reminder_id)
+        if reminder is None:
+            return False
+        session.delete(reminder)
+        session.commit()
+        return True
+
+
+def wipe_database() -> None:
+    with Session(db.engine) as session:
+        for model in (ChatMessage, Note, Reminder):
+            rows = list(session.exec(select(model)))
+            for row in rows:
+                session.delete(row)
+        session.commit()

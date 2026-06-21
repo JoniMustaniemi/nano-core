@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import importlib
 import io
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import wave
 from functools import lru_cache
 from pathlib import Path
@@ -38,7 +42,7 @@ class GladosVoiceService:
             audio = tts.generate_speech_audio(text)
         except VoiceUnavailableError:
             raise
-        except Exception as exc:  # pragma: no cover - depends on optional runtime
+        except Exception as exc:
             raise VoiceUnavailableError(
                 f"GLaDOS voice synthesis failed: {exc}"
             ) from exc
@@ -46,6 +50,10 @@ class GladosVoiceService:
         settings = get_settings()
         sample_rate = int(getattr(tts, "sample_rate", settings.voice_sample_rate))
         return _audio_to_wav_bytes(audio, sample_rate)
+
+    def announce(self, text: str) -> None:
+        wav_bytes = self.synthesize_wav(text)
+        _play_wav_bytes(wav_bytes)
 
 
 @lru_cache(maxsize=1)
@@ -57,7 +65,7 @@ def _get_glados_tts() -> Any:
         raise VoiceUnavailableError(
             "GLaDOS-TTS was found, but the TTS class is missing."
         ) from exc
-    except Exception as exc:  # pragma: no cover - depends on optional runtime
+    except Exception as exc: 
         raise VoiceUnavailableError(f"Could not initialize GLaDOS-TTS: {exc}") from exc
 
 
@@ -117,3 +125,57 @@ def _coerce_samples(audio: Any) -> list[float]:
         return flattened
 
     return [float(item) for item in data]
+
+
+def _play_wav_bytes(wav_bytes: bytes) -> None:
+    if sys.platform == "win32":
+        _play_wav_on_windows(wav_bytes)
+        return
+    _play_wav_with_tempfile(wav_bytes)
+
+
+def _play_wav_on_windows(wav_bytes: bytes) -> None:
+    try:
+        import winsound
+    except ImportError as exc:  # pragma: no cover - windows stdlib import
+        raise VoiceUnavailableError(
+            "Audio playback is not available on this Windows runtime."
+        ) from exc
+
+    try:
+        winsound.PlaySound(wav_bytes, winsound.SND_MEMORY)
+    except RuntimeError as exc:
+        raise VoiceUnavailableError(f"Audio playback failed: {exc}") from exc
+
+
+def _play_wav_with_tempfile(wav_bytes: bytes) -> None:
+    player = _find_audio_player()
+    if player is None:
+        raise VoiceUnavailableError(
+            "Audio playback is not available. Install `aplay`, `paplay`, or `afplay`."
+        )
+
+    temp_path: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as handle:
+            handle.write(wav_bytes)
+            temp_path = handle.name
+        subprocess.run([*player, temp_path], check=True, capture_output=True)
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.decode("utf-8", errors="ignore").strip()
+        detail = stderr or str(exc)
+        raise VoiceUnavailableError(f"Audio playback failed: {detail}") from exc
+    finally:
+        if temp_path is not None:
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
+
+
+def _find_audio_player() -> list[str] | None:
+    for command in ("aplay", "paplay", "afplay"):
+        executable = shutil.which(command)
+        if executable is not None:
+            return [executable]
+    return None

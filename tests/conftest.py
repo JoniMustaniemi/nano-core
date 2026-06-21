@@ -4,6 +4,7 @@ import pytest
 from sqlmodel import create_engine
 
 import app.memory.db as db
+from app.assistant.pending import pending_interactions
 from app.runtime.activity import activity
 
 
@@ -17,3 +18,8 @@ def isolated_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture(autouse=True)
 def reset_activity() -> None:
     activity.reset()
+
+
+@pytest.fixture(autouse=True)
+def reset_pending_interactions() -> None:
+    pending_interactions.reset()

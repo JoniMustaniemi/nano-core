@@ -9,3 +9,8 @@ router = APIRouter()
 @router.post("", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
     return AssistantService().respond(request.message, mode=request.mode)
+
+
+@router.get("/wake", response_model=ChatResponse)
+def wake() -> ChatResponse:
+    return AssistantService().wake_response()

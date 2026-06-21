@@ -21,6 +21,15 @@ class _CapabilityEchoThenAnswerClient:
         )
 
 
+class _WakeResponseClient:
+    def __init__(self) -> None:
+        self.messages = None
+
+    def complete(self, messages) -> str:
+        self.messages = messages
+        return "I am listening. Try to make this worth the interruption."
+
+
 def test_chat_mode_retries_when_model_echoes_capabilities(monkeypatch) -> None:
     client = _CapabilityEchoThenAnswerClient()
 
@@ -37,3 +46,15 @@ def test_chat_mode_retries_when_model_echoes_capabilities(monkeypatch) -> None:
 
     assert "Rocks form in different ways" in response.content
     assert client.calls == 2
+
+
+def test_wake_response_uses_personality_prompt(monkeypatch) -> None:
+    client = _WakeResponseClient()
+
+    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: client)
+
+    response = AssistantService().wake_response()
+
+    assert response.content == "I am listening. Try to make this worth the interruption."
+    assert "wake phrase" in client.messages[0]["content"].lower()
+    assert "one short sentence" in client.messages[0]["content"].lower()
