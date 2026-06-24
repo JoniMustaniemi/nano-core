@@ -12,12 +12,35 @@ router = APIRouter(tags=["runtime"])
 
 @router.get("/api/status")
 def status() -> dict[str, object]:
+    """
+    Return status information for the requested operation.
+
+    Returns:
+        Dictionary containing the requested data.
+    """
     return activity.snapshot()
 
 
 @router.get("/events")
 async def events(request: Request, since: int = Query(default=0, ge=0)) -> StreamingResponse:
+    """
+    Stream runtime activity events.
+
+    Args:
+        request: Incoming API request object.
+        since: Last seen runtime activity event identifier.
+
+    Returns:
+        StreamingResponse result.
+    """
+
     async def stream() -> AsyncGenerator[str, None]:
+        """
+        Yield serialized runtime activity events.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         last_id = since
         while True:
             if await request.is_disconnected():

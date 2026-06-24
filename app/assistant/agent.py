@@ -43,10 +43,30 @@ class AgentService:
         tool_runner: ToolRunner | None = None,
         summarizer: ToolResultSummarizer | None = None,
     ) -> None:
+        """
+        Initialize the AgentService instance.
+
+        Args:
+            tool_runner: Tool runner value.
+            summarizer: Summarizer value.
+
+        Returns:
+            None.
+        """
         self.tool_runner = tool_runner or ToolRunner()
         self.summarizer = summarizer or ToolResultSummarizer()
 
     def respond(self, message: str, conversation_id: str = "default") -> str:
+        """
+        Respond to the requested operation.
+
+        Args:
+            message: User message or prompt text.
+            conversation_id: Conversation identifier used to scope history and pending state.
+
+        Returns:
+            Generated or formatted string value.
+        """
         settings = get_settings()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
 
@@ -79,6 +99,16 @@ class AgentService:
         history: list[Any],
         message: str,
     ) -> list[dict[str, str]]:
+        """
+        Build agent messages.
+
+        Args:
+            history: History value.
+            message: User message or prompt text.
+
+        Returns:
+            List of matching records or values.
+        """
         messages: list[dict[str, str]] = [{"role": "system", "content": self._system_prompt()}]
         for entry in history:
             messages.append({"role": entry.role, "content": entry.content})
@@ -94,6 +124,18 @@ class AgentService:
         message: str,
         history: list[Any],
     ) -> str | None:
+        """
+        Handle direct request.
+
+        Args:
+            client: LLM client used to generate responses.
+            conversation_id: Conversation identifier used to scope history and pending state.
+            message: User message or prompt text.
+            history: History value.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         if is_timer_status_request(message):
             pending_interactions.clear(conversation_id)
             return self._run_direct_tool(
@@ -170,6 +212,17 @@ class AgentService:
         conversation_id: str,
         message: str,
     ) -> str:
+        """
+        Start wipe confirmation.
+
+        Args:
+            client: LLM client used to generate responses.
+            conversation_id: Conversation identifier used to scope history and pending state.
+            message: User message or prompt text.
+
+        Returns:
+            Generated or formatted string value.
+        """
         confirmation_prompt = self._build_wipe_confirmation_prompt(
             client=client,
             message=message,
@@ -192,6 +245,16 @@ class AgentService:
         return confirmation_prompt
 
     def _request_timer_duration(self, *, conversation_id: str, message: str) -> str:
+        """
+        Handle request timer duration.
+
+        Args:
+            conversation_id: Conversation identifier used to scope history and pending state.
+            message: User message or prompt text.
+
+        Returns:
+            Generated or formatted string value.
+        """
         follow_up = "How long should the timer run?"
         pending_interactions.set(
             conversation_id=conversation_id,
@@ -219,6 +282,19 @@ class AgentService:
         history: list[Any],
         messages: list[dict[str, str]],
     ) -> str:
+        """
+        Run planned response.
+
+        Args:
+            client: LLM client used to generate responses.
+            conversation_id: Conversation identifier used to scope history and pending state.
+            message: User message or prompt text.
+            history: History value.
+            messages: Conversation messages to send to the model.
+
+        Returns:
+            Generated or formatted string value.
+        """
         activity.working(
             title="Nano is planning an action.",
             detail="Using the local model to decide whether to answer or run a tool.",
@@ -310,6 +386,17 @@ class AgentService:
         raw: str,
         content: str,
     ) -> None:
+        """
+        Handle append model correction.
+
+        Args:
+            messages: Conversation messages to send to the model.
+            raw: Raw input value to parse.
+            content: Text content to persist or return.
+
+        Returns:
+            None.
+        """
         messages.append({"role": "assistant", "content": raw})
         messages.append({"role": "system", "content": content})
 
@@ -320,6 +407,17 @@ class AgentService:
         raw: str,
         result: ToolResult,
     ) -> None:
+        """
+        Handle append model result.
+
+        Args:
+            messages: Conversation messages to send to the model.
+            raw: Raw input value to parse.
+            result: Result value.
+
+        Returns:
+            None.
+        """
         messages.append({"role": "assistant", "content": raw})
         messages.append(
             {
@@ -332,6 +430,16 @@ class AgentService:
         )
 
     def _finish_planned_response(self, *, conversation_id: str, content: str) -> str:
+        """
+        Finish planned response.
+
+        Args:
+            conversation_id: Conversation identifier used to scope history and pending state.
+            content: Text content to persist or return.
+
+        Returns:
+            Generated or formatted string value.
+        """
         repository.add_chat_message(
             conversation_id=conversation_id,
             role="assistant",
@@ -352,9 +460,19 @@ class AgentService:
         conversation_id: str,
         history: list[Any],
     ) -> str:
-        fallback_messages: list[dict[str, str]] = [
-            {"role": "system", "content": SYSTEM_PROMPT}
-        ]
+        """
+        Fallback to chat.
+
+        Args:
+            client: LLM client used to generate responses.
+            message: User message or prompt text.
+            conversation_id: Conversation identifier used to scope history and pending state.
+            history: History value.
+
+        Returns:
+            Generated or formatted string value.
+        """
+        fallback_messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
         for entry in history:
             fallback_messages.append({"role": entry.role, "content": entry.content})
         if not history or history[-1].role != "user" or history[-1].content != message:
@@ -374,9 +492,21 @@ class AgentService:
         return content
 
     def _system_prompt(self) -> str:
+        """
+        Handle system prompt.
+
+        Returns:
+            Generated or formatted string value.
+        """
         return AGENT_SYSTEM_PROMPT + "\n\n" + self._tool_list()
 
     def _tool_list(self) -> str:
+        """
+        Build tool metadata for list.
+
+        Returns:
+            Generated or formatted string value.
+        """
         return render_tool_prompt()
 
     def _run_direct_tool(
@@ -389,6 +519,20 @@ class AgentService:
         args: dict[str, Any],
         summarize_result: bool = False,
     ) -> str:
+        """
+        Run direct tool.
+
+        Args:
+            client: LLM client used to generate responses.
+            conversation_id: Conversation identifier used to scope history and pending state.
+            user_message: User message value.
+            tool_name: Registered tool name.
+            args: Tool argument dictionary.
+            summarize_result: Summarize result value.
+
+        Returns:
+            Generated or formatted string value.
+        """
         activity.log(
             title=f"Nano called {tool_name}.",
             detail=json.dumps(args, ensure_ascii=False),
@@ -422,6 +566,16 @@ class AgentService:
         return content
 
     def _build_wipe_confirmation_prompt(self, *, client: Any, message: str) -> str:
+        """
+        Build wipe confirmation prompt.
+
+        Args:
+            client: LLM client used to generate responses.
+            message: User message or prompt text.
+
+        Returns:
+            Generated or formatted string value.
+        """
         prompt_messages = [
             {"role": "system", "content": WIPE_CONFIRMATION_SYSTEM_PROMPT},
             {"role": "user", "content": message},
@@ -440,6 +594,17 @@ class AgentService:
         message: str,
         conversation_id: str,
     ) -> str | None:
+        """
+        Handle pending interaction.
+
+        Args:
+            pending: Pending value.
+            message: User message or prompt text.
+            conversation_id: Conversation identifier used to scope history and pending state.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         if pending is None:
             return None
 
@@ -464,6 +629,16 @@ class AgentService:
         message: str,
         conversation_id: str,
     ) -> str | None:
+        """
+        Complete pending timer request.
+
+        Args:
+            message: User message or prompt text.
+            conversation_id: Conversation identifier used to scope history and pending state.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         duration_args = duration_args_from_message(message)
         if duration_args is None:
             follow_up = "Specify the timer duration in seconds or minutes."
@@ -491,6 +666,16 @@ class AgentService:
         conversation_id: str,
         args: dict[str, Any],
     ) -> str:
+        """
+        Run timer request.
+
+        Args:
+            conversation_id: Conversation identifier used to scope history and pending state.
+            args: Tool argument dictionary.
+
+        Returns:
+            Generated or formatted string value.
+        """
         activity.log(
             title="Nano called start_timer.",
             detail=json.dumps(args, ensure_ascii=False),
@@ -517,6 +702,16 @@ class AgentService:
         message: str,
         conversation_id: str,
     ) -> str | None:
+        """
+        Handle pending wipe confirmation.
+
+        Args:
+            message: User message or prompt text.
+            conversation_id: Conversation identifier used to scope history and pending state.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         if is_rejection_message(message):
             response = "Database wipe cancelled."
             pending_interactions.clear(conversation_id)

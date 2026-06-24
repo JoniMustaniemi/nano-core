@@ -9,6 +9,15 @@ from app.scheduler import jobs
 
 
 def test_health_endpoint_reports_checks(monkeypatch) -> None:
+    """
+    Verify that health endpoint reports checks.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     monkeypatch.setattr(
         "app.api.health.get_settings",
         lambda: SimpleNamespace(app_name="Nano Core", app_env="test"),
@@ -31,6 +40,15 @@ def test_health_endpoint_reports_checks(monkeypatch) -> None:
 
 
 def test_health_scheduler_announces_new_failures(monkeypatch) -> None:
+    """
+    Verify that health scheduler announces new failures.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     spoken: list[str] = []
     jobs._LAST_HEALTH_STATUS.clear()
     monkeypatch.setattr(
@@ -49,6 +67,15 @@ def test_health_scheduler_announces_new_failures(monkeypatch) -> None:
 
 
 def test_health_scheduler_does_not_repeat_same_failure_announcement(monkeypatch) -> None:
+    """
+    Verify that health scheduler does not repeat same failure announcement.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     spoken: list[str] = []
     jobs._LAST_HEALTH_STATUS.clear()
     jobs._LAST_HEALTH_STATUS["voice"] = False
@@ -70,6 +97,16 @@ def test_database_size_health_check_warns_when_threshold_is_exceeded(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
+    """
+    Verify that database size health check warns when threshold is exceeded.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
     db_file = tmp_path / "nano.sqlite3"
     db_file.write_bytes(b"x" * 2048)
     monkeypatch.setattr("app.health.checks.db.sqlite_path", db_file)
@@ -98,6 +135,16 @@ def test_database_size_health_check_reports_when_below_threshold(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
+    """
+    Verify that database size health check reports when below threshold.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
     db_file = tmp_path / "nano.sqlite3"
     db_file.write_bytes(b"x" * 2048)
     monkeypatch.setattr("app.health.checks.db.sqlite_path", db_file)
@@ -123,6 +170,15 @@ def test_database_size_health_check_reports_when_below_threshold(
 
 
 def test_health_scheduler_announces_database_size_warning(monkeypatch) -> None:
+    """
+    Verify that health scheduler announces database size warning.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     spoken: list[str] = []
     jobs._LAST_HEALTH_STATUS.clear()
     monkeypatch.setattr(

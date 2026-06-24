@@ -7,6 +7,12 @@ from app.tools import get_tool
 
 
 def test_start_timer_accepts_duration_text() -> None:
+    """
+    Verify that start timer accepts duration text.
+
+    Returns:
+        None.
+    """
     tool = get_tool("start_timer")
 
     assert tool is not None
@@ -18,6 +24,12 @@ def test_start_timer_accepts_duration_text() -> None:
 
 
 def test_start_timer_accepts_spoken_duration_text() -> None:
+    """
+    Verify that start timer accepts spoken duration text.
+
+    Returns:
+        None.
+    """
     tool = get_tool("start_timer")
 
     assert tool is not None
@@ -29,6 +41,12 @@ def test_start_timer_accepts_spoken_duration_text() -> None:
 
 
 def test_start_timer_requires_explicit_duration() -> None:
+    """
+    Verify that start timer requires explicit duration.
+
+    Returns:
+        None.
+    """
     tool = get_tool("start_timer")
 
     assert tool is not None
@@ -40,6 +58,12 @@ def test_start_timer_requires_explicit_duration() -> None:
 
 
 def test_list_timers_reports_time_remaining() -> None:
+    """
+    Verify that list timers reports time remaining.
+
+    Returns:
+        None.
+    """
     tool = get_tool("list_timers")
     repository.add_reminder("[timer] Timer", datetime.now(UTC) + timedelta(minutes=5))
 
@@ -51,6 +75,12 @@ def test_list_timers_reports_time_remaining() -> None:
 
 
 def test_list_timers_reports_multiple_timers_with_count() -> None:
+    """
+    Verify that list timers reports multiple timers with count.
+
+    Returns:
+        None.
+    """
     tool = get_tool("list_timers")
     repository.add_reminder("[timer] Tea", datetime.now(UTC) + timedelta(minutes=5))
     repository.add_reminder("[timer] Laundry", datetime.now(UTC) + timedelta(minutes=10))
@@ -66,6 +96,12 @@ def test_list_timers_reports_multiple_timers_with_count() -> None:
 
 
 def test_cancel_timers_removes_active_timers_only() -> None:
+    """
+    Verify that cancel timers removes active timers only.
+
+    Returns:
+        None.
+    """
     tool = get_tool("cancel_timers")
     repository.add_reminder("[timer] Tea", datetime.now(UTC) + timedelta(minutes=5))
     repository.add_reminder("[timer] Laundry", datetime.now(UTC) + timedelta(minutes=10))
@@ -81,6 +117,12 @@ def test_cancel_timers_removes_active_timers_only() -> None:
 
 
 def test_cancel_timers_reports_when_none_are_active() -> None:
+    """
+    Verify that cancel timers reports when none are active.
+
+    Returns:
+        None.
+    """
     tool = get_tool("cancel_timers")
 
     assert tool is not None
@@ -90,6 +132,12 @@ def test_cancel_timers_reports_when_none_are_active() -> None:
 
 
 def test_due_timer_logs_friendly_completion_message() -> None:
+    """
+    Verify that due timer logs friendly completion message.
+
+    Returns:
+        None.
+    """
     repository.add_reminder("[timer] Tea", datetime.now(UTC) - timedelta(minutes=2))
 
     check_due_reminders()
@@ -103,6 +151,15 @@ def test_due_timer_logs_friendly_completion_message() -> None:
 
 
 def test_due_timer_announces_completion(monkeypatch) -> None:
+    """
+    Verify that due timer announces completion.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     spoken: list[str] = []
     repository.add_reminder("[timer] Tea", datetime.now(UTC) - timedelta(seconds=10))
     monkeypatch.setattr(
@@ -117,6 +174,12 @@ def test_due_timer_announces_completion(monkeypatch) -> None:
 
 
 def test_due_default_timer_omits_default_label() -> None:
+    """
+    Verify that due default timer omits default label.
+
+    Returns:
+        None.
+    """
     _, detail = _format_due_reminder(
         "[timer] Timer",
         datetime.now(UTC) - timedelta(seconds=30),

@@ -18,6 +18,15 @@ from app.web.home import router as home_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """
+    Manage the application lifespan.
+
+    Args:
+        app: FastAPI application instance.
+
+    Returns:
+        Parsed value when available; otherwise None.
+    """
     create_db_and_tables()
     register_jobs()
     scheduler.start()

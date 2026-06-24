@@ -8,12 +8,30 @@ from app.tools.registry import register_tool
 
 
 def _add_note(args: dict[str, Any]) -> str:
+    """
+    Add note.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     content = str(args.get("content", ""))
     note = repository.add_note(content)
     return f"saved note {note.id}: {note.content}"
 
 
 def _list_notes(args: dict[str, Any]) -> str:
+    """
+    List notes.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     del args
     notes = repository.list_notes()
     return "\n".join(f"{note.id}: {note.content}" for note in notes) or "No notes."

@@ -11,6 +11,12 @@ router = APIRouter(tags=["web"])
 
 @router.get("/", response_class=HTMLResponse)
 def home() -> str:
+    """
+    Render the home page.
+
+    Returns:
+        Generated or formatted string value.
+    """
     settings = get_settings()
     app_name = escape(settings.app_name)
     return dedent(

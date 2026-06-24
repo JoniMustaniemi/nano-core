@@ -9,6 +9,15 @@ from app.tools.registry import register_tool
 
 
 def _add_reminder(args: dict[str, Any]) -> str:
+    """
+    Add reminder.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     content = str(args.get("content", ""))
     due_at = datetime.fromisoformat(str(args.get("due_at", "")))
     reminder = repository.add_reminder(content, due_at)
@@ -16,6 +25,15 @@ def _add_reminder(args: dict[str, Any]) -> str:
 
 
 def _list_reminders(args: dict[str, Any]) -> str:
+    """
+    List reminders.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     del args
     reminders = repository.list_reminders()
     return (

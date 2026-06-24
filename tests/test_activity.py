@@ -5,12 +5,30 @@ from app.main import app
 
 class _FakeClient:
     def complete(self, messages) -> str:
+        """
+        Provide test support for complete.
+
+        Args:
+            messages: Conversation messages to send to the model.
+
+        Returns:
+            Generated or formatted string value.
+        """
         assert messages
         assert messages[-1]["content"] == "Hello"
         return "Hi there!"
 
 
 def test_chat_updates_activity(monkeypatch) -> None:
+    """
+    Verify that chat updates activity.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: _FakeClient())
 
     with TestClient(app) as client:

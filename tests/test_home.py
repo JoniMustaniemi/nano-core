@@ -4,6 +4,12 @@ from app.main import app
 
 
 def test_homepage_shows_standby_ui() -> None:
+    """
+    Verify that homepage shows standby ui.
+
+    Returns:
+        None.
+    """
     with TestClient(app) as client:
         response = client.get("/")
 
@@ -20,6 +26,12 @@ def test_homepage_shows_standby_ui() -> None:
 
 
 def test_homepage_serves_static_assets() -> None:
+    """
+    Verify that homepage serves static assets.
+
+    Returns:
+        None.
+    """
     with TestClient(app) as client:
         css_response = client.get("/static/home.css")
         js_response = client.get("/static/home.js")
@@ -54,6 +66,12 @@ def test_homepage_serves_static_assets() -> None:
 
 
 def test_status_endpoint_starts_in_standby() -> None:
+    """
+    Verify that status endpoint starts in standby.
+
+    Returns:
+        None.
+    """
     with TestClient(app) as client:
         response = client.get("/api/status")
 

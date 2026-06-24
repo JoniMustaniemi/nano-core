@@ -47,6 +47,15 @@ _TENS_NUMBER_WORDS: dict[str, int] = {
 
 
 def extract_duration_args(message: str) -> dict[str, int] | None:
+    """
+    Extract duration args.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Dictionary containing the requested data.
+    """
     parsed = parse_duration_phrase(message)
     if parsed is None:
         return None
@@ -60,6 +69,15 @@ def extract_duration_args(message: str) -> dict[str, int] | None:
 
 
 def parse_duration_phrase(message: str) -> tuple[int, str] | None:
+    """
+    Parse duration phrase.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Tuple containing the requested values.
+    """
     lowered = message.lower()
 
     digit_match = _DIGIT_DURATION_PATTERN.search(lowered)
@@ -77,6 +95,15 @@ def parse_duration_phrase(message: str) -> tuple[int, str] | None:
 
 
 def parse_duration_to_seconds(raw: str) -> int:
+    """
+    Parse duration to seconds.
+
+    Args:
+        raw: Raw input value to parse.
+
+    Returns:
+        Computed integer value.
+    """
     parsed = parse_duration_phrase(raw)
     if parsed is None:
         return 0
@@ -90,6 +117,15 @@ def parse_duration_to_seconds(raw: str) -> int:
 
 
 def _normalize_unit(unit: str) -> str:
+    """
+    Normalize unit.
+
+    Args:
+        unit: Duration unit text.
+
+    Returns:
+        Generated or formatted string value.
+    """
     if unit.startswith("s"):
         return "seconds"
     if unit.startswith("m"):
@@ -98,6 +134,15 @@ def _normalize_unit(unit: str) -> str:
 
 
 def _words_to_number(raw: str) -> int | None:
+    """
+    Handle words to number.
+
+    Args:
+        raw: Raw input value to parse.
+
+    Returns:
+        Parsed value when available; otherwise None.
+    """
     cleaned = raw.replace("-", " ")
     tokens = [token for token in cleaned.split() if token != "and"]
     if not tokens:

@@ -13,5 +13,11 @@ class ToolSpec:
     handler: Callable[[dict[str, Any]], str]
 
     def prompt_line(self) -> str:
+        """
+        Build line.
+
+        Returns:
+            Generated or formatted string value.
+        """
         args = ", ".join(self.args_schema)
         return f"- {self.name}({args}): {self.description}"

@@ -10,6 +10,15 @@ from app.tools.registry import register_tool
 
 
 def _run_python(args: dict[str, Any]) -> str:
+    """
+    Run python.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     code = str(args.get("code", ""))
     timeout_seconds = int(args.get("timeout_seconds", 30))
     process = subprocess.run(
@@ -23,14 +32,41 @@ def _run_python(args: dict[str, Any]) -> str:
 
 
 def _read_file(args: dict[str, Any]) -> str:
+    """
+    Read file.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     return read_text_file(str(args.get("path", "")))
 
 
 def _write_file(args: dict[str, Any]) -> str:
+    """
+    Write file.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     return write_text_file(str(args.get("path", "")), str(args.get("content", "")))
 
 
 def _list_files(args: dict[str, Any]) -> str:
+    """
+    List files.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     raw_path = str(args.get("path", "."))
     entries = list_files(raw_path)
     if not entries:
@@ -39,6 +75,17 @@ def _list_files(args: dict[str, Any]) -> str:
 
 
 def _format_process_output(returncode: int, stdout: str, stderr: str) -> str:
+    """
+    Format process output.
+
+    Args:
+        returncode: Process exit code.
+        stdout: Captured process standard output.
+        stderr: Captured process standard error.
+
+    Returns:
+        Generated or formatted string value.
+    """
     parts = [f"exit code: {returncode}"]
     if stdout.strip():
         parts.append(f"stdout:\n{stdout.strip()}")

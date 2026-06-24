@@ -9,6 +9,15 @@ from app.tools.registry import register_tool
 
 
 def _check_health(args: dict[str, Any]) -> str:
+    """
+    Check health.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     del args
     results = run_health_checks()
     if not results:

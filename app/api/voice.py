@@ -13,11 +13,29 @@ class VoiceRequest(BaseModel):
 
 @router.get("/status")
 def voice_status() -> dict[str, str | bool]:
+    """
+    Return voice service status for status.
+
+    Returns:
+        Dictionary containing the requested data.
+    """
     return GladosVoiceService().status()
 
 
 @router.post("")
 def synthesize_voice(request: VoiceRequest) -> Response:
+    """
+    Synthesize voice.
+
+    Args:
+        request: Incoming API request object.
+
+    Returns:
+        Response result.
+
+    Raises:
+        HTTPException: If the operation cannot be completed.
+    """
     try:
         audio = GladosVoiceService().synthesize_wav(request.text)
     except VoiceUnavailableError as exc:

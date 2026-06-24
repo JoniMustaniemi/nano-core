@@ -21,6 +21,12 @@ class ActivityEvent:
     created_at: str
 
     def to_dict(self) -> dict[str, str | int | None]:
+        """
+        Convert dict.
+
+        Returns:
+            Dictionary containing the requested data.
+        """
         return {
             "id": self.id,
             "kind": self.kind,
@@ -34,6 +40,15 @@ class ActivityEvent:
 
 class ActivityHub:
     def __init__(self, max_events: int = 100) -> None:
+        """
+        Initialize the ActivityHub instance.
+
+        Args:
+            max_events: Maximum number of activity events to retain.
+
+        Returns:
+            None.
+        """
         self._lock = RLock()
         self._events: deque[ActivityEvent] = deque(maxlen=max_events)
         self._next_id = 1
@@ -50,6 +65,12 @@ class ActivityHub:
         )
 
     def reset(self) -> None:
+        """
+        Reset the requested operation.
+
+        Returns:
+            None.
+        """
         with self._lock:
             self._events.clear()
             self._next_id = 1
@@ -71,6 +92,17 @@ class ActivityHub:
         detail: str | None = None,
         source: str = "system",
     ) -> ActivityEvent:
+        """
+        Record standby activity for the requested operation.
+
+        Args:
+            title: Short error title to report.
+            detail: Detailed error text to report.
+            source: Source value.
+
+        Returns:
+            ActivityEvent result.
+        """
         return self._record(
             kind="state",
             state="standby",
@@ -85,6 +117,17 @@ class ActivityHub:
         detail: str | None = None,
         source: str = "system",
     ) -> ActivityEvent:
+        """
+        Handle working.
+
+        Args:
+            title: Short error title to report.
+            detail: Detailed error text to report.
+            source: Source value.
+
+        Returns:
+            ActivityEvent result.
+        """
         return self._record(
             kind="state",
             state="working",
@@ -99,6 +142,17 @@ class ActivityHub:
         detail: str | None = None,
         source: str = "system",
     ) -> ActivityEvent:
+        """
+        Handle error.
+
+        Args:
+            title: Short error title to report.
+            detail: Detailed error text to report.
+            source: Source value.
+
+        Returns:
+            ActivityEvent result.
+        """
         return self._record(
             kind="state",
             state="error",
@@ -113,6 +167,17 @@ class ActivityHub:
         detail: str | None = None,
         source: str = "system",
     ) -> ActivityEvent:
+        """
+        Log the requested operation.
+
+        Args:
+            title: Short error title to report.
+            detail: Detailed error text to report.
+            source: Source value.
+
+        Returns:
+            ActivityEvent result.
+        """
         return self._record(
             kind="log",
             state=self._state,
@@ -122,6 +187,12 @@ class ActivityHub:
         )
 
     def snapshot(self) -> dict[str, object]:
+        """
+        Return a snapshot of the requested operation.
+
+        Returns:
+            Dictionary containing the requested data.
+        """
         with self._lock:
             return {
                 "state": self._state,
@@ -140,6 +211,19 @@ class ActivityHub:
         title: str,
         detail: str | None,
     ) -> ActivityEvent:
+        """
+        Handle record.
+
+        Args:
+            kind: Kind value.
+            state: State value.
+            source: Source value.
+            title: Short error title to report.
+            detail: Detailed error text to report.
+
+        Returns:
+            ActivityEvent result.
+        """
         with self._lock:
             event = ActivityEvent(
                 id=self._next_id,

@@ -18,6 +18,12 @@ target_metadata = SQLModel.metadata
 
 
 def run_migrations_offline() -> None:
+    """
+    Run migrations offline.
+
+    Returns:
+        None.
+    """
     context.configure(
         url=settings.database_url,
         target_metadata=target_metadata,
@@ -30,6 +36,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    """
+    Run migrations online.
+
+    Returns:
+        None.
+    """
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

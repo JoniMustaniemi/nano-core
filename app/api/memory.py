@@ -32,21 +32,54 @@ class StorageSnapshot(BaseModel):
 
 @router.get("/notes", response_model=list[Note])
 def read_notes() -> list[Note]:
+    """
+    Read notes.
+
+    Returns:
+        List of matching records or values.
+    """
     return list_notes()
 
 
 @router.post("/notes", response_model=Note)
 def create_note(payload: NoteCreate) -> Note:
+    """
+    Create note.
+
+    Args:
+        payload: Validated request payload.
+
+    Returns:
+        Note result.
+    """
     return add_note(payload.content)
 
 
 @router.get("/reminders", response_model=list[Reminder])
 def read_reminders() -> list[Reminder]:
+    """
+    Read reminders.
+
+    Returns:
+        List of matching records or values.
+    """
     return list_reminders()
 
 
 @router.post("/reminders", response_model=Reminder)
 def create_reminder(payload: ReminderCreate) -> Reminder:
+    """
+    Create reminder.
+
+    Args:
+        payload: Validated request payload.
+
+    Returns:
+        Reminder result.
+
+    Raises:
+        HTTPException: If the operation cannot be completed.
+    """
     if payload.due_at.tzinfo is None:
         raise HTTPException(status_code=400, detail="due_at must include timezone information.")
     return add_reminder(payload.content, payload.due_at)
@@ -54,6 +87,12 @@ def create_reminder(payload: ReminderCreate) -> Reminder:
 
 @router.get("/storage", response_model=StorageSnapshot)
 def read_storage_snapshot() -> StorageSnapshot:
+    """
+    Read storage snapshot.
+
+    Returns:
+        StorageSnapshot result.
+    """
     return StorageSnapshot(
         notes=list_notes(),
         reminders=list_reminders(include_sent=True),

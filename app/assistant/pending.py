@@ -17,6 +17,12 @@ class PendingInteraction:
 
 class PendingInteractionStore:
     def __init__(self) -> None:
+        """
+        Initialize the PendingInteractionStore instance.
+
+        Returns:
+            None.
+        """
         self._items: dict[str, PendingInteraction] = {}
 
     def set(
@@ -26,6 +32,17 @@ class PendingInteractionStore:
         kind: PendingKind,
         payload: dict[str, Any] | None = None,
     ) -> PendingInteraction:
+        """
+        Set the requested operation.
+
+        Args:
+            conversation_id: Conversation identifier used to scope history and pending state.
+            kind: Kind value.
+            payload: Validated request payload.
+
+        Returns:
+            PendingInteraction result.
+        """
         interaction = PendingInteraction(
             conversation_id=conversation_id,
             kind=kind,
@@ -35,12 +52,36 @@ class PendingInteractionStore:
         return interaction
 
     def get(self, conversation_id: str) -> PendingInteraction | None:
+        """
+        Get the requested operation.
+
+        Args:
+            conversation_id: Conversation identifier used to scope history and pending state.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         return self._items.get(conversation_id)
 
     def clear(self, conversation_id: str) -> None:
+        """
+        Clear the requested operation.
+
+        Args:
+            conversation_id: Conversation identifier used to scope history and pending state.
+
+        Returns:
+            None.
+        """
         self._items.pop(conversation_id, None)
 
     def reset(self) -> None:
+        """
+        Reset the requested operation.
+
+        Returns:
+            None.
+        """
         self._items.clear()
 
 

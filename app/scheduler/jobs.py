@@ -13,6 +13,12 @@ _LAST_HEALTH_STATUS: dict[str, bool] = {}
 
 
 def check_due_reminders() -> None:
+    """
+    Check due reminders.
+
+    Returns:
+        None.
+    """
     reminders = list_due_reminders(datetime.now(UTC))
     for reminder in reminders:
         if reminder.id is None:
@@ -27,6 +33,17 @@ def check_due_reminders() -> None:
 
 
 def _format_due_reminder(content: str, created_at: datetime, due_at: datetime) -> tuple[str, str]:
+    """
+    Format due reminder.
+
+    Args:
+        content: Text content to persist or return.
+        created_at: Timestamp when the record was created.
+        due_at: Reminder or timer due timestamp.
+
+    Returns:
+        Tuple containing the requested values.
+    """
     if content.startswith("[timer] "):
         label = content.removeprefix("[timer] ").strip() or "Timer"
         duration_seconds = max(1, int((due_at - created_at).total_seconds()))
@@ -39,6 +56,15 @@ def _format_due_reminder(content: str, created_at: datetime, due_at: datetime) -
 
 
 def _humanize_duration(duration_seconds: int) -> str:
+    """
+    Humanize duration.
+
+    Args:
+        duration_seconds: Duration value in seconds.
+
+    Returns:
+        Generated or formatted string value.
+    """
     if duration_seconds % 60 == 0:
         minutes = duration_seconds // 60
         if minutes == 1:
@@ -50,6 +76,15 @@ def _humanize_duration(duration_seconds: int) -> str:
 
 
 def _announce_timer_completion(message: str) -> None:
+    """
+    Announce timer completion.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        None.
+    """
     try:
         GladosVoiceService().announce(message)
     except VoiceUnavailableError:
@@ -57,6 +92,12 @@ def _announce_timer_completion(message: str) -> None:
 
 
 def check_system_health() -> list[HealthCheckResult]:
+    """
+    Check system health.
+
+    Returns:
+        List of matching records or values.
+    """
     results = run_health_checks()
     failing = [result for result in results if not result.ok]
     if not failing:
@@ -87,6 +128,15 @@ def check_system_health() -> list[HealthCheckResult]:
 
 
 def _announce_health_issue(result: HealthCheckResult) -> None:
+    """
+    Announce health issue.
+
+    Args:
+        result: Result value.
+
+    Returns:
+        None.
+    """
     message = f"I detected a problem with {result.name}. {result.detail}"
     try:
         GladosVoiceService().announce(message)
@@ -95,6 +145,12 @@ def _announce_health_issue(result: HealthCheckResult) -> None:
 
 
 def register_jobs() -> None:
+    """
+    Register jobs.
+
+    Returns:
+        None.
+    """
     settings = get_settings()
     scheduler.add_job(
         check_due_reminders,

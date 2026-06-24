@@ -11,6 +11,16 @@ from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
 class ToolRunner:
     def execute(self, tool_name: str, args: dict[str, Any]) -> ToolResult:
+        """
+        Execute the requested operation.
+
+        Args:
+            tool_name: Registered tool name.
+            args: Tool argument dictionary.
+
+        Returns:
+            ToolResult result.
+        """
         tool = get_tool(tool_name)
         if tool is None:
             available = ", ".join(tool_spec.name for tool_spec in list_tools())
@@ -34,13 +44,42 @@ class ToolRunner:
             return ToolResult(tool=tool_name, content=error_message)
 
     def announce_call(self, tool_name: str) -> None:
+        """
+        Announce call.
+
+        Args:
+            tool_name: Registered tool name.
+
+        Returns:
+            None.
+        """
         self._announce(tool_announcement(tool_name))
 
     def report_error(self, *, title: str, detail: str, spoken_message: str) -> None:
+        """
+        Report error.
+
+        Args:
+            title: Short error title to report.
+            detail: Detailed error text to report.
+            spoken_message: Message suitable for voice announcement.
+
+        Returns:
+            None.
+        """
         activity.error(title=title, detail=detail, source="assistant.agent")
         self._announce(spoken_message)
 
     def _announce(self, message: str) -> None:
+        """
+        Announce the requested operation.
+
+        Args:
+            message: User message or prompt text.
+
+        Returns:
+            None.
+        """
         try:
             GladosVoiceService().announce(message)
         except VoiceUnavailableError:

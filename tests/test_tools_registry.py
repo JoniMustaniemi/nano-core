@@ -5,6 +5,12 @@ from app.tools import get_tool, list_tools, render_tool_prompt
 
 
 def test_tool_registry_loads_builtin_tool_modules() -> None:
+    """
+    Verify that tool registry loads builtin tool modules.
+
+    Returns:
+        None.
+    """
     tool_names = {tool.name for tool in list_tools()}
 
     assert "run_python" in tool_names
@@ -16,6 +22,12 @@ def test_tool_registry_loads_builtin_tool_modules() -> None:
 
 
 def test_tool_prompt_lists_registered_tools() -> None:
+    """
+    Verify that tool prompt lists registered tools.
+
+    Returns:
+        None.
+    """
     prompt = render_tool_prompt()
 
     assert "Available tools:" in prompt
@@ -24,6 +36,12 @@ def test_tool_prompt_lists_registered_tools() -> None:
 
 
 def test_get_tool_returns_registered_handler() -> None:
+    """
+    Verify that get tool returns registered handler.
+
+    Returns:
+        None.
+    """
     tool = get_tool("list_notes")
 
     assert tool is not None
@@ -31,6 +49,12 @@ def test_get_tool_returns_registered_handler() -> None:
 
 
 def test_timer_tool_creates_timer_reminder() -> None:
+    """
+    Verify that timer tool creates timer reminder.
+
+    Returns:
+        None.
+    """
     tool = get_tool("start_timer")
 
     assert tool is not None
@@ -42,6 +66,15 @@ def test_timer_tool_creates_timer_reminder() -> None:
 
 
 def test_health_tool_returns_structured_json(monkeypatch) -> None:
+    """
+    Verify that health tool returns structured json.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     tool = get_tool("check_health")
 
     assert tool is not None

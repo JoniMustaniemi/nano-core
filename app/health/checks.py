@@ -23,10 +23,22 @@ HealthCheck = Callable[[], HealthCheckResult]
 
 
 def run_health_checks() -> list[HealthCheckResult]:
+    """
+    Run health checks.
+
+    Returns:
+        List of matching records or values.
+    """
     return [check() for check in _HEALTH_CHECKS]
 
 
 def _database_health_check() -> HealthCheckResult:
+    """
+    Handle database health check.
+
+    Returns:
+        HealthCheckResult result.
+    """
     try:
         with Session(db.engine) as session:
             list(session.exec(select(Note).limit(1)))
@@ -44,6 +56,12 @@ def _database_health_check() -> HealthCheckResult:
 
 
 def _database_size_health_check() -> HealthCheckResult:
+    """
+    Handle database size health check.
+
+    Returns:
+        HealthCheckResult result.
+    """
     settings = get_settings()
     sqlite_path = db.sqlite_path
     if sqlite_path is None:
@@ -84,6 +102,12 @@ def _database_size_health_check() -> HealthCheckResult:
 
 
 def _voice_health_check() -> HealthCheckResult:
+    """
+    Return voice service status for health check.
+
+    Returns:
+        HealthCheckResult result.
+    """
     status = GladosVoiceService().status()
     available = bool(status.get("available"))
     detail = str(status.get("detail", "Voice status is unknown."))
@@ -95,6 +119,12 @@ def _voice_health_check() -> HealthCheckResult:
 
 
 def _llm_health_check() -> HealthCheckResult:
+    """
+    Handle llm health check.
+
+    Returns:
+        HealthCheckResult result.
+    """
     settings = get_settings()
     if settings.llm_provider == "local" and not settings.llm_model_path:
         return HealthCheckResult(
@@ -127,6 +157,15 @@ _HEALTH_CHECKS: tuple[HealthCheck, ...] = (
 
 
 def _format_bytes(size_bytes: int) -> str:
+    """
+    Format bytes.
+
+    Args:
+        size_bytes: Size bytes value.
+
+    Returns:
+        Generated or formatted string value.
+    """
     if size_bytes < 1024:
         return f"{size_bytes} bytes"
     if size_bytes < 1024 * 1024:

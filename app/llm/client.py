@@ -14,6 +14,15 @@ _LLAMA_CPP_CHAT_PATH = "/v1/chat/completions"
 
 class LocalLLMClient:
     def complete(self, messages: Sequence[Mapping[str, str]]) -> str:
+        """
+        Complete the requested operation.
+
+        Args:
+            messages: Conversation messages to send to the model.
+
+        Returns:
+            Generated or formatted string value.
+        """
         settings = get_settings()
 
         if settings.llm_provider == "local":
@@ -26,6 +35,15 @@ class LocalLLMClient:
         return self._complete_auto(messages)
 
     def _complete_auto(self, messages: Sequence[Mapping[str, str]]) -> str:
+        """
+        Complete auto.
+
+        Args:
+            messages: Conversation messages to send to the model.
+
+        Returns:
+            Generated or formatted string value.
+        """
         for complete in (
             self._complete_local,
             self._complete_ollama,
@@ -37,6 +55,12 @@ class LocalLLMClient:
         return self._unavailable_message()
 
     def _unavailable_message(self) -> str:
+        """
+        Handle unavailable message.
+
+        Returns:
+            Generated or formatted string value.
+        """
         return (
             "Local LLM is not available yet. Install a GGUF model and set "
             "LLM_MODEL_PATH, or point LLM_PROVIDER at a configured backend."
@@ -48,6 +72,16 @@ class LocalLLMClient:
         *,
         raise_on_error: bool = True,
     ) -> str | None:
+        """
+        Complete local.
+
+        Args:
+            messages: Conversation messages to send to the model.
+            raise_on_error: Raise on error value.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         settings = get_settings()
         if not settings.llm_model_path:
             if raise_on_error:
@@ -86,6 +120,16 @@ class LocalLLMClient:
         *,
         raise_on_error: bool = True,
     ) -> str | None:
+        """
+        Complete ollama.
+
+        Args:
+            messages: Conversation messages to send to the model.
+            raise_on_error: Raise on error value.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         payload = self._ollama_payload(messages)
         response = self._post(_OLLAMA_CHAT_PATH, payload, raise_on_error=raise_on_error)
         if response is None:
@@ -102,6 +146,16 @@ class LocalLLMClient:
         *,
         raise_on_error: bool = True,
     ) -> str | None:
+        """
+        Complete llama cpp server.
+
+        Args:
+            messages: Conversation messages to send to the model.
+            raise_on_error: Raise on error value.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         payload = self._llama_cpp_server_payload(messages)
         response = self._post(_LLAMA_CPP_CHAT_PATH, payload, raise_on_error=raise_on_error)
         if response is None:
@@ -119,6 +173,17 @@ class LocalLLMClient:
         *,
         raise_on_error: bool,
     ) -> httpx.Response | None:
+        """
+        Post the requested operation.
+
+        Args:
+            path: Path value.
+            payload: Validated request payload.
+            raise_on_error: Raise on error value.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         settings = get_settings()
         try:
             response = httpx.post(
@@ -134,6 +199,15 @@ class LocalLLMClient:
             return None
 
     def _ollama_payload(self, messages: Sequence[Mapping[str, str]]) -> dict[str, Any]:
+        """
+        Handle ollama payload.
+
+        Args:
+            messages: Conversation messages to send to the model.
+
+        Returns:
+            Dictionary containing the requested data.
+        """
         settings = get_settings()
         return {
             "model": settings.llm_model,
@@ -145,6 +219,15 @@ class LocalLLMClient:
         self,
         messages: Sequence[Mapping[str, str]],
     ) -> dict[str, Any]:
+        """
+        Handle llama cpp server payload.
+
+        Args:
+            messages: Conversation messages to send to the model.
+
+        Returns:
+            Dictionary containing the requested data.
+        """
         settings = get_settings()
         return {
             "model": settings.llm_model,
@@ -153,6 +236,15 @@ class LocalLLMClient:
         }
 
     def _extract_ollama_content(self, data: dict[str, Any]) -> str | None:
+        """
+        Extract ollama content.
+
+        Args:
+            data: Response payload returned by the backend.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         message = data.get("message", {})
         if isinstance(message, dict):
             content = message.get("content")
@@ -161,6 +253,15 @@ class LocalLLMClient:
         return None
 
     def _extract_llama_cpp_content(self, data: dict[str, Any]) -> str | None:
+        """
+        Extract llama cpp content.
+
+        Args:
+            data: Response payload returned by the backend.
+
+        Returns:
+            Parsed value when available; otherwise None.
+        """
         choices = data.get("choices", [])
         if isinstance(choices, list) and choices:
             first_choice = choices[0]
@@ -178,6 +279,19 @@ class LocalLLMClient:
 
 @lru_cache(maxsize=4)
 def _load_local_model(model_path: str, context_size: int) -> Any:
+    """
+    Load local model.
+
+    Args:
+        model_path: Filesystem path to the local model file.
+        context_size: Context size value.
+
+    Returns:
+        Any result.
+
+    Raises:
+        ImportError: If the operation cannot be completed.
+    """
     try:
         from llama_cpp import Llama
     except ImportError as exc:  # pragma: no cover - depends on optional install

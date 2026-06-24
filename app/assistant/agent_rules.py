@@ -119,7 +119,17 @@ TIMER_CANCEL_KEYWORDS: tuple[str, ...] = (
     "kill",
 )
 
+
 def tool_announcement(tool_name: str) -> str:
+    """
+    Build tool metadata for announcement.
+
+    Args:
+        tool_name: Registered tool name.
+
+    Returns:
+        Generated or formatted string value.
+    """
     rule = TOOL_RULES.get(tool_name)
     if rule is None:
         return "Performing a local action."
@@ -127,17 +137,44 @@ def tool_announcement(tool_name: str) -> str:
 
 
 def should_answer_without_tools(message: str) -> bool:
+    """
+    Return whether answer without tools.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.lower()
     return any(trigger in lowered for trigger in DIRECT_ANSWER_TRIGGERS)
 
 
 def is_health_check_request(message: str) -> bool:
+    """
+    Return whether health check request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.lower()
     triggers = ("health", "status", "diagnostic", "check yourself", "self check")
     return any(trigger in lowered for trigger in triggers)
 
 
 def needs_wipe_confirmation(message: str) -> bool:
+    """
+    Return whether wipe confirmation.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.lower()
     return any(trigger in lowered for trigger in WIPE_REQUEST_TRIGGERS) and any(
         trigger in lowered for trigger in WIPE_TARGET_TRIGGERS
@@ -145,24 +182,60 @@ def needs_wipe_confirmation(message: str) -> bool:
 
 
 def is_confirmation_message(message: str) -> bool:
+    """
+    Return whether confirmation message.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.strip().lower()
     return lowered in {"yes", "yes.", "confirm", "confirm.", "do it", "proceed"}
 
 
 def is_rejection_message(message: str) -> bool:
+    """
+    Return whether rejection message.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.strip().lower()
     return lowered in {"no", "no.", "cancel", "cancel.", "stop", "never mind", "nevermind"}
 
 
 def wipe_confirmation_prompt(message: str) -> str:
+    """
+    Wipe confirmation prompt.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Generated or formatted string value.
+    """
     subject = normalize_wipe_request(message)
     return (
-        f"You are asking me to do this: \"{subject}\". "
+        f'You are asking me to do this: "{subject}". '
         "If this is truly your intention, reply yes to proceed or no to cancel."
     )
 
 
 def normalize_wipe_request(message: str) -> str:
+    """
+    Normalize wipe request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Generated or formatted string value.
+    """
     normalized = " ".join(message.strip().split())
     if not normalized:
         return "wipe what I am keeping"
@@ -170,11 +243,30 @@ def normalize_wipe_request(message: str) -> str:
 
 
 def is_wipe_confirmation_prompt(message: str) -> bool:
+    """
+    Return whether wipe confirmation prompt.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.lower()
     return "reply yes to proceed or no to cancel" in lowered
 
 
 def tool_matches_request(message: str, tool_name: str) -> bool:
+    """
+    Build tool metadata for matches request.
+
+    Args:
+        message: User message or prompt text.
+        tool_name: Registered tool name.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.lower()
     rule = TOOL_RULES.get(tool_name)
     if rule is None:
@@ -191,6 +283,15 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
 
 
 def needs_timer_duration(message: str) -> bool:
+    """
+    Return whether timer duration.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.lower()
     if _has_timer_cancel_keyword(lowered):
         return False
@@ -202,10 +303,28 @@ def needs_timer_duration(message: str) -> bool:
 
 
 def duration_args_from_message(message: str) -> dict[str, Any] | None:
+    """
+    Handle duration args from message.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Dictionary containing the requested data.
+    """
     return extract_duration_args(message)
 
 
 def is_timer_start_request(message: str) -> bool:
+    """
+    Return whether timer start request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.lower()
     if _has_timer_cancel_keyword(lowered):
         return False
@@ -215,12 +334,30 @@ def is_timer_start_request(message: str) -> bool:
 
 
 def is_timer_cancel_request(message: str) -> bool:
+    """
+    Return whether timer cancel request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.lower()
     has_timer_trigger = any(trigger in lowered for trigger in TIMER_REQUEST_TRIGGERS)
     return has_timer_trigger and _has_timer_cancel_keyword(lowered)
 
 
 def is_timer_status_request(message: str) -> bool:
+    """
+    Return whether timer status request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     lowered = message.lower()
     if _has_timer_cancel_keyword(lowered):
         return False
@@ -241,10 +378,28 @@ def is_timer_status_request(message: str) -> bool:
 
 
 def _has_timer_cancel_keyword(lowered_message: str) -> bool:
+    """
+    Handle has timer cancel keyword.
+
+    Args:
+        lowered_message: Lowered message value.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
     return any(keyword in lowered_message for keyword in TIMER_CANCEL_KEYWORDS)
 
 
 def timer_confirmation(args: dict[str, Any]) -> str:
+    """
+    Build timer text for confirmation.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     if "duration_hours" in args:
         amount = int(args["duration_hours"])
         unit = "hour" if amount == 1 else "hours"
@@ -261,10 +416,29 @@ def timer_confirmation(args: dict[str, Any]) -> str:
 
 
 def tool_signature(tool_name: str, args: dict[str, Any]) -> str:
+    """
+    Build tool metadata for signature.
+
+    Args:
+        tool_name: Registered tool name.
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
     return f"{tool_name}:{json.dumps(args, sort_keys=True, ensure_ascii=False)}"
 
 
 def parse_decision(raw: str) -> Decision:
+    """
+    Parse decision.
+
+    Args:
+        raw: Raw input value to parse.
+
+    Returns:
+        Decision result.
+    """
     payload = extract_json(raw)
     if isinstance(payload, dict):
         decision_type = payload.get("type")
@@ -279,6 +453,15 @@ def parse_decision(raw: str) -> Decision:
 
 
 def extract_json(raw: str) -> Any:
+    """
+    Extract json.
+
+    Args:
+        raw: Raw input value to parse.
+
+    Returns:
+        Any result.
+    """
     text = raw.strip()
     if text.startswith("```"):
         text = text.strip("`")

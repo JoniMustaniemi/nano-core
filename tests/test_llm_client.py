@@ -11,6 +11,17 @@ class _LocalModel:
         temperature: float,
         max_tokens: int,
     ) -> dict[str, object]:
+        """
+        Provide test support for create chat completion.
+
+        Args:
+            messages: Conversation messages to send to the model.
+            temperature: Temperature value.
+            max_tokens: Max tokens value.
+
+        Returns:
+            Dictionary containing the requested data.
+        """
         assert messages[-1]["content"] == "hi"
         assert temperature == 0.7
         assert max_tokens == 512
@@ -18,6 +29,15 @@ class _LocalModel:
 
 
 def test_llm_client_uses_local_gguf_model(monkeypatch) -> None:
+    """
+    Verify that llm client uses local gguf model.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     client = LocalLLMClient()
 
     monkeypatch.setattr(
@@ -44,6 +64,15 @@ def test_llm_client_uses_local_gguf_model(monkeypatch) -> None:
 
 
 def test_llm_client_auto_falls_back_when_no_local_model(monkeypatch) -> None:
+    """
+    Verify that llm client auto falls back when no local model.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     client = LocalLLMClient()
 
     monkeypatch.setattr(

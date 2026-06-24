@@ -6,6 +6,12 @@ from app.main import app
 
 
 def test_notes_and_reminders_round_trip() -> None:
+    """
+    Verify that notes and reminders round trip.
+
+    Returns:
+        None.
+    """
     due_at = (datetime.now(UTC) + timedelta(minutes=5)).isoformat()
 
     with TestClient(app) as client:
@@ -24,6 +30,12 @@ def test_notes_and_reminders_round_trip() -> None:
 
 
 def test_storage_snapshot_exposes_saved_records() -> None:
+    """
+    Verify that storage snapshot exposes saved records.
+
+    Returns:
+        None.
+    """
     due_at = (datetime.now(UTC) + timedelta(minutes=5)).isoformat()
 
     with TestClient(app) as client:

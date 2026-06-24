@@ -11,6 +11,16 @@ from app.runtime.activity import activity
 
 class AssistantService:
     def respond(self, message: str, mode: str = "agent") -> ChatResponse:
+        """
+        Respond to the requested operation.
+
+        Args:
+            message: User message or prompt text.
+            mode: Assistant response mode to use.
+
+        Returns:
+            ChatResponse result.
+        """
         if mode == "chat":
             return ChatResponse(content=self._chat(message, conversation_id="chat-default"))
         return ChatResponse(
@@ -18,6 +28,12 @@ class AssistantService:
         )
 
     def wake_response(self) -> ChatResponse:
+        """
+        Return the wake response for response.
+
+        Returns:
+            ChatResponse result.
+        """
         client = get_llm_client()
         messages: list[Mapping[str, str]] = [
             {
@@ -44,6 +60,16 @@ class AssistantService:
         return ChatResponse(content=content)
 
     def _chat(self, message: str, conversation_id: str) -> str:
+        """
+        Handle chat input and return a response.
+
+        Args:
+            message: User message or prompt text.
+            conversation_id: Conversation identifier used to scope history and pending state.
+
+        Returns:
+            Generated or formatted string value.
+        """
         settings = get_settings()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
         messages = self._build_messages(
@@ -86,6 +112,16 @@ class AssistantService:
         return content
 
     def _looks_like_capability_echo(self, message: str, content: str) -> bool:
+        """
+        Return whether like capability echo.
+
+        Args:
+            message: User message or prompt text.
+            content: Text content to persist or return.
+
+        Returns:
+            True when the condition is met; otherwise false.
+        """
         lowered = content.lower()
         if "i can execute local python code" not in lowered:
             return False
@@ -107,6 +143,18 @@ class AssistantService:
         history_limit: int,
         note_limit: int,
     ) -> list[Mapping[str, str]]:
+        """
+        Build messages.
+
+        Args:
+            user_message: User message value.
+            conversation_id: Conversation identifier used to scope history and pending state.
+            history_limit: History limit value.
+            note_limit: Note limit value.
+
+        Returns:
+            List of matching records or values.
+        """
         messages: list[Mapping[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
 
         notes = repository.list_notes(limit=note_limit)

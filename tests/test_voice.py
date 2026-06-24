@@ -5,6 +5,15 @@ from app.voice.service import GladosVoiceService
 
 
 def test_voice_status_reports_backend(monkeypatch) -> None:
+    """
+    Verify that voice status reports backend.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     monkeypatch.setattr(
         "app.api.voice.GladosVoiceService.status",
         lambda self: {
@@ -23,6 +32,15 @@ def test_voice_status_reports_backend(monkeypatch) -> None:
 
 
 def test_voice_endpoint_returns_wav(monkeypatch) -> None:
+    """
+    Verify that voice endpoint returns wav.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     monkeypatch.setattr(
         "app.api.voice.GladosVoiceService.synthesize_wav",
         lambda self, text: b"RIFFdemoWAVE",
@@ -37,6 +55,15 @@ def test_voice_endpoint_returns_wav(monkeypatch) -> None:
 
 
 def test_voice_service_announce_synthesizes_and_plays(monkeypatch) -> None:
+    """
+    Verify that voice service announce synthesizes and plays.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
     played: list[bytes] = []
     monkeypatch.setattr(
         "app.voice.service.GladosVoiceService.synthesize_wav",

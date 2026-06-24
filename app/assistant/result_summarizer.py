@@ -16,6 +16,18 @@ class ToolResultSummarizer:
         tool_name: str,
         tool_result: str,
     ) -> str:
+        """
+        Summarize the requested operation.
+
+        Args:
+            client: LLM client used to generate responses.
+            user_message: User message value.
+            tool_name: Registered tool name.
+            tool_result: Serialized tool result to summarize.
+
+        Returns:
+            Generated or formatted string value.
+        """
         summary_input = tool_result
         if tool_name == "check_health":
             summary_input = self._health_summary_input(tool_result)
@@ -55,6 +67,15 @@ class ToolResultSummarizer:
         return summary or "The procedure finished, though the summary failed to materialize."
 
     def _health_summary_input(self, tool_result: str) -> str:
+        """
+        Return service health information.
+
+        Args:
+            tool_result: Serialized tool result to summarize.
+
+        Returns:
+            Generated or formatted string value.
+        """
         try:
             payload = json.loads(tool_result)
         except json.JSONDecodeError:
@@ -73,6 +94,15 @@ class ToolResultSummarizer:
         return "\n".join(lines)
 
     def _sanitize_self_reference(self, summary: str) -> str:
+        """
+        Sanitize self reference.
+
+        Args:
+            summary: Summary text to sanitize.
+
+        Returns:
+            Generated or formatted string value.
+        """
         replacements = {
             r"\bthe user's system\b": "my system",
             r"\buser's system\b": "my system",
