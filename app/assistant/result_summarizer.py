@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 import json
-import re
 from typing import Any, cast
 
 from app.assistant.prompts import SYSTEM_PROMPT
+from app.assistant.response_guard import enforce_user_facing_answer
 
 
 class ToolResultSummarizer:
@@ -41,15 +39,19 @@ class ToolResultSummarizer:
                     + "Do not read raw JSON aloud. "
                     + "Do not narrate field names, quote status labels, or list every check "
                     + "mechanically. "
-                    + "If you are describing your own status, speak in first person as Nano, "
-                    + "not in third person. "
-                    + "Do not refer to Nano as the user, the assistant, a report, or "
-                    + "Nano's self-diagnostics. "
+                    + "For health checks, only report problems. Do not mention checks that "
+                    + "passed unless every check passed, in which case give a short all-clear. "
+                    + "Do not introduce yourself, describe your personality, or explain what "
+                    + "kind of assistant you are. "
+                    + "Do not say you will continue running checks or provide later results; "
+                    + "the tool result is already final for this request. "
                     + "Do not start with a title or label; answer as yourself. "
                     + "If everything is fine, say so simply. "
                     + "If something needs attention, describe only the meaningful issues clearly "
                     + "and accurately. "
                     + "Do not invent failures, thresholds, comparisons, or numbers."
+                    + "add subtle personality to the answer, but do not overdo it."
+
                 ),
             },
             {
@@ -62,9 +64,75 @@ class ToolResultSummarizer:
             },
         ]
         summary = cast(str, client.complete(messages=summary_messages)).strip()
+        if not summary:
+            return "The procedure finished, though the summary failed to materialize."
         if tool_name == "check_health":
-            summary = self._sanitize_self_reference(summary)
-        return summary or "The procedure finished, though the summary failed to materialize."
+            summary = self._enforce_health_failure_details(
+                client=client,
+                user_message=user_message,
+                summary_input=summary_input,
+                summary=summary,
+            )
+        return enforce_user_facing_answer(client, user_message, summary)
+
+    def _enforce_health_failure_details(
+        self,
+        *,
+        client: Any,
+        user_message: str,
+        summary_input: str,
+        summary: str,
+    ) -> str:
+        """
+        Ensure failing health checks are named in the summary.
+
+        Args:
+            client: LLM client used to revise responses.
+            user_message: User message value.
+            summary_input: Prepared health summary input.
+            summary: Model-generated health summary.
+
+        Returns:
+            Original summary, or revised summary with failure details.
+        """
+        failures = self._health_failures_from_summary_input(summary_input)
+        if not failures:
+            return summary
+
+        lowered_summary = summary.lower()
+        missing_failures = [
+            failure for failure in failures if failure["name"].lower() not in lowered_summary
+        ]
+        if not missing_failures:
+            return summary
+
+        failure_lines = "\n".join(
+            f"- {failure['name']}: {failure['detail']}" for failure in failures
+        )
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    SYSTEM_PROMPT
+                    + " Rewrite the health diagnostic answer. The previous answer was too vague. "
+                    + "When a health check fails, you must name each failing check and include "
+                    + "the provided detail. Do not mention checks that passed. Do not introduce "
+                    + "yourself. Do not promise later results or continued checking. Do not "
+                    + "invent causes or extra numbers. Return only the revised answer with a "
+                    + "subtle personality twist."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"User request: {user_message}\n\n"
+                    f"Failing checks:\n{failure_lines}\n\n"
+                    f"Previous vague answer:\n{summary}"
+                ),
+            },
+        ]
+        revised = cast(str, client.complete(messages=messages)).strip()
+        return revised or summary
 
     def _health_summary_input(self, tool_result: str) -> str:
         """
@@ -82,38 +150,48 @@ class ToolResultSummarizer:
             return tool_result
 
         checks = payload.get("checks", [])
+        failing_checks = [
+            check for check in checks if str(check.get("status", "unknown")).lower() != "ok"
+        ]
         lines = [
             "This is Nano reporting on my own health.",
             f"My overall status is {payload.get('overall', 'unknown')}.",
         ]
-        for check in checks:
+        if not failing_checks:
+            lines.append("No problems were found.")
+            return "\n".join(lines)
+
+        lines.append("Problems found:")
+        for check in failing_checks:
             name = str(check.get("name", "unknown"))
             status = str(check.get("status", "unknown"))
             detail = str(check.get("detail", "")).strip()
             lines.append(f"- My {name} check is {status}. {detail}")
         return "\n".join(lines)
 
-    def _sanitize_self_reference(self, summary: str) -> str:
+    def _health_failures_from_summary_input(self, summary_input: str) -> list[dict[str, str]]:
         """
-        Sanitize self reference.
+        Return failing checks from prepared health summary text.
 
         Args:
-            summary: Summary text to sanitize.
+            summary_input: Prepared health summary input.
 
         Returns:
-            Generated or formatted string value.
+            List of failing check name/detail dictionaries.
         """
-        replacements = {
-            r"\bthe user's system\b": "my system",
-            r"\buser's system\b": "my system",
-            r"\bthe user system\b": "my system",
-            r"\bthe user's diagnostics report\b": "my diagnostics",
-            r"\bthe user's diagnostics\b": "my diagnostics",
-            r"\bnano's self-diagnostics report:\s*": "",
-            r"\bnano's diagnostics report:\s*": "",
-            r"\bself-diagnostics report:\s*": "",
-        }
-        cleaned = summary
-        for pattern, replacement in replacements.items():
-            cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
-        return re.sub(r"(^|[.!?]\s+)my\b", lambda match: f"{match.group(1)}My", cleaned)
+        failures: list[dict[str, str]] = []
+        for line in summary_input.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("- My ") or " check is " not in stripped:
+                continue
+            name_part, detail_part = stripped[5:].split(" check is ", 1)
+            status_part, _, detail = detail_part.partition(".")
+            if status_part.strip().lower() == "ok":
+                continue
+            failures.append(
+                {
+                    "name": name_part.strip(),
+                    "detail": detail.strip(),
+                }
+            )
+        return failures

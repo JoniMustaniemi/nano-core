@@ -1,11 +1,11 @@
 const stateLine = document.getElementById("state-line");
+const stateSegments = Array.from(document.querySelectorAll("[data-state-segment]"));
 const activityLog = document.getElementById("activity-log");
 const voiceStatus = document.getElementById("voice-status");
 const replyStatus = document.getElementById("reply-status");
 const messageBox = document.getElementById("message");
 const sendButton = document.getElementById("send");
 const listenButton = document.getElementById("voice-listen");
-const stopAudioButton = document.getElementById("stop-audio");
 const copyAnswerButton = document.getElementById("copy-answer");
 const answerOutput = document.getElementById("answer-output");
 const voiceAudio = document.getElementById("voice-audio");
@@ -33,21 +33,61 @@ let lastHeardTranscript = "";
 let wakeAcknowledging = false;
 let recognitionPausedForSpeech = false;
 let recognitionStopWaiters = [];
+let currentActivitySnapshot = {
+  state: "standby",
+  headline: "Nano is in standby.",
+  detail: "Ready for the next task.",
+};
+const activityStates = ["standby", "working", "error"];
 
 function updateListenButton() {
   if (!SpeechRecognitionCtor) {
     listenButton.disabled = true;
     listenButton.textContent = "Voice Unavailable";
     listenButton.classList.remove("active");
+    renderState();
     return;
   }
   listenButton.disabled = false;
   listenButton.textContent = listeningEnabled ? "Stop Listening" : "Start Listening";
   listenButton.classList.toggle("active", listeningEnabled);
+  renderState();
 }
 
 function setVoiceStatus(text) {
   voiceStatus.textContent = text;
+  renderState();
+}
+
+function isListeningStateActive() {
+  return (
+    listeningEnabled ||
+    recognitionStarting ||
+    recognitionRunning ||
+    listeningForCommand ||
+    wakeAcknowledging
+  );
+}
+
+function getDisplayState() {
+  if (requestInFlight) {
+    return "working";
+  }
+  if (currentActivitySnapshot.state === "working") {
+    return "working";
+  }
+  if (isListeningStateActive()) {
+    return "listening";
+  }
+  return "standby";
+}
+
+function renderState() {
+  const displayState = getDisplayState();
+  stateLine.textContent = displayState;
+  for (const segment of stateSegments) {
+    segment.classList.toggle("active", segment.dataset.stateSegment === displayState);
+  }
 }
 
 function resetVoiceListeningMode() {
@@ -386,7 +426,12 @@ async function acknowledgeWakePhrase() {
 }
 
 function applyState(snapshot) {
-  stateLine.textContent = snapshot.state || "standby";
+  currentActivitySnapshot = {
+    ...currentActivitySnapshot,
+    ...snapshot,
+    state: activityStates.includes(snapshot.state) ? snapshot.state : "standby",
+  };
+  renderState();
 }
 
 function formatEvent(event) {
@@ -423,17 +468,6 @@ function setAnswer(text) {
   }
   answerOutput.textContent = content;
   answerOutput.classList.remove("empty");
-}
-
-function stopVoicePlayback() {
-  voicePlaybackQueue = Promise.resolve();
-  voiceAudio.pause();
-  voiceAudio.currentTime = 0;
-  if (currentVoiceUrl) {
-    URL.revokeObjectURL(currentVoiceUrl);
-    currentVoiceUrl = null;
-  }
-  voiceAudio.removeAttribute("src");
 }
 
 async function playVoice(text, options = {}) {
@@ -582,7 +616,6 @@ async function bootstrap() {
     if (voiceResponse.ok) {
       const voice = await voiceResponse.json();
       voiceAvailable = Boolean(voice.available);
-      stopAudioButton.disabled = !voiceAvailable;
       if (!voiceAvailable && typeof voice.detail === "string") {
         replyStatus.textContent = voice.detail;
       }
@@ -613,7 +646,7 @@ function listen(lastEventId = 0) {
   const source = new EventSource(`/events?since=${lastEventId}`);
   source.addEventListener("activity", (event) => {
     const payload = JSON.parse(event.data);
-    applyState({ state: payload.state });
+    applyState(payload);
     appendEvent(payload);
     refreshStorage();
   });
@@ -640,6 +673,7 @@ async function sendRecognizedMessage(message) {
 async function submitMessage(message, source) {
   sendButton.disabled = true;
   requestInFlight = true;
+  renderState();
   replyStatus.textContent = source === "voice" ? "Sending voice command..." : "Sending...";
   try {
     const response = await fetch("/chat", {
@@ -674,6 +708,7 @@ async function submitMessage(message, source) {
   } finally {
     sendButton.disabled = false;
     requestInFlight = false;
+    renderState();
   }
 }
 
@@ -684,9 +719,6 @@ listenButton.addEventListener("click", () => {
     return;
   }
   startVoiceListening();
-});
-stopAudioButton.addEventListener("click", () => {
-  stopVoicePlayback();
 });
 copyAnswerButton.addEventListener("click", async () => {
   try {

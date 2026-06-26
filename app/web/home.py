@@ -27,14 +27,28 @@ def home() -> str:
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <title>{app_name}</title>
-            <link rel="stylesheet" href="/static/home.css" />
-            <script defer src="/static/home.js"></script>
+            <link rel="stylesheet" href="/static/home.css?v=state-leds-5" />
+            <script defer src="/static/home.js?v=state-leds-5"></script>
           </head>
           <body>
             <main class="shell">
               <section class="masthead">
                 <h1 class="title"><span>Nano</span></h1>
-                <div class="status-line" id="state-line">standby</div>
+                <section class="state-strip" aria-label="Nano state">
+                  <div class="state-segment active" data-state-segment="standby">
+                    <span class="state-led" aria-hidden="true"></span>
+                    <span class="state-label">Standby</span>
+                  </div>
+                  <div class="state-segment" data-state-segment="working">
+                    <span class="state-led" aria-hidden="true"></span>
+                    <span class="state-label">Working</span>
+                  </div>
+                  <div class="state-segment" data-state-segment="listening">
+                    <span class="state-led" aria-hidden="true"></span>
+                    <span class="state-label">Listening</span>
+                  </div>
+                </section>
+                <div class="sr-only" id="state-line">standby</div>
               </section>
 
               <section class="core">
@@ -45,7 +59,6 @@ def home() -> str:
                   <div class="actions">
                     <button id="send" type="button">Send</button>
                     <button id="voice-listen" class="ghost" type="button">Start Listening</button>
-                    <button id="stop-audio" class="ghost" type="button">Stop Audio</button>
                     <button id="copy-answer" class="ghost" type="button">Copy Answer</button>
                   </div>
                   <div class="reply-status" id="voice-status">Voice standby.</div>

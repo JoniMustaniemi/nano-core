@@ -27,6 +27,10 @@ from app.assistant.prompts import (
     SYSTEM_PROMPT,
     WIPE_CONFIRMATION_SYSTEM_PROMPT,
 )
+from app.assistant.response_guard import (
+    enforce_first_person_self_reference,
+    enforce_user_facing_answer,
+)
 from app.assistant.result_summarizer import ToolResultSummarizer
 from app.assistant.router import get_llm_client
 from app.assistant.tool_runner import ToolRunner
@@ -223,6 +227,11 @@ class AgentService:
         Returns:
             Generated or formatted string value.
         """
+        activity.working(
+            title="Nano is preparing confirmation.",
+            detail="Using the local model to respond to the destructive request.",
+            source="assistant.agent",
+        )
         confirmation_prompt = self._build_wipe_confirmation_prompt(
             client=client,
             message=message,
@@ -309,6 +318,8 @@ class AgentService:
 
             if decision["type"] == "final":
                 return self._finish_planned_response(
+                    client=client,
+                    user_message=message,
                     conversation_id=conversation_id,
                     content=decision["content"],
                 )
@@ -429,17 +440,27 @@ class AgentService:
             }
         )
 
-    def _finish_planned_response(self, *, conversation_id: str, content: str) -> str:
+    def _finish_planned_response(
+        self,
+        *,
+        client: Any,
+        user_message: str,
+        conversation_id: str,
+        content: str,
+    ) -> str:
         """
         Finish planned response.
 
         Args:
+            client: LLM client used to revise responses.
+            user_message: User message or prompt text.
             conversation_id: Conversation identifier used to scope history and pending state.
             content: Text content to persist or return.
 
         Returns:
             Generated or formatted string value.
         """
+        content = enforce_user_facing_answer(client, user_message, content)
         repository.add_chat_message(
             conversation_id=conversation_id,
             role="assistant",
@@ -472,6 +493,11 @@ class AgentService:
         Returns:
             Generated or formatted string value.
         """
+        activity.working(
+            title="Nano is answering.",
+            detail="Using plain chat mode with the local model.",
+            source="assistant.agent",
+        )
         fallback_messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
         for entry in history:
             fallback_messages.append({"role": entry.role, "content": entry.content})
@@ -479,6 +505,7 @@ class AgentService:
             fallback_messages.append({"role": "user", "content": message})
 
         content = cast(str, client.complete(messages=fallback_messages))
+        content = enforce_user_facing_answer(client, message, content)
         repository.add_chat_message(
             conversation_id=conversation_id,
             role="assistant",
@@ -533,6 +560,11 @@ class AgentService:
         Returns:
             Generated or formatted string value.
         """
+        activity.working(
+            title=f"Nano is running {tool_name}.",
+            detail="Executing the requested tool.",
+            source="assistant.agent",
+        )
         activity.log(
             title=f"Nano called {tool_name}.",
             detail=json.dumps(args, ensure_ascii=False),
@@ -581,6 +613,7 @@ class AgentService:
             {"role": "user", "content": message},
         ]
         draft = cast(str, client.complete(messages=prompt_messages)).strip()
+        draft = enforce_first_person_self_reference(client, draft)
         if not draft:
             return wipe_confirmation_prompt(message)
         cleaned = draft.replace("\n", " ").strip()
@@ -676,6 +709,11 @@ class AgentService:
         Returns:
             Generated or formatted string value.
         """
+        activity.working(
+            title="Nano is setting a timer.",
+            detail="Scheduling the requested timer.",
+            source="assistant.agent",
+        )
         activity.log(
             title="Nano called start_timer.",
             detail=json.dumps(args, ensure_ascii=False),
@@ -741,6 +779,11 @@ class AgentService:
             )
             return response
 
+        activity.working(
+            title="Nano is wiping the database.",
+            detail="Deleting stored notes, reminders, and chat history.",
+            source="assistant.agent",
+        )
         repository.wipe_database()
         pending_interactions.clear(conversation_id)
         response = "Database wiped."

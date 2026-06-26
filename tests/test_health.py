@@ -169,6 +169,68 @@ def test_database_size_health_check_reports_when_below_threshold(
     assert "below the warning threshold" in size_result.detail
 
 
+def test_test_failure_health_check_is_disabled_by_default(monkeypatch) -> None:
+    """
+    Verify that test failure health check is disabled by default.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
+    monkeypatch.setattr(
+        "app.health.checks.get_settings",
+        lambda: SimpleNamespace(
+            database_size_warning_bytes=10_000,
+            llm_provider="local",
+            llm_model_path="model.gguf",
+            llm_base_url="",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.health.checks.GladosVoiceService.status",
+        lambda self: {"available": True, "detail": "Voice is ready."},
+    )
+
+    results = run_health_checks()
+
+    assert not any(result.name == "test_failure" for result in results)
+
+
+def test_test_failure_health_check_can_be_enabled(monkeypatch) -> None:
+    """
+    Verify that test failure health check can be enabled.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
+    monkeypatch.setattr(
+        "app.health.checks.get_settings",
+        lambda: SimpleNamespace(
+            database_size_warning_bytes=10_000,
+            llm_provider="local",
+            llm_model_path="model.gguf",
+            llm_base_url="",
+            health_test_failure_enabled=True,
+            health_test_failure_detail="Testing the warning path.",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.health.checks.GladosVoiceService.status",
+        lambda self: {"available": True, "detail": "Voice is ready."},
+    )
+
+    results = run_health_checks()
+    test_result = next(result for result in results if result.name == "test_failure")
+
+    assert test_result.ok is False
+    assert test_result.detail == "Testing the warning path."
+
+
 def test_health_scheduler_announces_database_size_warning(monkeypatch) -> None:
     """
     Verify that health scheduler announces database size warning.

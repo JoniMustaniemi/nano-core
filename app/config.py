@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     note_context_limit: int = Field(default=5, ge=0)
     reminder_poll_interval_seconds: int = Field(default=30, ge=5)
     health_check_interval_seconds: int = Field(default=1800, ge=60)
+    health_test_failure_enabled: bool = False
+    health_test_failure_detail: str = "Intentional health-check failure for testing."
     database_size_warning_bytes: int = Field(default=50_000_000, ge=1)
 
 

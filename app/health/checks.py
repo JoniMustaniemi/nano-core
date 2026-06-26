@@ -29,7 +29,11 @@ def run_health_checks() -> list[HealthCheckResult]:
     Returns:
         List of matching records or values.
     """
-    return [check() for check in _HEALTH_CHECKS]
+    results = [check() for check in _HEALTH_CHECKS]
+    settings = get_settings()
+    if bool(getattr(settings, "health_test_failure_enabled", False)):
+        results.append(_test_failure_health_check())
+    return results
 
 
 def _database_health_check() -> HealthCheckResult:
@@ -145,6 +149,27 @@ def _llm_health_check() -> HealthCheckResult:
         name="llm",
         ok=True,
         detail=f"LLM provider {settings.llm_provider} is configured.",
+    )
+
+
+def _test_failure_health_check() -> HealthCheckResult:
+    """
+    Return an intentional failing health check when enabled for testing.
+
+    Returns:
+        HealthCheckResult result.
+    """
+    settings = get_settings()
+    return HealthCheckResult(
+        name="test_failure",
+        ok=False,
+        detail=str(
+            getattr(
+                settings,
+                "health_test_failure_detail",
+                "Intentional health-check failure for testing.",
+            )
+        ),
     )
 
 

@@ -2,6 +2,11 @@ from collections.abc import Mapping
 
 from app.assistant.agent import AgentService
 from app.assistant.prompts import SYSTEM_PROMPT
+from app.assistant.response_guard import (
+    enforce_first_person_self_reference,
+    enforce_user_facing_answer,
+    looks_like_self_description_instead_of_answer,
+)
 from app.assistant.router import get_llm_client
 from app.config import get_settings
 from app.llm.schemas import ChatResponse
@@ -55,6 +60,7 @@ class AssistantService:
             },
         ]
         content = client.complete(messages=messages).strip()
+        content = enforce_first_person_self_reference(client, content)
         if not content:
             content = "I am listening. Proceed."
         return ChatResponse(content=content)
@@ -85,20 +91,23 @@ class AssistantService:
             source="assistant.chat",
         )
         content = client.complete(messages=messages)
-        if self._looks_like_capability_echo(message, content):
+        if looks_like_self_description_instead_of_answer(message, content):
             retry_messages: list[Mapping[str, str]] = [
                 {
                     "role": "system",
                     "content": (
                         SYSTEM_PROMPT
-                        + " The last answer was wrong because it described capabilities "
-                        "instead of answering the user's question. Answer the user's last "
-                        "message directly."
+                        + " The last answer was wrong because it described your identity "
+                        "or capabilities instead of answering the user's question. Answer "
+                        "the user's last message directly. If you cannot determine the answer, "
+                        "give a concise personality-driven answer that makes the missing "
+                        "evidence clear."
                     ),
                 },
                 {"role": "user", "content": message},
             ]
             content = client.complete(messages=retry_messages)
+        content = enforce_user_facing_answer(client, message, content)
         repository.add_chat_message(
             conversation_id=conversation_id,
             role="assistant",
@@ -110,30 +119,6 @@ class AssistantService:
             source="assistant.chat",
         )
         return content
-
-    def _looks_like_capability_echo(self, message: str, content: str) -> bool:
-        """
-        Return whether like capability echo.
-
-        Args:
-            message: User message or prompt text.
-            content: Text content to persist or return.
-
-        Returns:
-            True when the condition is met; otherwise false.
-        """
-        lowered = content.lower()
-        if "i can execute local python code" not in lowered:
-            return False
-
-        capability_triggers = (
-            "what can you do",
-            "capabilities",
-            "what are you able to do",
-            "who are you",
-            "introduce yourself",
-        )
-        return not any(trigger in message.lower() for trigger in capability_triggers)
 
     def _build_messages(
         self,

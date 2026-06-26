@@ -19,6 +19,21 @@ class _FakeClient:
         return "Hi there!"
 
 
+class _HealthClient:
+    def complete(self, messages) -> str:
+        """
+        Provide test support for complete.
+
+        Args:
+            messages: Conversation messages to send to the model.
+
+        Returns:
+            Generated or formatted string value.
+        """
+        assert messages
+        return "My health checks are complete."
+
+
 def test_chat_updates_activity(monkeypatch) -> None:
     """
     Verify that chat updates activity.
@@ -42,3 +57,32 @@ def test_chat_updates_activity(monkeypatch) -> None:
     assert payload["state"] == "standby"
     assert payload["headline"] == "Nano is back in standby."
     assert any(event["source"] == "assistant.chat" for event in payload["events"])
+
+
+def test_health_check_sets_working_activity(monkeypatch) -> None:
+    """
+    Verify that health diagnostics report working activity.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None.
+    """
+    monkeypatch.setattr("app.assistant.agent.get_llm_client", lambda: _HealthClient())
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.GladosVoiceService.announce",
+        lambda self, text: None,
+    )
+
+    with TestClient(app) as client:
+        response = client.post("/chat", json={"message": "Check your health.", "mode": "agent"})
+        status = client.get("/api/status")
+
+    assert response.status_code == 200
+    payload = status.json()
+    assert payload["state"] == "standby"
+    assert any(
+        event["state"] == "working" and event["title"] == "Nano is running check_health."
+        for event in payload["events"]
+    )

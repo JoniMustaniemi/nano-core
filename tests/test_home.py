@@ -17,12 +17,15 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Nano" in response.text
     assert "Nano's brains" in response.text
     assert "Stored data" in response.text
+    assert "Standby" in response.text
+    assert "Working" in response.text
+    assert "Listening" in response.text
     assert "Type to Nano..." in response.text
     assert "Start Listening" in response.text
-    assert "Stop Audio" in response.text
+    assert "Stop Audio" not in response.text
     assert "Voice standby." in response.text
-    assert 'href="/static/home.css"' in response.text
-    assert 'src="/static/home.js"' in response.text
+    assert 'href="/static/home.css?v=state-leds-5"' in response.text
+    assert 'src="/static/home.js?v=state-leds-5"' in response.text
 
 
 def test_homepage_serves_static_assets() -> None:
@@ -39,6 +42,9 @@ def test_homepage_serves_static_assets() -> None:
     assert css_response.status_code == 200
     assert js_response.status_code == 200
     assert "details.brains" in css_response.text
+    assert '.state-segment[data-state-segment="standby"]' in css_response.text
+    assert "background: var(--state-color);" in css_response.text
+    assert "box-shadow: 0 0 0 6px var(--state-glow)" in css_response.text
     assert 'join("\\n\\n")' in js_response.text
     assert 'mode: "agent"' in js_response.text
     assert 'fetch("/api/storage")' in js_response.text
@@ -59,6 +65,10 @@ def test_homepage_serves_static_assets() -> None:
     assert "waitForRecognitionToStop" in js_response.text
     assert "pauseRecognitionForSpeech" in js_response.text
     assert "returnToWakeDetection" in js_response.text
+    assert "stop-audio" not in js_response.text
+    assert "stopAudioButton" not in js_response.text
+    assert "if (requestInFlight)" in js_response.text
+    assert "requestInFlight = true;\n  renderState();" in js_response.text
     assert '"hey", "hi"' in js_response.text
     assert '"nana"' in js_response.text
     assert '"i know"' in js_response.text

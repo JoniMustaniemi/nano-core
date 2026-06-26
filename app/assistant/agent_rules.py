@@ -62,7 +62,19 @@ TOOL_RULES: dict[str, ToolIntentRule] = {
     ),
     "check_health": ToolIntentRule(
         announcement="Running a health diagnostic.",
-        keywords=("health", "status", "diagnostic", "check yourself", "self check"),
+        keywords=(
+            "check your health",
+            "health check",
+            "run diagnostics",
+            "run diagnostic",
+            "diagnostic check",
+            "diagnostics check",
+            "check diagnostics",
+            "check diagnostic",
+            "check yourself",
+            "self check",
+            "system check",
+        ),
     ),
 }
 
@@ -160,9 +172,18 @@ def is_health_check_request(message: str) -> bool:
     Returns:
         True when the condition is met; otherwise false.
     """
-    lowered = message.lower()
-    triggers = ("health", "status", "diagnostic", "check yourself", "self check")
-    return any(trigger in lowered for trigger in triggers)
+    lowered = " ".join(message.lower().split())
+    explicit_patterns = (
+        r"\bcheck\s+(?:your|my)\s+health\b",
+        r"\bhealth\s+check\b",
+        r"\brun\s+(?:a\s+)?(?:health\s+)?diagnostics?\b",
+        r"\bdiagnostics?\s+check\b",
+        r"\bcheck\s+diagnostics?\b",
+        r"\bcheck\s+yourself\b",
+        r"\bself\s+check\b",
+        r"\bsystem\s+check\b",
+    )
+    return any(re.search(pattern, lowered) for pattern in explicit_patterns)
 
 
 def needs_wipe_confirmation(message: str) -> bool:
@@ -279,6 +300,8 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_timer_status_request(message)
     if tool_name == "cancel_timers":
         return is_timer_cancel_request(message)
+    if tool_name == "check_health":
+        return is_health_check_request(message)
     return any(keyword in lowered for keyword in rule.keywords)
 
 

@@ -67,6 +67,15 @@ Common values from `app/config.py`:
 - `CHAT_HISTORY_LIMIT`
 - `NOTE_CONTEXT_LIMIT`
 - `REMINDER_POLL_INTERVAL_SECONDS`
+- `HEALTH_TEST_FAILURE_ENABLED`
+- `HEALTH_TEST_FAILURE_DETAIL`
+
+To intentionally trigger a failing health check while testing diagnostics:
+
+```text
+HEALTH_TEST_FAILURE_ENABLED=true
+HEALTH_TEST_FAILURE_DETAIL=Testing the warning path.
+```
 
 For a local GGUF model, point `LLM_MODEL_PATH` at the file on disk:
 
@@ -128,4 +137,3 @@ pytest
 ruff check .
 mypy app
 ```
-
