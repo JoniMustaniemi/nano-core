@@ -7,18 +7,19 @@ from app.memory.models import ChatMessage, Note, Reminder
 from app.runtime.activity import activity
 
 
-def add_note(content: str) -> Note:
+def add_note(content: str, name: str = "Untitled note") -> Note:
     """
     Add note.
 
     Args:
         content: Text content to persist or return.
+        name: Note name.
 
     Returns:
         Note result.
     """
     with Session(db.engine) as session:
-        note = Note(content=content)
+        note = Note(name=name, content=content)
         session.add(note)
         session.commit()
         session.refresh(note)

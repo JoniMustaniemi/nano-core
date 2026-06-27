@@ -224,151 +224,6 @@ class _HealthSummaryClient:
         )
 
 
-class _HealthIntroSummaryClient:
-    def __init__(self) -> None:
-        """
-        Initialize the _HealthIntroSummaryClient instance.
-
-        Returns:
-            None.
-        """
-        self.calls = 0
-        self.messages = []
-
-    def complete(self, messages) -> str:
-        """
-        Provide test support for complete.
-
-        Args:
-            messages: Conversation messages to send to the model.
-
-        Returns:
-            Generated or formatted string value.
-        """
-        self.calls += 1
-        self.messages.append(messages)
-        if self.calls == 1:
-            return (
-                "I am Nano, a local-first personal assistant with the personality "
-                "of a clinical and sarcastic overseer. My overall status is fine. "
-                "No issues were detected in my system."
-            )
-        return "All clear. No issues surfaced."
-
-
-class _VagueFailingHealthSummaryClient:
-    def __init__(self) -> None:
-        """
-        Initialize the _VagueFailingHealthSummaryClient instance.
-
-        Returns:
-            None.
-        """
-        self.calls = 0
-        self.messages = []
-
-    def complete(self, messages) -> str:
-        """
-        Provide test support for complete.
-
-        Args:
-            messages: Conversation messages to send to the model.
-
-        Returns:
-            Generated or formatted string value.
-        """
-        self.calls += 1
-        self.messages.append(messages)
-        if self.calls == 1:
-            return "My health status is error."
-        return "My test_failure check is failing: Testing the warning path."
-
-
-class _SpecificFailingHealthSummaryClient:
-    def __init__(self) -> None:
-        """
-        Initialize the _SpecificFailingHealthSummaryClient instance.
-
-        Returns:
-            None.
-        """
-        self.calls = 0
-        self.messages = []
-
-    def complete(self, messages) -> str:
-        """
-        Provide test support for complete.
-
-        Args:
-            messages: Conversation messages to send to the model.
-
-        Returns:
-            Generated or formatted string value.
-        """
-        self.calls += 1
-        self.messages.append(messages)
-        return "My test_failure check is failing: Testing the warning path."
-
-
-class _ContinuationHealthSummaryClient:
-    def __init__(self) -> None:
-        """
-        Initialize the _ContinuationHealthSummaryClient instance.
-
-        Returns:
-            None.
-        """
-        self.calls = 0
-        self.messages = []
-
-    def complete(self, messages) -> str:
-        """
-        Provide test support for complete.
-
-        Args:
-            messages: Conversation messages to send to the model.
-
-        Returns:
-            Generated or formatted string value.
-        """
-        self.calls += 1
-        self.messages.append(messages)
-        if self.calls == 1:
-            return (
-                "I will continue to run the checks and provide you with the results "
-                "as they are determined."
-            )
-        return "My test_failure check is failing: Testing the warning path."
-
-
-class _ContinuationAllClearHealthSummaryClient:
-    def __init__(self) -> None:
-        """
-        Initialize the _ContinuationAllClearHealthSummaryClient instance.
-
-        Returns:
-            None.
-        """
-        self.calls = 0
-        self.messages = []
-
-    def complete(self, messages) -> str:
-        """
-        Provide test support for complete.
-
-        Args:
-            messages: Conversation messages to send to the model.
-
-        Returns:
-            Generated or formatted string value.
-        """
-        self.calls += 1
-        self.messages.append(messages)
-        if self.calls == 1:
-            return "I will continue to run the checks and provide results as they are determined."
-        return "All clear. No ongoing diagnostic work remains."
-
-
 class _ThirdPersonFinalClient:
     def __init__(self) -> None:
         """
@@ -395,34 +250,6 @@ class _ThirdPersonFinalClient:
         if self.calls == 1:
             return '{"type":"final","content":"Nano is operating normally."}'
         return "I am operating normally."
-
-
-class _ThirdPersonHealthSummaryClient:
-    def __init__(self) -> None:
-        """
-        Initialize the _ThirdPersonHealthSummaryClient instance.
-
-        Returns:
-            None.
-        """
-        self.calls = 0
-        self.messages = []
-
-    def complete(self, messages) -> str:
-        """
-        Provide test support for complete.
-
-        Args:
-            messages: Conversation messages to send to the model.
-
-        Returns:
-            Generated or formatted string value.
-        """
-        self.calls += 1
-        self.messages.append(messages)
-        if self.calls == 1:
-            return "Nano is healthy."
-        return "I am healthy."
 
 
 class _StoryClient:
@@ -681,19 +508,12 @@ def test_agent_can_check_its_own_health(monkeypatch, tmp_path) -> None:
     content = AgentService().respond("Check your health.")
 
     assert content == "My voice check is failing: Voice backend is unavailable."
-    assert client.calls == 1
-    assert '"checks"' not in client.messages[1]["content"]
-    assert "you are speaking as nano" in client.messages[0]["content"].lower()
-    assert "never refer to nano in third person" in client.messages[0]["content"].lower()
-    assert "This is Nano reporting on my own health." in client.messages[1]["content"]
-    assert "My overall status is error." in client.messages[1]["content"]
-    assert "- My voice check is error. Voice backend is unavailable." in client.messages[1]["content"]
-    assert "Database is reachable." not in client.messages[1]["content"]
+    assert client.calls == 0
 
 
-def test_agent_health_summary_removes_identity_intro(monkeypatch, tmp_path) -> None:
+def test_agent_health_summary_is_deterministic_all_clear(monkeypatch, tmp_path) -> None:
     """
-    Verify that health summaries do not include identity or personality introductions.
+    Verify that all-clear health summaries do not depend on model wording.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture.
@@ -702,7 +522,7 @@ def test_agent_health_summary_removes_identity_intro(monkeypatch, tmp_path) -> N
     Returns:
         None.
     """
-    client = _HealthIntroSummaryClient()
+    client = _HealthSummaryClient()
     _patch_agent(
         monkeypatch,
         client=client,
@@ -718,10 +538,44 @@ def test_agent_health_summary_removes_identity_intro(monkeypatch, tmp_path) -> N
 
     content = AgentService().respond("Check your health.")
 
-    assert content == "All clear. No issues surfaced."
-    assert client.calls == 2
-    assert "Do not introduce yourself" in client.messages[0][0]["content"]
-    assert "I am Nano" in client.messages[1][1]["content"]
+    assert content == "My diagnostics are clear. No issues were found."
+    assert client.calls == 0
+
+
+def test_agent_health_summary_never_thanks_or_mentions_user_health(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """
+    Verify that health diagnostics are about Nano, not the user.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
+    client = _HealthSummaryClient()
+    _patch_agent(
+        monkeypatch,
+        client=client,
+        tmp_path=tmp_path,
+        announce=lambda self, text: None,
+    )
+    monkeypatch.setattr(
+        "app.tools.health_tools.run_health_checks",
+        lambda: [
+            SimpleNamespace(name="database", ok=True, detail="Database is reachable."),
+        ],
+    )
+
+    content = AgentService().respond("Run diagnostics.")
+
+    assert "My diagnostics" in content
+    assert "your health" not in content.lower()
+    assert "thank" not in content.lower()
+    assert client.calls == 0
 
 
 def test_agent_health_summary_names_failing_check(monkeypatch, tmp_path) -> None:
@@ -735,7 +589,7 @@ def test_agent_health_summary_names_failing_check(monkeypatch, tmp_path) -> None
     Returns:
         None.
     """
-    client = _VagueFailingHealthSummaryClient()
+    client = _HealthSummaryClient()
     _patch_agent(
         monkeypatch,
         client=client,
@@ -753,14 +607,12 @@ def test_agent_health_summary_names_failing_check(monkeypatch, tmp_path) -> None
     content = AgentService().respond("Check your health.")
 
     assert content == "My test_failure check is failing: Testing the warning path."
-    assert client.calls == 2
-    assert "previous answer was too vague" in client.messages[1][0]["content"].lower()
-    assert "test_failure: Testing the warning path." in client.messages[1][1]["content"]
+    assert client.calls == 0
 
 
-def test_agent_health_summary_keeps_specific_failure_answer(monkeypatch, tmp_path) -> None:
+def test_agent_health_summary_handles_missing_failure_detail(monkeypatch, tmp_path) -> None:
     """
-    Verify that specific failing health summaries are not rewritten.
+    Verify that failing health summaries work without a detail string.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture.
@@ -769,7 +621,7 @@ def test_agent_health_summary_keeps_specific_failure_answer(monkeypatch, tmp_pat
     Returns:
         None.
     """
-    client = _SpecificFailingHealthSummaryClient()
+    client = _HealthSummaryClient()
     _patch_agent(
         monkeypatch,
         client=client,
@@ -779,84 +631,14 @@ def test_agent_health_summary_keeps_specific_failure_answer(monkeypatch, tmp_pat
     monkeypatch.setattr(
         "app.tools.health_tools.run_health_checks",
         lambda: [
-            SimpleNamespace(name="test_failure", ok=False, detail="Testing the warning path."),
+            SimpleNamespace(name="voice", ok=False, detail=""),
         ],
     )
 
     content = AgentService().respond("Check your health.")
 
-    assert content == "My test_failure check is failing: Testing the warning path."
-    assert client.calls == 1
-
-
-def test_agent_health_summary_rewrites_unsupported_continuation(
-    monkeypatch,
-    tmp_path,
-) -> None:
-    """
-    Verify that health summaries do not promise later results.
-
-    Args:
-        monkeypatch: Pytest monkeypatch fixture.
-        tmp_path: Temporary directory path provided by pytest.
-
-    Returns:
-        None.
-    """
-    client = _ContinuationHealthSummaryClient()
-    _patch_agent(
-        monkeypatch,
-        client=client,
-        tmp_path=tmp_path,
-        announce=lambda self, text: None,
-    )
-    monkeypatch.setattr(
-        "app.tools.health_tools.run_health_checks",
-        lambda: [
-            SimpleNamespace(name="test_failure", ok=False, detail="Testing the warning path."),
-        ],
-    )
-
-    content = AgentService().respond("Check your health.")
-
-    assert content == "My test_failure check is failing: Testing the warning path."
-    assert client.calls == 2
-    assert "previous answer was too vague" in client.messages[1][0]["content"].lower()
-
-
-def test_agent_all_clear_health_summary_rewrites_unsupported_continuation(
-    monkeypatch,
-    tmp_path,
-) -> None:
-    """
-    Verify that all-clear health summaries do not promise later results.
-
-    Args:
-        monkeypatch: Pytest monkeypatch fixture.
-        tmp_path: Temporary directory path provided by pytest.
-
-    Returns:
-        None.
-    """
-    client = _ContinuationAllClearHealthSummaryClient()
-    _patch_agent(
-        monkeypatch,
-        client=client,
-        tmp_path=tmp_path,
-        announce=lambda self, text: None,
-    )
-    monkeypatch.setattr(
-        "app.tools.health_tools.run_health_checks",
-        lambda: [
-            SimpleNamespace(name="database", ok=True, detail="Database is reachable."),
-        ],
-    )
-
-    content = AgentService().respond("Check your health.")
-
-    assert content == "All clear. No ongoing diagnostic work remains."
-    assert client.calls == 2
-    assert "must not promise future/background work" in client.messages[1][0]["content"]
+    assert content == "My voice check is failing."
+    assert client.calls == 0
 
 
 def test_agent_rewrites_third_person_final_answer(monkeypatch, tmp_path) -> None:
@@ -880,38 +662,6 @@ def test_agent_rewrites_third_person_final_answer(monkeypatch, tmp_path) -> None
     assert "rewrite it so you speak as nano in first person" in (
         client.messages[1][0]["content"].lower()
     )
-
-
-def test_agent_rewrites_third_person_health_summary(monkeypatch, tmp_path) -> None:
-    """
-    Verify that health summaries are revised when they mention Nano in third person.
-
-    Args:
-        monkeypatch: Pytest monkeypatch fixture.
-        tmp_path: Temporary directory path provided by pytest.
-
-    Returns:
-        None.
-    """
-    client = _ThirdPersonHealthSummaryClient()
-    _patch_agent(
-        monkeypatch,
-        client=client,
-        tmp_path=tmp_path,
-        announce=lambda self, text: None,
-    )
-    monkeypatch.setattr(
-        "app.tools.health_tools.run_health_checks",
-        lambda: [
-            SimpleNamespace(name="database", ok=True, detail="Database is reachable."),
-        ],
-    )
-
-    content = AgentService().respond("Check your health.")
-
-    assert content == "I am healthy."
-    assert client.calls == 2
-    assert "Nano is healthy." in client.messages[1][1]["content"]
 
 
 def test_agent_does_not_run_health_check_for_story_about_status(
@@ -985,7 +735,10 @@ def test_agent_rewrites_apology_disclaimer_for_missing_information(
 
     content = AgentService().respond("Who is Jake Blamey?")
 
-    assert content == "No verified record presents itself. Evidently the archive declined to cooperate."
+    assert (
+        content
+        == "No verified record presents itself. Evidently the archive declined to cooperate."
+    )
     assert client.calls == 2
     assert "Do not apologize" in client.messages[1][0]["content"]
     assert "I apologize" in client.messages[1][1]["content"]
@@ -1069,8 +822,8 @@ def test_agent_runs_health_check_for_explicit_diagnostics_request(
 
     content = AgentService().respond("Run diagnostics.")
 
-    assert content == "My overall health status is fine. My system is functioning normally."
-    assert client.calls == 1
+    assert content == "My diagnostics are clear. No issues were found."
+    assert client.calls == 0
 
 
 def test_agent_health_summary_omits_passing_checks_when_everything_is_ok(
@@ -1102,12 +855,12 @@ def test_agent_health_summary_omits_passing_checks_when_everything_is_ok(
         ],
     )
 
-    AgentService().respond("Check your health.")
+    content = AgentService().respond("Check your health.")
 
-    assert "My overall status is ok." in client.messages[1]["content"]
-    assert "No problems were found." in client.messages[1]["content"]
-    assert "Database is reachable." not in client.messages[1]["content"]
-    assert "Voice backend is ready." not in client.messages[1]["content"]
+    assert content == "My diagnostics are clear. No issues were found."
+    assert "Database is reachable." not in content
+    assert "Voice backend is ready." not in content
+    assert client.calls == 0
 
 
 def test_agent_falls_back_to_plain_chat_when_model_skips_json(monkeypatch, tmp_path) -> None:
@@ -1292,6 +1045,166 @@ def test_agent_cancels_pending_timer_duration_request(monkeypatch, tmp_path) -> 
     assert second == "No active timers to cancel."
     assert pending_interactions.get("default") is None
     assert repository.list_reminders() == []
+
+
+def test_agent_asks_for_note_content_before_using_model(monkeypatch, tmp_path) -> None:
+    """
+    Verify that note requests without content ask for the note.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
+    _patch_agent(monkeypatch, client=_ShouldNotBeCalledClient(), tmp_path=tmp_path)
+
+    content = AgentService().respond("Add a note.")
+
+    assert content == "What should I call this note?"
+    assert repository.list_notes() == []
+    assert pending_interactions.get("default") is not None
+
+
+def test_agent_saves_note_after_name_and_content_follow_up(monkeypatch, tmp_path) -> None:
+    """
+    Verify that pending note content is saved.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
+    _patch_agent(monkeypatch, client=_ShouldNotBeCalledClient(), tmp_path=tmp_path)
+
+    first = AgentService().respond("Add note.")
+    second = AgentService().respond("Shopping")
+    third = AgentService().respond("Buy milk.")
+    notes = repository.list_notes()
+
+    assert first == "What should I call this note?"
+    assert second == "What should I remember under Shopping?"
+    assert third == "Saved note #1: Shopping."
+    assert [note.name for note in notes] == ["Shopping"]
+    assert [note.content for note in notes] == ["Buy milk."]
+    assert pending_interactions.get("default") is None
+
+
+def test_agent_asks_for_name_before_saving_inline_note(monkeypatch, tmp_path) -> None:
+    """
+    Verify that note content in the initial request is saved.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
+    _patch_agent(monkeypatch, client=_ShouldNotBeCalledClient(), tmp_path=tmp_path)
+
+    first = AgentService().respond("Remember that the launch code is tea.")
+    second = AgentService().respond("Launch code")
+    notes = repository.list_notes()
+
+    assert first == "What should I call this note?"
+    assert second == "Saved note #1: Launch code."
+    assert [note.name for note in notes] == ["Launch code"]
+    assert [note.content for note in notes] == ["the launch code is tea."]
+
+
+def test_agent_lists_saved_notes_without_model(monkeypatch, tmp_path) -> None:
+    """
+    Verify that saved notes can be retrieved.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
+    _patch_agent(monkeypatch, client=_ShouldNotBeCalledClient(), tmp_path=tmp_path)
+    repository.add_note("Buy milk.", name="Shopping")
+    repository.add_note("Check the air filter.", name="Maintenance")
+
+    content = AgentService().respond("What do you remember?")
+
+    assert "Here is what I remember:" in content
+    assert "- Shopping: Buy milk." in content
+    assert "- Maintenance: Check the air filter." in content
+
+
+def test_agent_cancels_pending_note_request(monkeypatch, tmp_path) -> None:
+    """
+    Verify that pending note requests can be cancelled.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
+    client = _ShouldNotBeCalledClient()
+    _patch_agent(monkeypatch, client=client, tmp_path=tmp_path)
+
+    for rejection in ("cancel", "nothing", "stop"):
+        first = AgentService().respond("Add note.")
+        second = AgentService().respond(rejection)
+
+        assert first == "What should I call this note?"
+        assert second == "Note cancelled."
+        assert pending_interactions.get("default") is None
+
+    assert repository.list_notes() == []
+
+
+def test_agent_finds_single_note_by_keyword(monkeypatch, tmp_path) -> None:
+    """
+    Verify that memory-shaped questions search saved notes by keyword.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
+    _patch_agent(monkeypatch, client=_ShouldNotBeCalledClient(), tmp_path=tmp_path)
+    repository.add_note("hunter2", name="Password")
+
+    content = AgentService().respond("Hey Nano what was my password?")
+
+    assert content == "I found note Password: hunter2"
+
+
+def test_agent_asks_which_note_when_multiple_keyword_matches(monkeypatch, tmp_path) -> None:
+    """
+    Verify that multiple keyword matches ask for note selection.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
+    _patch_agent(monkeypatch, client=_ShouldNotBeCalledClient(), tmp_path=tmp_path)
+    repository.add_note("work-password-1", name="Work password")
+    repository.add_note("bank-password-2", name="Bank password")
+
+    first = AgentService().respond("What was my password?")
+    second = AgentService().respond("Bank password")
+
+    assert "I found multiple matching notes:" in first
+    assert "1. Bank password" in first
+    assert "2. Work password" in first
+    assert first.endswith("Which one?")
+    assert second == "I found note Bank password: bank-password-2"
 
 
 def test_agent_answers_capability_questions_without_tool_use(monkeypatch, tmp_path) -> None:

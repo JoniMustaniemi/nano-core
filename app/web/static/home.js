@@ -723,9 +723,13 @@ listenButton.addEventListener("click", () => {
 copyAnswerButton.addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(answerOutput.textContent);
-    copyAnswerButton.textContent = "Copied";
+    copyAnswerButton.classList.add("copied");
+    copyAnswerButton.setAttribute("aria-label", "Answer copied");
+    copyAnswerButton.title = "Answer copied";
     setTimeout(() => {
-      copyAnswerButton.textContent = "Copy Answer";
+      copyAnswerButton.classList.remove("copied");
+      copyAnswerButton.setAttribute("aria-label", "Copy answer");
+      copyAnswerButton.title = "Copy answer";
     }, 1200);
   } catch (error) {
     replyStatus.textContent = "Could not copy the answer.";

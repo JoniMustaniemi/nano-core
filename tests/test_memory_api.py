@@ -15,7 +15,10 @@ def test_notes_and_reminders_round_trip() -> None:
     due_at = (datetime.now(UTC) + timedelta(minutes=5)).isoformat()
 
     with TestClient(app) as client:
-        note_response = client.post("/api/notes", json={"content": "buy milk"})
+        note_response = client.post(
+            "/api/notes",
+            json={"name": "Shopping", "content": "buy milk"},
+        )
         reminder_response = client.post(
             "/api/reminders",
             json={"content": "stretch", "due_at": due_at},
@@ -25,6 +28,7 @@ def test_notes_and_reminders_round_trip() -> None:
 
     assert note_response.status_code == 200
     assert reminder_response.status_code == 200
+    assert notes.json()[0]["name"] == "Shopping"
     assert notes.json()[0]["content"] == "buy milk"
     assert reminders.json()[0]["content"] == "stretch"
 
@@ -48,6 +52,7 @@ def test_storage_snapshot_exposes_saved_records() -> None:
 
     assert storage.status_code == 200
     payload = storage.json()
+    assert payload["notes"][0]["name"] == "Untitled note"
     assert payload["notes"][0]["content"] == "buy milk"
     assert payload["reminders"][0]["content"] == "stretch"
     assert payload["chat_messages"] == []
