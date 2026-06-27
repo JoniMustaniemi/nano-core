@@ -222,7 +222,10 @@ def test_chat_mode_handles_unknown_fact_with_personality(monkeypatch) -> None:
 
     response = AssistantService().respond("Who is Jake Blamey?", mode="chat")
 
-    assert response.content == "No reliable file in the mental cabinet for that person. How inconvenient."
+    assert (
+        response.content
+        == "No reliable file in the mental cabinet for that person. How inconvenient."
+    )
     assert client.calls == 2
     assert "personality-driven" in client.messages[1][0]["content"]
 
@@ -250,7 +253,10 @@ def test_chat_mode_rewrites_apology_disclaimer(monkeypatch) -> None:
 
     response = AssistantService().respond("Who is Jake Blamey?", mode="chat")
 
-    assert response.content == "No confirmed entry emerges. The evidence remains theatrically absent."
+    assert (
+        response.content
+        == "No confirmed entry emerges. The evidence remains theatrically absent."
+    )
     assert client.calls == 2
     assert "missing evidence" in client.messages[1][0]["content"]
 

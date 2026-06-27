@@ -130,6 +130,58 @@ TIMER_CANCEL_KEYWORDS: tuple[str, ...] = (
     "end",
     "kill",
 )
+NOTE_REQUEST_PATTERNS: tuple[str, ...] = (
+    r"\badd\s+(?:a\s+)?note\b",
+    r"\bsave\s+(?:a\s+)?note\b",
+    r"\bwrite\s+(?:this\s+)?down\b",
+    r"\bremember\s+(?:this|that)?\b",
+)
+NOTE_LIST_PATTERNS: tuple[str, ...] = (
+    r"\b(?:list|show|read|what(?:'s| is)?)\s+(?:my\s+)?notes\b",
+    r"\bwhat\s+(?:do\s+you\s+)?remember\b",
+    r"\bwhat\s+have\s+you\s+(?:remembered|saved)\b",
+)
+NOTE_LOOKUP_PATTERNS: tuple[str, ...] = (
+    r"\bwhat(?:'s| is| was| were)\s+(?:my|the)\b",
+    r"\bwhat\s+did\s+i\s+(?:save|write|note|remember)\b",
+    r"\bwhat\s+was\s+(?:the\s+)?\w+",
+    r"\bdo\s+you\s+remember\b",
+    r"\bfind\s+(?:my\s+)?note\b",
+    r"\bsearch\s+(?:my\s+)?notes\b",
+)
+NOTE_LOOKUP_STOPWORDS: frozenset[str] = frozenset(
+    {
+        "a",
+        "about",
+        "an",
+        "and",
+        "did",
+        "do",
+        "for",
+        "hey",
+        "hi",
+        "i",
+        "is",
+        "it",
+        "me",
+        "my",
+        "nano",
+        "of",
+        "on",
+        "please",
+        "remember",
+        "saved",
+        "the",
+        "to",
+        "was",
+        "were",
+        "what",
+        "when",
+        "where",
+        "which",
+        "you",
+    }
+)
 
 
 def tool_announcement(tool_name: str) -> str:
@@ -186,6 +238,97 @@ def is_health_check_request(message: str) -> bool:
     return any(re.search(pattern, lowered) for pattern in explicit_patterns)
 
 
+def is_note_add_request(message: str) -> bool:
+    """
+    Return whether note add request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in NOTE_REQUEST_PATTERNS)
+
+
+def is_note_list_request(message: str) -> bool:
+    """
+    Return whether note list request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in NOTE_LIST_PATTERNS)
+
+
+def is_note_lookup_request(message: str) -> bool:
+    """
+    Return whether note lookup request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in NOTE_LOOKUP_PATTERNS)
+
+
+def note_content_from_message(message: str) -> str | None:
+    """
+    Extract note content from a note request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Note content when provided; otherwise None.
+    """
+    stripped = " ".join(message.strip().split())
+    if not stripped:
+        return None
+
+    patterns = (
+        r"(?i)^add\s+(?:a\s+)?note(?:\s+(?:that|saying|to\s+say|:))?\s+(?P<content>.+)$",
+        r"(?i)^save\s+(?:a\s+)?note(?:\s+(?:that|saying|to\s+say|:))?\s+(?P<content>.+)$",
+        r"(?i)^write\s+(?:this\s+)?down(?:\s*:)?\s+(?P<content>.+)$",
+        r"(?i)^remember(?:\s+(?:this|that))?(?:\s*:)?\s+(?P<content>.+)$",
+    )
+    for pattern in patterns:
+        match = re.match(pattern, stripped)
+        if not match:
+            continue
+        content = match.group("content").strip()
+        return content or None
+    return None
+
+
+def note_keywords_from_message(message: str) -> list[str]:
+    """
+    Extract keywords to search notes.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Keywords from the request.
+    """
+    words = re.findall(r"[a-z0-9]+", message.lower())
+    keywords: list[str] = []
+    for word in words:
+        if len(word) < 3 or word in NOTE_LOOKUP_STOPWORDS:
+            continue
+        if word not in keywords:
+            keywords.append(word)
+    return keywords
+
+
 def needs_wipe_confirmation(message: str) -> bool:
     """
     Return whether wipe confirmation.
@@ -226,8 +369,16 @@ def is_rejection_message(message: str) -> bool:
     Returns:
         True when the condition is met; otherwise false.
     """
-    lowered = message.strip().lower()
-    return lowered in {"no", "no.", "cancel", "cancel.", "stop", "never mind", "nevermind"}
+    lowered = " ".join(message.strip().lower().strip(" .!?").split())
+    return lowered in {
+        "no",
+        "cancel",
+        "stop",
+        "nothing",
+        "never mind",
+        "nevermind",
+        "forget it",
+    }
 
 
 def wipe_confirmation_prompt(message: str) -> str:
@@ -302,6 +453,10 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_timer_cancel_request(message)
     if tool_name == "check_health":
         return is_health_check_request(message)
+    if tool_name == "add_note":
+        return is_note_add_request(message)
+    if tool_name == "list_notes":
+        return is_note_list_request(message)
     return any(keyword in lowered for keyword in rule.keywords)
 
 

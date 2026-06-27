@@ -63,17 +63,20 @@ def start_dev(
 
 
 @notes_app.command("add")
-def note_add(content: str) -> None:
+def note_add(
+    content: str,
+    name: str = typer.Option("Untitled note", "--name", "-n", help="Name for the note."),
+) -> None:
     """Store a note in the local database."""
-    note = add_note(content)
-    typer.echo(f"saved note {note.id}: {note.content}")
+    note = add_note(content, name=name)
+    typer.echo(f"saved note {note.id} ({note.name}): {note.content}")
 
 
 @notes_app.command("list")
 def note_list() -> None:
     """List notes from the local database."""
     for note in list_notes():
-        typer.echo(f"{note.id}: {note.content}")
+        typer.echo(f"{note.id}: {note.name} - {note.content}")
 
 
 @reminders_app.command("add")

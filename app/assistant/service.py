@@ -1,7 +1,11 @@
 from collections.abc import Mapping
 
 from app.assistant.agent import AgentService
-from app.assistant.prompts import SYSTEM_PROMPT
+from app.assistant.prompts import (
+    ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+    WAKE_RESPONSE_SYSTEM_PROMPT,
+)
 from app.assistant.response_guard import (
     enforce_first_person_self_reference,
     enforce_user_facing_answer,
@@ -43,16 +47,7 @@ class AssistantService:
         messages: list[Mapping[str, str]] = [
             {
                 "role": "system",
-                "content": (
-                    SYSTEM_PROMPT
-                    + " You just heard your wake phrase. "
-                    + "Reply with one short sentence that confirms you are listening "
-                    + "and invites the user's command. "
-                    + "Stay in Nano's personality. "
-                    + "Do not greet warmly. "
-                    + "Do not mention capabilities, tools, JSON, or internal systems. "
-                    + "Keep it brief and natural to speak aloud."
-                ),
+                "content": WAKE_RESPONSE_SYSTEM_PROMPT,
             },
             {
                 "role": "user",
@@ -95,14 +90,7 @@ class AssistantService:
             retry_messages: list[Mapping[str, str]] = [
                 {
                     "role": "system",
-                    "content": (
-                        SYSTEM_PROMPT
-                        + " The last answer was wrong because it described your identity "
-                        "or capabilities instead of answering the user's question. Answer "
-                        "the user's last message directly. If you cannot determine the answer, "
-                        "give a concise personality-driven answer that makes the missing "
-                        "evidence clear."
-                    ),
+                    "content": ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT,
                 },
                 {"role": "user", "content": message},
             ]
@@ -144,7 +132,7 @@ class AssistantService:
 
         notes = repository.list_notes(limit=note_limit)
         if notes:
-            note_lines = "\n".join(f"- {note.content}" for note in notes)
+            note_lines = "\n".join(f"- {note.name}: {note.content}" for note in notes)
             messages.append(
                 {
                     "role": "system",

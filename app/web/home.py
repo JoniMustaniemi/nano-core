@@ -27,8 +27,8 @@ def home() -> str:
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <title>{app_name}</title>
-            <link rel="stylesheet" href="/static/home.css?v=state-leds-5" />
-            <script defer src="/static/home.js?v=state-leds-5"></script>
+            <link rel="stylesheet" href="/static/home.css?v=answer-copy-icon-1" />
+            <script defer src="/static/home.js?v=answer-copy-icon-1"></script>
           </head>
           <body>
             <main class="shell">
@@ -59,13 +59,32 @@ def home() -> str:
                   <div class="actions">
                     <button id="send" type="button">Send</button>
                     <button id="voice-listen" class="ghost" type="button">Start Listening</button>
-                    <button id="copy-answer" class="ghost" type="button">Copy Answer</button>
                   </div>
                   <div class="reply-status" id="voice-status">Voice standby.</div>
                   <div class="reply-status" id="reply-status"></div>
                 </div>
 
                 <section class="answer">
+                  <button
+                    id="copy-answer"
+                    class="answer-copy"
+                    type="button"
+                    aria-label="Copy answer"
+                    title="Copy answer"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+                      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+                    </svg>
+                  </button>
                   <pre id="answer-output" class="answer-output empty">Awaiting signal.</pre>
                   <audio id="voice-audio" hidden preload="none"></audio>
                 </section>

@@ -17,9 +17,10 @@ def _add_note(args: dict[str, Any]) -> str:
     Returns:
         Generated or formatted string value.
     """
+    name = str(args.get("name", "Untitled note"))
     content = str(args.get("content", ""))
-    note = repository.add_note(content)
-    return f"saved note {note.id}: {note.content}"
+    note = repository.add_note(content, name=name)
+    return f"saved note {note.id} ({note.name}): {note.content}"
 
 
 def _list_notes(args: dict[str, Any]) -> str:
@@ -34,14 +35,17 @@ def _list_notes(args: dict[str, Any]) -> str:
     """
     del args
     notes = repository.list_notes()
-    return "\n".join(f"{note.id}: {note.content}" for note in notes) or "No notes."
+    return "\n".join(f"{note.id}: {note.name} - {note.content}" for note in notes) or "No notes."
 
 
 register_tool(
     ToolSpec(
         name="add_note",
         description="save a note.",
-        args_schema={"content": "The note text to store."},
+        args_schema={
+            "name": "Short name for the note.",
+            "content": "The note text to store.",
+        },
         handler=_add_note,
     )
 )

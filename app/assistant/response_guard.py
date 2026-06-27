@@ -3,8 +3,11 @@ from __future__ import annotations
 import re
 from typing import Any, cast
 
-from app.assistant.prompts import SYSTEM_PROMPT
-
+from app.assistant.prompts import (
+    ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT,
+    THIRD_PERSON_REWRITE_SYSTEM_PROMPT,
+    UNSUPPORTED_CONTINUATION_REWRITE_SYSTEM_PROMPT,
+)
 
 _THIRD_PERSON_SELF_PATTERNS = (
     re.compile(
@@ -15,6 +18,7 @@ _THIRD_PERSON_SELF_PATTERNS = (
     ),
     re.compile(r"\bnano's\b", re.IGNORECASE),
     re.compile(r"\bby nano\b", re.IGNORECASE),
+    re.compile(r"(^|[,.!?]\s+)\bnano\b(?=[,.!?]|$)", re.IGNORECASE),
 )
 
 _SELF_DESCRIPTION_PATTERNS = (
@@ -51,12 +55,23 @@ _IDENTITY_OR_CAPABILITY_TRIGGERS = (
 
 _UNSUPPORTED_CONTINUATION_PATTERNS = (
     re.compile(r"\bi\s+will\s+continue\s+to\b", re.IGNORECASE),
-    re.compile(r"\bi(?:'ll| will)\s+keep\s+(?:checking|monitoring|running|working)\b", re.IGNORECASE),
-    re.compile(r"\bi(?:'ll| will)\s+provide\s+(?:you\s+with\s+)?(?:the\s+)?results\b", re.IGNORECASE),
+    re.compile(
+        r"\bi(?:'ll| will)\s+keep\s+(?:checking|monitoring|running|working)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bi(?:'ll| will)\s+provide\s+(?:you\s+with\s+)?(?:the\s+)?results\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bi(?:'m| am)\s+currently\s+running\s+diagnostics\b", re.IGNORECASE),
+    re.compile(r"\bdiagnostics\s+are\s+(?:still\s+)?running\b", re.IGNORECASE),
     re.compile(r"\bas\s+they\s+are\s+determined\b", re.IGNORECASE),
-    re.compile(r"\bas\s+soon\s+as\s+(?:they|it)\s+(?:are|is)\s+(?:available|ready|determined)\b", re.IGNORECASE),
+    re.compile(
+        r"\bas\s+soon\s+as\s+(?:they|it)\s+(?:are|is)\s+"
+        r"(?:available|ready|determined)\b",
+        re.IGNORECASE,
+    ),
 )
-
 
 def talks_about_nano_in_third_person(content: str) -> bool:
     """
@@ -88,14 +103,7 @@ def enforce_first_person_self_reference(client: Any, content: str) -> str:
     messages = [
         {
             "role": "system",
-            "content": (
-                SYSTEM_PROMPT
-                + " The previous answer talked about Nano in third person. "
-                + "Rewrite it so you speak as Nano in first person only. "
-                + "add subtle personality to the answer, but do not overdo it."
-                + "Preserve the meaning, personality, details, tone, and any important numbers. "
-                + "Do not add new facts. Return only the revised answer."
-            ),
+            "content": THIRD_PERSON_REWRITE_SYSTEM_PROMPT,
         },
         {"role": "user", "content": content},
     ]
@@ -141,16 +149,7 @@ def enforce_actual_answer(client: Any, user_message: str, content: str) -> str:
     messages = [
         {
             "role": "system",
-            "content": (
-                SYSTEM_PROMPT
-                + " The previous answer described your identity or capabilities instead "
-                + "of answering the user's actual question. Answer the user's question now. "
-                + "If you cannot determine the answer from the conversation or your knowledge, "
-                + "give a concise personality-driven answer that makes the missing evidence "
-                + "clear. Do not apologize, introduce yourself, list capabilities, mention "
-                + "training data, mention internet access, or invent facts. "
-                + "Return only the revised answer."
-            ),
+            "content": ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT,
         },
         {
             "role": "user",
@@ -199,15 +198,7 @@ def enforce_no_unsupported_continuation(
     messages = [
         {
             "role": "system",
-            "content": (
-                SYSTEM_PROMPT
-                + " The previous answer incorrectly implied you would continue processing "
-                + "after replying. You must not promise future/background work unless an "
-                + "actual scheduled process or pending interaction exists. Rewrite the answer "
-                + "to give only the current result or current limitation. Do not tell the user "
-                + "to wait for more results. Do not invent pending work. Return only the "
-                + "revised answer."
-            ),
+            "content": UNSUPPORTED_CONTINUATION_REWRITE_SYSTEM_PROMPT,
         },
         {
             "role": "user",

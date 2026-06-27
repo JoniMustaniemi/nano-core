@@ -24,8 +24,10 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Start Listening" in response.text
     assert "Stop Audio" not in response.text
     assert "Voice standby." in response.text
-    assert 'href="/static/home.css?v=state-leds-5"' in response.text
-    assert 'src="/static/home.js?v=state-leds-5"' in response.text
+    assert 'href="/static/home.css?v=answer-copy-icon-1"' in response.text
+    assert 'src="/static/home.js?v=answer-copy-icon-1"' in response.text
+    assert 'aria-label="Copy answer"' in response.text
+    assert "Copy Answer" not in response.text
 
 
 def test_homepage_serves_static_assets() -> None:
@@ -65,6 +67,7 @@ def test_homepage_serves_static_assets() -> None:
     assert "waitForRecognitionToStop" in js_response.text
     assert "pauseRecognitionForSpeech" in js_response.text
     assert "returnToWakeDetection" in js_response.text
+    assert 'copyAnswerButton.classList.add("copied")' in js_response.text
     assert "stop-audio" not in js_response.text
     assert "stopAudioButton" not in js_response.text
     assert "if (requestInFlight)" in js_response.text

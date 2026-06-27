@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api", tags=["memory"])
 
 
 class NoteCreate(BaseModel):
+    name: str = Field(default="Untitled note", min_length=1)
     content: str = Field(min_length=1)
 
 
@@ -52,7 +53,7 @@ def create_note(payload: NoteCreate) -> Note:
     Returns:
         Note result.
     """
-    return add_note(payload.content)
+    return add_note(payload.content, name=payload.name)
 
 
 @router.get("/reminders", response_model=list[Reminder])

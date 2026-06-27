@@ -4,7 +4,13 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-PendingKind = Literal["timer_duration", "wipe_confirmation"]
+PendingKind = Literal[
+    "note_content",
+    "note_name",
+    "note_selection",
+    "timer_duration",
+    "wipe_confirmation",
+]
 
 
 @dataclass(frozen=True, slots=True)
