@@ -9,8 +9,8 @@ from app.assistant.prompts import (
     IDENTITY_ANSWER_PROMPT,
     SYSTEM_PROMPT,
 )
-from app.assistant.response_variation import choose_variation_hint
 from app.assistant.response_source import ResponseSource, answer_source
+from app.assistant.response_variation import choose_variation_hint
 from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
 

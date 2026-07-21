@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 from app.assistant.agent import AgentService
+from app.assistant.agent_rules import is_capability_question, is_identity_question
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.llm_factory import get_llm_client
-from app.assistant.agent_rules import is_capability_question, is_identity_question
 from app.assistant.prompts import NOTE_CONTEXT_PREFIX
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_pipeline import finalize_response

@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-ALIGNED_RESPONSE = '{"aligned": true, "problems": []}'
-
-
 from app.assistant.response_polish import is_polish_prompt
+
+ALIGNED_RESPONSE = '{"aligned": true, "problems": []}'
 
 
 def is_alignment_check(messages) -> bool:

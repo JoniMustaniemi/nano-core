@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-
 from helpers.agent_fixtures import wrap_with_alignment_intercept
 
 from app.main import app
