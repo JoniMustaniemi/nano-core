@@ -134,6 +134,15 @@ body {
   box-shadow: 0 0 0 6px var(--state-glow), 0 0 14px var(--state-led-glow);
 }
 
+.activity-status {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
 .core {
   border: 1px solid var(--panel-border);
   border-radius: 30px;

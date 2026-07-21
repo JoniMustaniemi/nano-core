@@ -39,8 +39,8 @@ def home() -> str:
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <title>{app_name}</title>
-            <link rel="stylesheet" href="/static/home.css?v=tool-drawer-2" />
-            <script defer src="/static/home.js?v=tool-drawer-4"></script>
+            <link rel="stylesheet" href="/static/home.css?v=activity-status-1" />
+            <script defer src="/static/home.js?v=activity-status-1"></script>
           </head>
           <body>
             <button
@@ -69,6 +69,9 @@ def home() -> str:
                     <span class="state-label">Listening</span>
                   </div>
                 </section>
+                <p id="activity-status" class="activity-status" aria-live="polite">
+                  Ready for the next task.
+                </p>
                 <div class="sr-only" id="state-line">standby</div>
               </section>
 
@@ -76,7 +79,7 @@ def home() -> str:
                 <div class="input-shell">
                   <div class="prompt">Transmit to Nano</div>
                   <label class="sr-only" for="message">Message for Nano</label>
-                  <textarea id="message" placeholder="Type to Nano..."></textarea>
+                  <textarea id="message" placeholder="Type to Nano... (Enter to send)"></textarea>
                   <div class="actions">
                     <button id="send" type="button">Send</button>
                     <button id="voice-listen" class="ghost" type="button">Start Listening</button>
