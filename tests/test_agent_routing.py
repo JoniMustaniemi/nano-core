@@ -1,5 +1,3 @@
-from app.assistant.agent import AgentService
-from app.memory import repository
 from helpers.agent_fixtures import (
     ApologyDisclaimerClient,
     CapabilityQuestionClient,
@@ -8,6 +6,9 @@ from helpers.agent_fixtures import (
     UnknownPersonSelfDescriptionClient,
     patch_agent,
 )
+
+from app.assistant.agent import AgentService
+from app.memory import repository
 
 
 def test_agent_rewrites_third_person_final_answer(monkeypatch, tmp_path) -> None:

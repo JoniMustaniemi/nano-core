@@ -1,7 +1,5 @@
 from types import SimpleNamespace
 
-from app.assistant.agent import AgentService
-from app.memory import repository
 from helpers.agent_fixtures import (
     InvalidThenChatClient,
     IrrelevantToolThenFinalClient,
@@ -9,6 +7,9 @@ from helpers.agent_fixtures import (
     RunPythonClient,
     patch_agent,
 )
+
+from app.assistant.agent import AgentService
+from app.memory import repository
 
 
 def test_agent_runs_a_legitimate_tool_call(monkeypatch, tmp_path) -> None:

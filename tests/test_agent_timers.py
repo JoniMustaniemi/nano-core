@@ -1,13 +1,14 @@
 from datetime import UTC, datetime, timedelta
 
-from app.assistant.agent import AgentService
-from app.assistant.pending import pending_interactions
-from app.memory import repository
 from helpers.agent_fixtures import (
     DuplicateTimerClient,
     ShouldNotBeCalledClient,
     patch_agent,
 )
+
+from app.assistant.agent import AgentService
+from app.assistant.pending import pending_interactions
+from app.memory import repository
 
 
 def test_agent_handles_explicit_timer_requests_without_model(monkeypatch, tmp_path) -> None:

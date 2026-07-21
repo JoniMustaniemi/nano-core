@@ -1,12 +1,13 @@
 from types import SimpleNamespace
 
-from app.assistant.agent import AgentService
 from helpers.agent_fixtures import (
     HealthSummaryClient,
     StatusAnswerClient,
     StoryClient,
     patch_agent,
 )
+
+from app.assistant.agent import AgentService
 
 
 def test_agent_can_check_its_own_health(monkeypatch, tmp_path) -> None:

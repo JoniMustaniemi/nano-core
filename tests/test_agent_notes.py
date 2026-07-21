@@ -1,7 +1,8 @@
+from helpers.agent_fixtures import ShouldNotBeCalledClient, patch_agent
+
 from app.assistant.agent import AgentService
 from app.assistant.pending import pending_interactions
 from app.memory import repository
-from helpers.agent_fixtures import ShouldNotBeCalledClient, patch_agent
 
 
 def test_agent_asks_for_note_content_before_using_model(monkeypatch, tmp_path) -> None:

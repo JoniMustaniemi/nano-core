@@ -1,9 +1,10 @@
 from datetime import UTC, datetime, timedelta
 
+from helpers.agent_fixtures import WipeConfirmationClient, patch_agent
+
 from app.assistant.agent import AgentService
 from app.memory import repository
 from app.memory.repository import list_recent_chat_messages
-from helpers.agent_fixtures import WipeConfirmationClient, patch_agent
 
 
 def test_agent_requires_confirmation_before_wiping_database(monkeypatch, tmp_path) -> None:
