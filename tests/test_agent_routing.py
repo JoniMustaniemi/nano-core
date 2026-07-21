@@ -127,8 +127,12 @@ def test_agent_answers_capability_questions_without_tool_use(monkeypatch, tmp_pa
 
     content = AgentService().respond("What can you do?")
 
-    assert "I can answer questions" in content
+    assert "check_health" in content
+    assert "list_notes" in content
     assert client.calls == 1
+    assert client.messages is not None
+    assert "Available capabilities (grouped):" in client.messages[-1]["content"]
+    assert "check_health:" in client.messages[-1]["content"]
     assert repository.list_reminders() == []
 
 

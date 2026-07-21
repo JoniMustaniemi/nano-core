@@ -3,11 +3,13 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from app.assistant.agent_rules import wipe_confirmation_prompt
 from app.assistant.prompts import (
     COMPOSE_HINTS,
     RESPONSE_COMPOSER_PROMPT,
     WIPE_CONFIRMATION_SYSTEM_PROMPT,
 )
+from app.assistant.response_guard import looks_like_refusal
 from app.assistant.response_source import ResponseSource
 from app.llm.protocol import LLMClient
 
@@ -65,8 +67,8 @@ class ResponseComposer:
             {"role": "user", "content": source.facts},
         ]
         draft = client.complete(messages=summary_messages).strip()
-        if not draft:
-            draft = source.facts
+        if not draft or looks_like_refusal(draft):
+            return wipe_confirmation_prompt(source.user_message)
         cleaned = draft.replace("\n", " ").strip().rstrip(". ")
         return f"{cleaned}. Reply yes to proceed or no to cancel."
 

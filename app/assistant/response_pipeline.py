@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_guard import enforce_user_facing_answer
+from app.assistant.response_polish import polish_user_facing_answer
 from app.assistant.response_source import ResponseSource
 from app.llm.protocol import LLMClient
 from app.memory import repository
@@ -17,7 +18,7 @@ def finalize_response(
     standby_source: str = "assistant.response_pipeline",
 ) -> str:
     """
-    Compose, guard, persist, and return a user-facing assistant reply.
+    Compose, guard, polish, persist, and return a user-facing assistant reply.
 
     Args:
         client: LLM client used for composition and guarding.
@@ -31,7 +32,8 @@ def finalize_response(
     """
     try:
         content = composer.compose(client, source)
-        content = enforce_user_facing_answer(client, source.user_message, content)
+        content = enforce_user_facing_answer(client, source, content)
+        content = polish_user_facing_answer(client, source, content)
         if source.persist:
             repository.add_chat_message(
                 conversation_id=source.conversation_id,

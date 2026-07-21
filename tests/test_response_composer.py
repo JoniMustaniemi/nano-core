@@ -93,3 +93,19 @@ def test_compose_wipe_confirmation_includes_yes_no_prompt() -> None:
     content = composer.compose(client, source)
 
     assert "reply yes to proceed or no to cancel" in content.lower()
+
+
+def test_compose_wipe_confirmation_uses_fallback_for_refusal_draft() -> None:
+    composer = ResponseComposer()
+    source = confirmation_source(
+        user_message="Wipe your database.",
+        facts='User requested: "Wipe your database."',
+        conversation_id="default",
+    )
+    client = _StubClient(response="I'm afraid I can't assist with that.")
+
+    content = composer.compose(client, source)
+
+    assert "reply yes to proceed or no to cancel" in content.lower()
+    assert "afraid" not in content.lower()
+    assert 'You are asking me to do this: "Wipe your database."' in content

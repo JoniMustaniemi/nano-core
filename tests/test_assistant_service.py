@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+from helpers.agent_fixtures import wrap_with_alignment_intercept
+
 from app.assistant.service import AssistantService
 
 
@@ -157,7 +159,7 @@ def test_chat_mode_retries_when_model_echoes_capabilities(monkeypatch) -> None:
     """
     client = _CapabilityEchoThenAnswerClient()
 
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: client)
+    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
     monkeypatch.setattr(
         "app.assistant.service.get_settings",
         lambda: SimpleNamespace(
@@ -184,7 +186,7 @@ def test_chat_mode_rewrites_third_person_self_reference(monkeypatch) -> None:
     """
     client = _ThirdPersonChatClient()
 
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: client)
+    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
     monkeypatch.setattr(
         "app.assistant.service.get_settings",
         lambda: SimpleNamespace(
@@ -211,7 +213,7 @@ def test_chat_mode_handles_unknown_fact_with_personality(monkeypatch) -> None:
     """
     client = _UnknownPersonChatClient()
 
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: client)
+    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
     monkeypatch.setattr(
         "app.assistant.service.get_settings",
         lambda: SimpleNamespace(
@@ -242,7 +244,7 @@ def test_chat_mode_rewrites_apology_disclaimer(monkeypatch) -> None:
     """
     client = _ApologyDisclaimerChatClient()
 
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: client)
+    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
     monkeypatch.setattr(
         "app.assistant.service.get_settings",
         lambda: SimpleNamespace(
@@ -273,7 +275,7 @@ def test_wake_response_uses_personality_prompt(monkeypatch) -> None:
     """
     client = _WakeResponseClient()
 
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: client)
+    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
 
     response = AssistantService().wake_response()
 

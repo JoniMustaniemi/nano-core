@@ -29,11 +29,12 @@ User message
   → ResponseSource (facts + kind)
   → finalize_response()
       → ResponseComposer.compose()   # apply voice to facts
-      → enforce_user_facing_answer() # single guard pass
+      → enforce_user_facing_answer() # bounded guard loop with alignment check
+      → polish_user_facing_answer()  # tighten repetitive final wording
       → persist + activity.standby
 ```
 
-**Invariant:** compose runs once, guard runs once, persist runs once.
+**Invariant:** compose runs once; guard may run up to two rewrite passes with an alignment check on every reply; polish runs once when needed; persist runs once.
 
 `ResponseSource.kind` compose strategy:
 

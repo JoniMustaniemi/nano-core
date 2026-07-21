@@ -65,20 +65,6 @@ TOOL_COMMANDS: tuple[ToolCommand, ...] = (
         description="Show scheduled reminders.",
     ),
     ToolCommand(
-        id="list_files",
-        label="List files",
-        message="List files in the workspace.",
-        category="Files",
-        description="List workspace files.",
-    ),
-    ToolCommand(
-        id="run_python",
-        label="Run Python",
-        message="Run python: print(2 + 2)",
-        category="Files",
-        description="Execute a short Python snippet.",
-    ),
-    ToolCommand(
         id="create_pull_request",
         label="Create pull request",
         message="Create a pull request.",

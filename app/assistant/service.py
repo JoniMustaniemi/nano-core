@@ -5,6 +5,7 @@ from typing import Any
 from app.assistant.agent import AgentService
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.llm_factory import get_llm_client
+from app.assistant.agent_rules import is_capability_question, is_identity_question
 from app.assistant.prompts import NOTE_CONTEXT_PREFIX
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_pipeline import finalize_response
@@ -89,15 +90,32 @@ class AssistantService:
             detail="Loading memory and talking to the local model.",
             source="assistant.chat",
         )
-        source = self.answer_executor.draft(
-            client=client,
-            message=message,
-            conversation_id=conversation_id,
-            history=self._history_with_notes(
-                history=history,
-                note_limit=settings.note_context_limit,
-            ),
-        )
+        if is_capability_question(message):
+            source = self.answer_executor.draft_capabilities(
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+            )
+        elif is_identity_question(message):
+            source = self.answer_executor.draft_identity(
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+                history=self._history_with_notes(
+                    history=history,
+                    note_limit=settings.note_context_limit,
+                ),
+            )
+        else:
+            source = self.answer_executor.draft(
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+                history=self._history_with_notes(
+                    history=history,
+                    note_limit=settings.note_context_limit,
+                ),
+            )
         return finalize_response(
             client,
             source,
