@@ -1,4 +1,5 @@
 const stateLine = document.getElementById("state-line");
+const activityStatus = document.getElementById("activity-status");
 const stateSegments = Array.from(document.querySelectorAll("[data-state-segment]"));
 const activityLog = document.getElementById("activity-log");
 const voiceStatus = document.getElementById("voice-status");
@@ -206,12 +207,23 @@ function isListeningStateActive() {
   );
 }
 
+function renderActivityStatus() {
+  const headline = (currentActivitySnapshot.headline || "Nano is in standby.").trim();
+  const detail = (currentActivitySnapshot.detail || "").trim();
+  if (detail && detail !== headline && !headline.includes(detail)) {
+    activityStatus.textContent = `${headline} — ${detail}`;
+    return;
+  }
+  activityStatus.textContent = headline;
+}
+
 function renderState() {
   const displayState = getDisplayState();
   stateLine.textContent = displayState;
   for (const segment of stateSegments) {
     segment.classList.toggle("active", segment.dataset.stateSegment === displayState);
   }
+  renderActivityStatus();
   updateInputLock();
 }
 

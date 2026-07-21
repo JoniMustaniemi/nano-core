@@ -24,8 +24,10 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Start Listening" in response.text
     assert "Stop Audio" not in response.text
     assert "Voice standby." in response.text
-    assert 'href="/static/home.css?v=tool-drawer-2"' in response.text
-    assert 'src="/static/home.js?v=tool-drawer-4"' in response.text
+    assert 'href="/static/home.css?v=activity-status-1"' in response.text
+    assert 'src="/static/home.js?v=activity-status-1"' in response.text
+    assert 'id="activity-status"' in response.text
+    assert "Enter to send" in response.text
     assert 'id="commands-toggle"' in response.text
     assert 'id="commands-drawer"' in response.text
     assert "Commands" in response.text
@@ -71,7 +73,8 @@ def test_homepage_serves_static_assets() -> None:
     assert "pauseRecognitionForSpeech" in js_response.text
     assert "returnToWakeDetection" in js_response.text
     assert 'copyAnswerButton.classList.add("copied")' in js_response.text
-    assert "command-button" in css_response.text
+    assert "activity-status" in css_response.text
+    assert "renderActivityStatus" in js_response.text
     assert "commands-drawer" in css_response.text
     assert 'fetch("/api/tool-commands")' in js_response.text
     assert "runToolCommand" in js_response.text
