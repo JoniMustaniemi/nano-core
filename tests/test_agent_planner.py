@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from app.assistant.agent import AgentService
 from app.memory import repository
-from tests.helpers.agent_fixtures import (
+from helpers.agent_fixtures import (
     InvalidThenChatClient,
     IrrelevantToolThenFinalClient,
     NeverFinishesClient,

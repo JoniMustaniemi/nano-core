@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 from app.assistant.agent import AgentService
-from tests.helpers.agent_fixtures import (
+from helpers.agent_fixtures import (
     HealthSummaryClient,
     StatusAnswerClient,
     StoryClient,
