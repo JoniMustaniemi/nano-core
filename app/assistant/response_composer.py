@@ -36,6 +36,9 @@ class ResponseComposer:
         if source.kind == "tool_result" and source.tool_name == "check_health":
             return self._compose_health_result(source.facts)
 
+        if source.kind == "tool_result" and source.tool_name == "create_pull_request":
+            return self._compose_pr_result(source.facts)
+
         if source.kind == "tool_result" and source.tool_name in COMPOSE_HINTS:
             return self._compose_with_hint(client, source)
 
@@ -94,8 +97,6 @@ class ResponseComposer:
         ]
         summary = client.complete(messages=summary_messages).strip()
         if not summary:
-            if source.tool_name == "create_pull_request":
-                return self._pr_fallback_message(self._parse_json_dict(source.facts))
             return "The procedure finished, though the summary failed to materialize."
         return summary
 
@@ -172,34 +173,42 @@ class ResponseComposer:
                 lines.append(f"My {name} check is failing.")
         return " ".join(lines)
 
-    def _parse_json_dict(self, value: str) -> dict[str, Any]:
-        try:
-            payload = json.loads(value)
-        except json.JSONDecodeError:
-            return {}
-        return payload if isinstance(payload, dict) else {}
-
-    def _pr_fallback_message(self, payload: dict[str, Any]) -> str:
+    def _compose_pr_result(self, tool_result: str) -> str:
         """
-        Build a deterministic fallback pull request announcement.
+        Return a deterministic pull request announcement without URLs.
+
+        Args:
+            tool_result: Serialized pull request workflow JSON.
+
+        Returns:
+            Voice-friendly pull request summary text.
+        """
+        return self._pr_message(self._parse_json_dict(tool_result))
+
+    def _pr_message(self, payload: dict[str, Any]) -> str:
+        """
+        Build a personality-driven pull request announcement.
 
         Args:
             payload: Parsed pull request result payload.
 
         Returns:
-            First-person fallback message.
+            First-person announcement without URLs or markdown.
         """
         if payload.get("ok"):
-            url = str(payload.get("url", "")).strip()
             branch = str(payload.get("branch", "")).strip()
             title = str(payload.get("title", "")).strip()
-            if url:
+            if branch and title:
                 return (
-                    f"I opened pull request {title} on {branch}. Review it at {url}."
-                    if branch and title
-                    else f"I opened the pull request. Review it at {url}."
+                    f"I opened the pull request for {title} on {branch}. "
+                    "Review it on GitHub when you are ready."
                 )
-            return "I opened the pull request."
+            if branch:
+                return (
+                    f"I opened the pull request on {branch}. "
+                    "Review it on GitHub when you are ready."
+                )
+            return "I opened the pull request. Review it on GitHub when you are ready."
 
         step = str(payload.get("step", "unknown")).strip()
         error = str(payload.get("error", "")).strip()
@@ -210,6 +219,13 @@ class ResponseComposer:
         if error:
             return f"I could not complete the pull request during {step}: {error}"
         return "I could not complete the pull request."
+
+    def _parse_json_dict(self, value: str) -> dict[str, Any]:
+        try:
+            payload = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return payload if isinstance(payload, dict) else {}
 
     def _tool_error_fallback(self, source: ResponseSource) -> str:
         """

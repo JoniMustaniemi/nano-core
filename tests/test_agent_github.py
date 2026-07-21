@@ -53,7 +53,8 @@ def test_agent_routes_pull_request_request_directly(monkeypatch: pytest.MonkeyPa
 
     response = AgentService().respond("create a pull request")
 
-    assert "https://github.com/org/repo/pull/1" in response
+    assert "http" not in response
+    assert "Review it on GitHub when you are ready." in response
     messages = list_recent_chat_messages(limit=2)
     assert messages[-1].role == "assistant"
     assert messages[-1].content == response

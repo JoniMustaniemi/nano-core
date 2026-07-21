@@ -116,6 +116,8 @@ _COMPOSE_PAYLOAD = _section(
 _PR_RESULT_COMPOSE = _section(
     "Nano creates the feature branch automatically; never ask the user to provide a branch name.",
     "If verification failed, say you refused to commit and open a pull request; do not dump full test output.",
+    "Do not include URLs, markdown links, or GitHub paths in the reply.",
+    "Confirm success in a brief, clinical, personality-driven sentence instead.",
 )
 
 _GUARD_FIX = _section(
@@ -135,9 +137,7 @@ NOTE_CONTEXT_PREFIX = (
     "Use them as background context when helpful."
 )
 
-COMPOSE_HINTS: dict[str, str] = {
-    "create_pull_request": _PR_RESULT_COMPOSE,
-}
+COMPOSE_HINTS: dict[str, str] = {}
 
 
 @dataclass(frozen=True)

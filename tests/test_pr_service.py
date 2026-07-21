@@ -18,9 +18,9 @@ class _SummaryClient:
         return self.response
 
 
-def test_summarize_pr_result_success_uses_llm() -> None:
+def test_summarize_pr_result_success_uses_deterministic_confirmation() -> None:
     client = _SummaryClient(
-        "I opened pull request fix_timer_cancel_bug at https://github.com/org/repo/pull/1."
+        "I opened the pull request at https://github.com/org/repo/pull/1."
     )
     composer = ResponseComposer()
     payload = json.dumps(
@@ -45,8 +45,10 @@ def test_summarize_pr_result_success_uses_llm() -> None:
 
     summary = composer.compose(client, source)
 
-    assert "https://github.com/org/repo/pull/1" in summary
-    assert client.calls == 1
+    assert "http" not in summary
+    assert "fix_timer_cancel_bug" in summary
+    assert "Review it on GitHub when you are ready." in summary
+    assert client.calls == 0
 
 
 def test_summarize_pr_result_failure_fallback() -> None:

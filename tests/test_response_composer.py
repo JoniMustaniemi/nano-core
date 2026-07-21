@@ -40,7 +40,7 @@ def test_compose_health_result_all_clear() -> None:
     assert content == "My diagnostics are clear. No issues were found."
 
 
-def test_compose_pr_result_success_fallback() -> None:
+def test_compose_pr_result_success_is_voice_friendly() -> None:
     composer = ResponseComposer()
     payload = json.dumps(
         {
@@ -56,11 +56,16 @@ def test_compose_pr_result_success_fallback() -> None:
         tool_name="create_pull_request",
         conversation_id="default",
     )
-    client = _StubClient(response="")
+    client = _StubClient(response="Review it [here](https://example.com/pr/1).")
 
     content = composer.compose(client, source)
 
-    assert "https://example.com/pr/1" in content
+    assert content == (
+        "I opened the pull request for demo change on feature/demo. "
+        "Review it on GitHub when you are ready."
+    )
+    assert "http" not in content
+    assert client.messages is None
 
 
 def test_compose_confirmation_uses_follow_up_text() -> None:
