@@ -224,7 +224,11 @@ def _play_wav_on_windows(wav_bytes: bytes) -> None:
         ) from exc
 
     try:
-        winsound.PlaySound(wav_bytes, winsound.SND_MEMORY)
+        play_sound = getattr(winsound, "PlaySound", None)
+        snd_memory = getattr(winsound, "SND_MEMORY", None)
+        if play_sound is None or snd_memory is None:
+            raise VoiceUnavailableError("Audio playback is not available on this platform.")
+        play_sound(wav_bytes, snd_memory)
     except RuntimeError as exc:
         raise VoiceUnavailableError(f"Audio playback failed: {exc}") from exc
 

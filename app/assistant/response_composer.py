@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, cast
+from typing import Any
 
 from app.assistant.prompts import RESPONSE_COMPOSER_PROMPT, WIPE_CONFIRMATION_SYSTEM_PROMPT
 from app.assistant.response_guard import enforce_user_facing_answer
@@ -58,7 +58,7 @@ class ResponseComposer:
             {"role": "system", "content": WIPE_CONFIRMATION_SYSTEM_PROMPT},
             {"role": "user", "content": source.facts},
         ]
-        draft = cast(str, client.complete(messages=summary_messages)).strip()
+        draft = client.complete(messages=summary_messages).strip()
         if not draft:
             draft = source.facts
         cleaned = draft.replace("\n", " ").strip().rstrip(". ")
@@ -96,7 +96,7 @@ class ResponseComposer:
                 ),
             },
         ]
-        summary = cast(str, client.complete(messages=summary_messages)).strip()
+        summary = client.complete(messages=summary_messages).strip()
         if not summary:
             if source.kind == "tool_error":
                 return enforce_user_facing_answer(
@@ -184,7 +184,7 @@ class ResponseComposer:
                 ),
             },
         ]
-        summary = cast(str, client.complete(messages=summary_messages)).strip()
+        summary = client.complete(messages=summary_messages).strip()
         if not summary:
             return fallback
         return enforce_user_facing_answer(client, source.user_message, summary)

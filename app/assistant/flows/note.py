@@ -372,12 +372,13 @@ class NoteInteractionHandler:
             )
 
         content = note_content_from_message(message) if is_note_add_request(message) else message
+        resolved_content = content or ""
         pending = pending_interactions.get(conversation_id)
         name = str((pending.payload if pending else {}).get("name", "")).strip()
         return self._save_note(
             conversation_id=conversation_id,
             name=name,
-            content=content,
+            content=resolved_content,
             user_message=user_message,
         )
 

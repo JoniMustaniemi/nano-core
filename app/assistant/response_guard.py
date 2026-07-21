@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from typing import cast
 
 from app.assistant.prompts import (
     ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT,
@@ -108,7 +107,7 @@ def enforce_first_person_self_reference(client: LLMClient, content: str) -> str:
         },
         {"role": "user", "content": content},
     ]
-    revised = cast(str, client.complete(messages=messages)).strip()
+    revised = client.complete(messages=messages).strip()
     return revised or content
 
 
@@ -160,7 +159,7 @@ def enforce_actual_answer(client: LLMClient, user_message: str, content: str) ->
             ),
         },
     ]
-    revised = cast(str, client.complete(messages=messages)).strip()
+    revised = client.complete(messages=messages).strip()
     return revised or content
 
 
@@ -209,7 +208,7 @@ def enforce_no_unsupported_continuation(
             ),
         },
     ]
-    revised = cast(str, client.complete(messages=messages)).strip()
+    revised = client.complete(messages=messages).strip()
     return revised or content
 
 

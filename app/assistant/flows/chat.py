@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from app.assistant.prompts import AGENT_SYSTEM_PROMPT, SYSTEM_PROMPT
 from app.assistant.response_guard import enforce_user_facing_answer
@@ -69,7 +69,7 @@ class AgentChatFlow:
         if not history or history[-1].role != "user" or history[-1].content != message:
             fallback_messages.append({"role": "user", "content": message})
 
-        content = cast(str, client.complete(messages=fallback_messages))
+        content = client.complete(messages=fallback_messages)
         content = enforce_user_facing_answer(client, message, content)
         repository.add_chat_message(
             conversation_id=conversation_id,
