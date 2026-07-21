@@ -16,6 +16,7 @@ AgentToolName = Literal[
     "list_timers",
     "cancel_timers",
     "check_health",
+    "create_pull_request",
 ]
 
 
@@ -23,6 +24,12 @@ AgentToolName = Literal[
 class ToolResult:
     tool: str
     content: str
+    ok: bool = True
+
+
+class AnswerIntentDecision(TypedDict):
+    type: Literal["answer_intent"]
+    content: NotRequired[str]
 
 
 class FinalDecision(TypedDict):
@@ -43,4 +50,4 @@ class InvalidDecision(TypedDict):
     args: NotRequired[dict[str, Any]]
 
 
-Decision = FinalDecision | ToolCallDecision | InvalidDecision
+Decision = AnswerIntentDecision | FinalDecision | ToolCallDecision | InvalidDecision

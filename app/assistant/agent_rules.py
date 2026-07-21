@@ -76,6 +76,10 @@ TOOL_RULES: dict[str, ToolIntentRule] = {
             "system check",
         ),
     ),
+    "create_pull_request": ToolIntentRule(
+        announcement="Opening a pull request.",
+        keywords=("pull request", "open pr", "create pr", "github pr"),
+    ),
 }
 
 DIRECT_ANSWER_TRIGGERS: tuple[str, ...] = (
@@ -149,6 +153,12 @@ NOTE_LOOKUP_PATTERNS: tuple[str, ...] = (
     r"\bfind\s+(?:my\s+)?note\b",
     r"\bsearch\s+(?:my\s+)?notes\b",
 )
+PULL_REQUEST_PATTERNS: tuple[str, ...] = (
+    r"\b(?:create|open|make|start)\b.*\b(?:pull request|pr)\b",
+    r"\b(?:pull request|pr)\b.*\b(?:create|open|make|start)\b",
+    r"\b(?:need|want)\s+(?:a\s+)?(?:pull request|pr)\b",
+    r"^\s*(?:pr|pull request)\s*$",
+)
 NOTE_LOOKUP_STOPWORDS: frozenset[str] = frozenset(
     {
         "a",
@@ -182,6 +192,20 @@ NOTE_LOOKUP_STOPWORDS: frozenset[str] = frozenset(
         "you",
     }
 )
+
+
+def is_pull_request_request(message: str) -> bool:
+    """
+    Return whether the message is a pull request creation request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message requests pull request creation.
+    """
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in PULL_REQUEST_PATTERNS)
 
 
 def tool_announcement(tool_name: str) -> str:
@@ -453,6 +477,8 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_timer_cancel_request(message)
     if tool_name == "check_health":
         return is_health_check_request(message)
+    if tool_name == "create_pull_request":
+        return is_pull_request_request(message)
     if tool_name == "add_note":
         return is_note_add_request(message)
     if tool_name == "list_notes":
@@ -620,8 +646,14 @@ def parse_decision(raw: str) -> Decision:
     payload = extract_json(raw)
     if isinstance(payload, dict):
         decision_type = payload.get("type")
-        if decision_type == "final" and isinstance(payload.get("content"), str):
-            return {"type": "final", "content": payload["content"]}
+        if decision_type in {"final", "answer_intent"}:
+            content = payload.get("content")
+            if isinstance(content, str) and content.strip():
+                if decision_type == "final":
+                    return {"type": "final", "content": content}
+                return {"type": "answer_intent", "content": content}
+            if decision_type == "answer_intent":
+                return {"type": "answer_intent"}
         if decision_type == "tool_call":
             tool = payload.get("tool")
             args = payload.get("args", {})

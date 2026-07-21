@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     health_test_failure_enabled: bool = False
     health_test_failure_detail: str = "Intentional health-check failure for testing."
     database_size_warning_bytes: int = Field(default=50_000_000, ge=1)
+    github_default_base_branch: str = "main"
+    git_executable: str = ""
+    github_cli_path: str = ""
+    github_pr_verify_command: str = ""
+    github_pr_verify_timeout_seconds: int = Field(default=300, ge=1)
+    pr_naming_diff_max_chars: int = Field(default=4000, ge=256)
 
 
 @lru_cache

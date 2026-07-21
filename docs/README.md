@@ -69,6 +69,12 @@ Common values from `app/config.py`:
 - `REMINDER_POLL_INTERVAL_SECONDS`
 - `HEALTH_TEST_FAILURE_ENABLED`
 - `HEALTH_TEST_FAILURE_DETAIL`
+- `GIT_EXECUTABLE`
+- `GITHUB_CLI_PATH`
+- `GITHUB_DEFAULT_BASE_BRANCH`
+- `GITHUB_PR_VERIFY_COMMAND`
+- `GITHUB_PR_VERIFY_TIMEOUT_SECONDS`
+- `PR_NAMING_DIFF_MAX_CHARS`
 
 To intentionally trigger a failing health check while testing diagnostics:
 
@@ -137,3 +143,17 @@ pytest
 ruff check .
 mypy app
 ```
+
+## Pull Requests
+
+Nano can open a GitHub pull request when you ask in agent mode (for example: "create a PR").
+
+Prerequisites:
+
+- `git` and the GitHub CLI (`gh`) installed
+- If Nano cannot find them automatically, set `GIT_EXECUTABLE` and/or `GITHUB_CLI_PATH` in `.env`
+- `gh auth login` completed on the machine
+- `WORKSPACE_ROOT` pointing at the repository you want to publish
+- A detectable test command in that repository, or `GITHUB_PR_VERIFY_COMMAND` set in `.env`
+
+Nano verifies the project before committing, uses the local model to name the branch and PR in snake_case, creates `feature/<slug>`, commits current changes, pushes, and opens the PR via `gh pr create`.

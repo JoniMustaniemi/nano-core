@@ -57,7 +57,7 @@ def render_tool_prompt() -> str:
     lines = ["Available tools:"]
     lines.extend(tool.prompt_line() for tool in list_tools())
     lines.append("Return JSON only in one of these forms:")
-    lines.append('{"type":"final","content":"..."}')
+    lines.append('{"type":"answer_intent"}')
     lines.append('{"type":"tool_call","tool":"tool_name","args":{"key":"value"}}')
     return "\n".join(lines)
 
