@@ -3,8 +3,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.assistant.result_summarizer import ToolResultSummarizer
-from app.tools.pr_service import PullRequestService, PrResult
+from app.assistant.response_composer import ResponseComposer
+from app.assistant.response_source import tool_result_source
+from app.tools.pr_service import PrResult, PullRequestService
 
 
 class _SummaryClient:
@@ -21,7 +22,7 @@ def test_summarize_pr_result_success_uses_llm() -> None:
     client = _SummaryClient(
         "I opened pull request fix_timer_cancel_bug at https://github.com/org/repo/pull/1."
     )
-    summarizer = ToolResultSummarizer()
+    composer = ResponseComposer()
     payload = json.dumps(
         {
             "ok": True,
@@ -35,13 +36,14 @@ def test_summarize_pr_result_success_uses_llm() -> None:
             "output": None,
         }
     )
-
-    summary = summarizer.summarize(
-        client=client,
+    source = tool_result_source(
         user_message="create a PR",
+        facts=payload,
         tool_name="create_pull_request",
-        tool_result=payload,
+        conversation_id="default",
     )
+
+    summary = composer.compose(client, source)
 
     assert "https://github.com/org/repo/pull/1" in summary
     assert client.calls == 1
@@ -49,7 +51,7 @@ def test_summarize_pr_result_success_uses_llm() -> None:
 
 def test_summarize_pr_result_failure_fallback() -> None:
     client = _SummaryClient("")
-    summarizer = ToolResultSummarizer()
+    composer = ResponseComposer()
     payload = json.dumps(
         {
             "ok": False,
@@ -63,13 +65,14 @@ def test_summarize_pr_result_failure_fallback() -> None:
             "output": "FAILED tests/test_x.py",
         }
     )
-
-    summary = summarizer.summarize(
-        client=client,
+    source = tool_result_source(
         user_message="create a PR",
+        facts=payload,
         tool_name="create_pull_request",
-        tool_result=payload,
+        conversation_id="default",
     )
+
+    summary = composer.compose(client, source)
 
     assert "declined to commit" in summary.lower()
     assert "FAILED tests/test_x.py" not in summary

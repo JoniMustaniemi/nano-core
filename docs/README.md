@@ -1,5 +1,24 @@
 # Technical Notes
 
+## Architecture
+
+Nano's assistant layer separates multi-turn UX from single-shot tool execution:
+
+| Layer | Module pattern | Responsibility |
+|-------|----------------|----------------|
+| **Interaction flows** | `*InteractionHandler` in `app/assistant/flows/` | Keyword routing, pending state, confirmations, follow-ups |
+| **Tools** | `*_tools.py` in `app/tools/` | One-shot actions invoked by the router or planner |
+| **Router** | `AgentRouter` | Fast-path routing before the planner runs |
+| **Planner** | `AgentPlanner` | JSON tool loop for non-deterministic requests |
+
+Use an interaction handler when the user may need multiple turns (notes, timers, wipe).
+Use a registered tool when a single call is enough (health check, file read, pull request).
+
+Flow-owned tools (`add_note`, `list_notes`, timer tools) are excluded from the planner
+prompt because their UX is handled by interaction handlers.
+
+`AgentChatFlow` builds planner messages only; it is not an interaction handler.
+
 ## Project Layout
 
 - `app/main.py` creates the FastAPI application and registers routers.
@@ -21,7 +40,7 @@ Optional dependencies are grouped in `pyproject.toml`:
 
 - `dev` for tests and linting
 - `local-llm` for `llama-cpp-python`
-- `vector` for vector-store support
+- `voice` for voice synthesis dependencies (currently empty placeholder)
 
 ## Install
 
@@ -67,8 +86,10 @@ Common values from `app/config.py`:
 - `CHAT_HISTORY_LIMIT`
 - `NOTE_CONTEXT_LIMIT`
 - `REMINDER_POLL_INTERVAL_SECONDS`
+- `HEALTH_CHECK_INTERVAL_SECONDS`
 - `HEALTH_TEST_FAILURE_ENABLED`
 - `HEALTH_TEST_FAILURE_DETAIL`
+- `DATABASE_SIZE_WARNING_BYTES`
 - `GIT_EXECUTABLE`
 - `GITHUB_CLI_PATH`
 - `GITHUB_DEFAULT_BASE_BRANCH`
@@ -91,6 +112,11 @@ LLM_MODEL_PATH=./models/qwen2.5-1.5b-instruct-q5_k_m.gguf
 ```
 
 The `models/` directory is the expected place for local model files.
+
+## Database
+
+The SQLite schema is created automatically on startup via `SQLModel.metadata.create_all()`.
+Alembic scaffolding under `migrations/` is not used in this project.
 
 ## Run
 

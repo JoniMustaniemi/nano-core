@@ -1,7 +1,7 @@
 import json
 
 from app.memory import repository
-from app.tools import get_tool, list_tools, render_tool_prompt
+from app.tools import FLOW_OWNED_TOOLS, get_tool, list_tools, render_tool_prompt
 
 
 def test_tool_registry_loads_builtin_tool_modules() -> None:
@@ -34,6 +34,21 @@ def test_tool_prompt_lists_registered_tools() -> None:
     assert "Available tools:" in prompt
     assert "- run_python(code, timeout_seconds):" in prompt
     assert '{"type":"tool_call","tool":"tool_name","args":{"key":"value"}}' in prompt
+
+
+def test_tool_prompt_excludes_flow_owned_tools() -> None:
+    """
+    Verify that planner prompts omit tools owned by interaction flows.
+
+    Returns:
+        None.
+    """
+    prompt = render_tool_prompt(exclude=FLOW_OWNED_TOOLS)
+
+    assert "Available tools:" in prompt
+    assert "- run_python(code, timeout_seconds):" in prompt
+    assert "add_note" not in prompt
+    assert "start_timer" not in prompt
 
 
 def test_get_tool_returns_registered_handler() -> None:

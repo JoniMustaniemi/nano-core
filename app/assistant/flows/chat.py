@@ -4,9 +4,10 @@ from typing import Any, cast
 
 from app.assistant.prompts import AGENT_SYSTEM_PROMPT, SYSTEM_PROMPT
 from app.assistant.response_guard import enforce_user_facing_answer
+from app.llm.protocol import LLMClient
 from app.memory import repository
 from app.runtime.activity import activity
-from app.tools import render_tool_prompt
+from app.tools import FLOW_OWNED_TOOLS, render_tool_prompt
 
 
 class AgentChatFlow:
@@ -40,7 +41,7 @@ class AgentChatFlow:
     def fallback_to_chat(
         self,
         *,
-        client: Any,
+        client: LLMClient,
         message: str,
         conversation_id: str,
         history: list[Any],
@@ -89,4 +90,4 @@ class AgentChatFlow:
         Returns:
             System prompt text.
         """
-        return AGENT_SYSTEM_PROMPT + "\n\n" + render_tool_prompt()
+        return AGENT_SYSTEM_PROMPT + "\n\n" + render_tool_prompt(exclude=FLOW_OWNED_TOOLS)

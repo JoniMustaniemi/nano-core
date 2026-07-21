@@ -19,6 +19,7 @@ from app.assistant.response_source import (
 )
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
+from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
 
 
@@ -46,7 +47,7 @@ class TimerInteractionHandler:
     def handle_direct_request(
         self,
         *,
-        client: Any,
+        client: LLMClient,
         message: str,
         conversation_id: str,
         user_message: str,

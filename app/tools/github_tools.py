@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.assistant.router import get_llm_client
+from app.assistant.llm_factory import get_llm_client
 from app.tools.base import ToolSpec
 from app.tools.pr_service import PullRequestService
 from app.tools.registry import register_tool

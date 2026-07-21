@@ -1,9 +1,12 @@
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from app.memory import repository
 from app.runtime.activity import activity
 from app.scheduler.jobs import _format_due_reminder, check_due_reminders
 from app.tools import get_tool
+from app.tools.errors import ToolError
 
 
 def test_start_timer_accepts_duration_text() -> None:
@@ -50,10 +53,10 @@ def test_start_timer_requires_explicit_duration() -> None:
     tool = get_tool("start_timer")
 
     assert tool is not None
-    result = tool.handler({"label": "Tea"})
+    with pytest.raises(ToolError, match="Timer duration is required"):
+        tool.handler({"label": "Tea"})
     reminders = repository.list_reminders()
 
-    assert result == "Timer duration is required. Ask the user how long the timer should run."
     assert reminders == []
 
 

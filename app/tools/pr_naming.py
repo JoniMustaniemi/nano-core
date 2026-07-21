@@ -7,7 +7,6 @@ from typing import Any, cast
 from app.assistant.agent_rules import extract_json
 from app.tools.git_github import ensure_unique_branch_slug
 
-
 _SLUG_PATTERN = re.compile(r"^[a-z0-9_]{3,48}$")
 
 

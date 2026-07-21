@@ -4,6 +4,7 @@ from typing import Any, cast
 
 from app.assistant.prompts import SYSTEM_PROMPT
 from app.assistant.response_source import ResponseSource, answer_source
+from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
 
 
@@ -15,7 +16,7 @@ class AnswerExecutor:
     def draft(
         self,
         *,
-        client: Any,
+        client: LLMClient,
         message: str,
         conversation_id: str,
         history: list[Any],
@@ -54,7 +55,7 @@ class AnswerExecutor:
             conversation_id=conversation_id,
         )
 
-    def draft_wake(self, *, client: Any) -> ResponseSource:
+    def draft_wake(self, *, client: LLMClient) -> ResponseSource:
         """
         Draft a wake acknowledgment without final personality polish.
 

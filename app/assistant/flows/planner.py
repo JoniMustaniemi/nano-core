@@ -9,6 +9,7 @@ from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
 from app.assistant.response_source import ResponseSource, answer_source, tool_result_source
 from app.assistant.tool_runner import ToolRunner
+from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
 
 
@@ -42,7 +43,7 @@ class AgentPlanner:
     def run(
         self,
         *,
-        client: Any,
+        client: LLMClient,
         conversation_id: str,
         message: str,
         history: list[Any],
@@ -151,7 +152,7 @@ class AgentPlanner:
     def _build_answer_source(
         self,
         *,
-        client: Any,
+        client: LLMClient,
         message: str,
         conversation_id: str,
         history: list[Any],

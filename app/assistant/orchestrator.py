@@ -5,18 +5,18 @@ from typing import Any
 from app.assistant.agent_router import AgentRouter
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
-from app.assistant.flows.github import PullRequestHandler
 from app.assistant.flows.note import NoteInteractionHandler
 from app.assistant.flows.planner import AgentPlanner
 from app.assistant.flows.timer import TimerInteractionHandler
 from app.assistant.flows.wipe import WipeInteractionHandler
+from app.assistant.llm_factory import get_llm_client
 from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_source import ResponseSource
-from app.assistant.router import get_llm_client
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
 from app.config import get_settings
+from app.llm.protocol import LLMClient
 from app.memory import repository
 from app.runtime.activity import activity
 
@@ -38,7 +38,6 @@ class AgentOrchestrator:
         note_handler: NoteInteractionHandler | None = None,
         timer_handler: TimerInteractionHandler | None = None,
         wipe_handler: WipeInteractionHandler | None = None,
-        pull_request_handler: PullRequestHandler | None = None,
         planner: AgentPlanner | None = None,
     ) -> None:
         """
@@ -54,7 +53,6 @@ class AgentOrchestrator:
             note_handler: Note handler value.
             timer_handler: Timer handler value.
             wipe_handler: Wipe handler value.
-            pull_request_handler: Pull request handler value.
             planner: Agent planner value.
         """
         self.tool_runner = tool_runner or ToolRunner()
@@ -69,9 +67,6 @@ class AgentOrchestrator:
             tool_executor=self.tool_executor,
         )
         self.wipe_handler = wipe_handler or WipeInteractionHandler()
-        self.pull_request_handler = pull_request_handler or PullRequestHandler(
-            tool_executor=self.tool_executor,
-        )
         self.planner = planner or AgentPlanner(
             tool_runner=self.tool_runner,
             chat_flow=self.chat_flow,
@@ -104,7 +99,7 @@ class AgentOrchestrator:
         )
         return self._finalize(client=client, source=source)
 
-    def compose_and_persist(self, *, client: Any, source: ResponseSource) -> str:
+    def compose_and_persist(self, *, client: LLMClient, source: ResponseSource) -> str:
         """
         Compose a response source and persist it.
 
@@ -120,7 +115,7 @@ class AgentOrchestrator:
     def _resolve_source(
         self,
         *,
-        client: Any,
+        client: LLMClient,
         message: str,
         conversation_id: str,
         history: list[Any],
@@ -194,11 +189,12 @@ class AgentOrchestrator:
         if pending is None:
             return None
 
-        for handler in (
+        handlers = (
             self.timer_handler,
             self.note_handler,
             self.wipe_handler,
-        ):
+        )
+        for handler in handlers:
             response = handler.handle_pending(
                 pending=pending,
                 message=message,
@@ -211,7 +207,7 @@ class AgentOrchestrator:
         pending_interactions.clear(conversation_id)
         return None
 
-    def _finalize(self, *, client: Any, source: ResponseSource) -> str:
+    def _finalize(self, *, client: LLMClient, source: ResponseSource) -> str:
         content = self.composer.compose(client, source)
         if source.persist:
             repository.add_chat_message(
