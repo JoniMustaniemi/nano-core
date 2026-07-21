@@ -9,15 +9,19 @@ from app.assistant.agent_rules import (
     is_note_list_request,
     is_note_lookup_request,
     is_pull_request_request,
+    is_timer_cancel_request,
+    is_timer_start_request,
+    is_timer_status_request,
+    needs_timer_duration,
     needs_wipe_confirmation,
     should_answer_without_tools,
 )
-from app.llm.protocol import LLMClient
+from app.assistant.pending import pending_interactions
 
 
 @dataclass(frozen=True, slots=True)
 class RouteDecision:
-    mode: Literal["answer", "tool", "interaction", "planner"]
+    mode: Literal["answer", "tool", "interaction", "planner", "pending"]
     tool_name: str | None = None
     tool_args: dict[str, Any] | None = None
     interaction: str | None = None
@@ -25,14 +29,25 @@ class RouteDecision:
 
 class AgentRouter:
     """
-    Hybrid router that decides whether to answer, run a tool, start an interaction, or plan.
+    Unified router for new user messages.
+
+    Priority order:
+    1. Timer status/cancel (clears pending timer follow-ups)
+    2. Pending interaction resume
+    3. Timer start/duration
+    3. Wipe confirmation
+    4. Note add/list/lookup
+    5. Health check tool
+    6. Pull request tool
+    7. Direct answer without tools
+    8. Planner fallback
     """
 
     def decide(
         self,
         message: str,
         *,
-        client: LLMClient,
+        conversation_id: str,
         history: list[Any],
     ) -> RouteDecision:
         """
@@ -40,12 +55,27 @@ class AgentRouter:
 
         Args:
             message: User message text.
-            client: LLM client used for fallback routing.
+            conversation_id: Conversation identifier for pending-state lookup.
             history: Conversation history records.
 
         Returns:
             Route decision for the orchestrator.
         """
+        _ = history
+        if is_timer_status_request(message):
+            pending_interactions.clear(conversation_id)
+            return RouteDecision(mode="tool", tool_name="list_timers", tool_args={})
+
+        if is_timer_cancel_request(message):
+            pending_interactions.clear(conversation_id)
+            return RouteDecision(mode="tool", tool_name="cancel_timers", tool_args={})
+
+        if pending_interactions.get(conversation_id) is not None:
+            return RouteDecision(mode="pending")
+
+        if needs_timer_duration(message) or is_timer_start_request(message):
+            return RouteDecision(mode="interaction", interaction="timer")
+
         if needs_wipe_confirmation(message):
             return RouteDecision(mode="interaction", interaction="wipe")
 

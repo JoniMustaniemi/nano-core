@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import re
+from typing import Literal
 
-from app.assistant.prompts import (
-    ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT,
-    THIRD_PERSON_REWRITE_SYSTEM_PROMPT,
-    UNSUPPORTED_CONTINUATION_REWRITE_SYSTEM_PROMPT,
-)
+from app.assistant.prompts import GUARD_REWRITE_SYSTEM_PROMPT
 from app.llm.protocol import LLMClient
+
+ViolationKind = Literal["self_description", "unsupported_continuation", "third_person"]
 
 _THIRD_PERSON_SELF_PATTERNS = (
     re.compile(
@@ -73,6 +72,17 @@ _UNSUPPORTED_CONTINUATION_PATTERNS = (
     ),
 )
 
+_VIOLATION_LABELS: dict[ViolationKind, str] = {
+    "self_description": (
+        "Described identity or capabilities instead of answering the user's question."
+    ),
+    "unsupported_continuation": (
+        "Promised unsupported continued work after responding."
+    ),
+    "third_person": "Referred to Nano in third person instead of first person.",
+}
+
+
 def talks_about_nano_in_third_person(content: str) -> bool:
     """
     Return whether a user-facing answer describes Nano from the outside.
@@ -84,31 +94,6 @@ def talks_about_nano_in_third_person(content: str) -> bool:
         True when the answer appears to use third-person self-reference.
     """
     return any(pattern.search(content) for pattern in _THIRD_PERSON_SELF_PATTERNS)
-
-
-def enforce_first_person_self_reference(client: LLMClient, content: str) -> str:
-    """
-    Rewrite model output once if it talks about Nano in third person.
-
-    Args:
-        client: LLM client used to revise responses.
-        content: User-facing response content.
-
-    Returns:
-        Original content, or a first-person rewrite when needed.
-    """
-    if not content.strip() or not talks_about_nano_in_third_person(content):
-        return content
-
-    messages = [
-        {
-            "role": "system",
-            "content": THIRD_PERSON_REWRITE_SYSTEM_PROMPT,
-        },
-        {"role": "user", "content": content},
-    ]
-    revised = client.complete(messages=messages).strip()
-    return revised or content
 
 
 def looks_like_self_description_instead_of_answer(user_message: str, content: str) -> bool:
@@ -128,41 +113,6 @@ def looks_like_self_description_instead_of_answer(user_message: str, content: st
     return any(pattern.search(content) for pattern in _SELF_DESCRIPTION_PATTERNS)
 
 
-def enforce_actual_answer(client: LLMClient, user_message: str, content: str) -> str:
-    """
-    Rewrite model output once if it dodges the question by describing Nano.
-
-    Args:
-        client: LLM client used to revise responses.
-        user_message: User message or prompt text.
-        content: User-facing response content.
-
-    Returns:
-        Original content, or a revised answer when the model echoed its identity.
-    """
-    if not content.strip() or not looks_like_self_description_instead_of_answer(
-        user_message,
-        content,
-    ):
-        return content
-
-    messages = [
-        {
-            "role": "system",
-            "content": ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT,
-        },
-        {
-            "role": "user",
-            "content": (
-                f"User question: {user_message}\n\n"
-                f"Previous wrong answer:\n{content}"
-            ),
-        },
-    ]
-    revised = client.complete(messages=messages).strip()
-    return revised or content
-
-
 def implies_unsupported_continuation(content: str) -> bool:
     """
     Return whether the answer implies Nano will continue work after responding.
@@ -176,40 +126,25 @@ def implies_unsupported_continuation(content: str) -> bool:
     return any(pattern.search(content) for pattern in _UNSUPPORTED_CONTINUATION_PATTERNS)
 
 
-def enforce_no_unsupported_continuation(
-    client: LLMClient,
-    user_message: str,
-    content: str,
-) -> str:
+def detect_violations(user_message: str, content: str) -> list[ViolationKind]:
     """
-    Rewrite model output once if it promises unsupported continued work.
+    Detect answer-quality violations in user-facing content.
 
     Args:
-        client: LLM client used to revise responses.
-        user_message: User message or prompt text.
-        content: User-facing response content.
+        user_message: Original user message.
+        content: Candidate assistant reply.
 
     Returns:
-        Original content, or a revised answer without unsupported future promises.
+        List of detected violation kinds.
     """
-    if not content.strip() or not implies_unsupported_continuation(content):
-        return content
-
-    messages = [
-        {
-            "role": "system",
-            "content": UNSUPPORTED_CONTINUATION_REWRITE_SYSTEM_PROMPT,
-        },
-        {
-            "role": "user",
-            "content": (
-                f"User request: {user_message}\n\n"
-                f"Previous wrong answer:\n{content}"
-            ),
-        },
-    ]
-    revised = client.complete(messages=messages).strip()
-    return revised or content
+    violations: list[ViolationKind] = []
+    if looks_like_self_description_instead_of_answer(user_message, content):
+        violations.append("self_description")
+    if implies_unsupported_continuation(content):
+        violations.append("unsupported_continuation")
+    if talks_about_nano_in_third_person(content):
+        violations.append("third_person")
+    return violations
 
 
 def enforce_user_facing_answer(client: LLMClient, user_message: str, content: str) -> str:
@@ -224,6 +159,26 @@ def enforce_user_facing_answer(client: LLMClient, user_message: str, content: st
     Returns:
         Guarded response content.
     """
-    content = enforce_actual_answer(client, user_message, content)
-    content = enforce_no_unsupported_continuation(client, user_message, content)
-    return enforce_first_person_self_reference(client, content)
+    if not content.strip():
+        return content
+
+    violations = detect_violations(user_message, content)
+    if not violations:
+        return content
+
+    problem_lines = "\n".join(
+        f"- {_VIOLATION_LABELS[violation]}" for violation in violations
+    )
+    messages = [
+        {"role": "system", "content": GUARD_REWRITE_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                f"User question: {user_message}\n\n"
+                f"Previous wrong answer:\n{content}\n\n"
+                f"Problems to fix:\n{problem_lines}"
+            ),
+        },
+    ]
+    revised = client.complete(messages=messages).strip()
+    return revised or content

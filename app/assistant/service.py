@@ -1,15 +1,13 @@
-from collections.abc import Mapping
+from __future__ import annotations
+
 from typing import Any
 
 from app.assistant.agent import AgentService
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.llm_factory import get_llm_client
+from app.assistant.prompts import NOTE_CONTEXT_PREFIX
 from app.assistant.response_composer import ResponseComposer
-from app.assistant.response_guard import (
-    enforce_user_facing_answer,
-    looks_like_self_description_instead_of_answer,
-)
-from app.assistant.response_source import answer_source
+from app.assistant.response_pipeline import finalize_response
 from app.config import get_settings
 from app.llm.schemas import ChatResponse
 from app.memory import repository
@@ -59,7 +57,13 @@ class AssistantService:
         """
         client = get_llm_client()
         source = self.answer_executor.draft_wake(client=client)
-        content = self.composer.compose(client, source)
+        content = finalize_response(
+            client,
+            source,
+            composer=self.composer,
+            standby_detail="The wake response is ready.",
+            standby_source="assistant.wake",
+        )
         return ChatResponse(content=content)
 
     def _chat(self, message: str, conversation_id: str) -> str:
@@ -91,43 +95,21 @@ class AssistantService:
             conversation_id=conversation_id,
             history=self._history_with_notes(
                 history=history,
-                user_message=message,
                 note_limit=settings.note_context_limit,
             ),
         )
-        draft = source.facts
-        if looks_like_self_description_instead_of_answer(message, draft):
-            from app.assistant.prompts import ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT
-
-            retry_messages: list[Mapping[str, str]] = [
-                {"role": "system", "content": ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT},
-                {"role": "user", "content": message},
-            ]
-            draft = client.complete(messages=retry_messages)
-            source = answer_source(
-                user_message=message,
-                facts=draft,
-                conversation_id=conversation_id,
-            )
-        content = self.composer.compose(client, source)
-        content = enforce_user_facing_answer(client, message, content)
-        repository.add_chat_message(
-            conversation_id=conversation_id,
-            role="assistant",
-            content=content,
+        return finalize_response(
+            client,
+            source,
+            composer=self.composer,
+            standby_detail="The chat response is ready.",
+            standby_source="assistant.chat",
         )
-        activity.standby(
-            title="Nano is back in standby.",
-            detail="The chat response is ready.",
-            source="assistant.chat",
-        )
-        return content
 
     def _history_with_notes(
         self,
         *,
         history: list[Any],
-        user_message: str,
         note_limit: int,
     ) -> list[Any]:
         """
@@ -135,7 +117,6 @@ class AssistantService:
 
         Args:
             history: Stored chat history records.
-            user_message: Current user message.
             note_limit: Maximum notes to include.
 
         Returns:
@@ -148,11 +129,7 @@ class AssistantService:
         note_lines = "\n".join(f"- {note.name}: {note.content}" for note in notes)
         note_context = SimpleHistoryEntry(
             role="system",
-            content=(
-                "Relevant notes from Nano's memory:\n"
-                f"{note_lines}\n"
-                "Use them as background context when helpful."
-            ),
+            content=NOTE_CONTEXT_PREFIX.format(note_lines=note_lines),
         )
         return [*history, note_context]
 

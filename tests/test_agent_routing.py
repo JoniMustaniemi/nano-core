@@ -29,9 +29,8 @@ def test_agent_rewrites_third_person_final_answer(monkeypatch, tmp_path) -> None
 
     assert content == "I am operating normally."
     assert client.calls == 2
-    assert "rewrite it so you speak as nano in first person" in (
-        client.messages[1][0]["content"].lower()
-    )
+    assert "third person" in client.messages[1][0]["content"].lower()
+    assert "problems to fix" in client.messages[1][1]["content"].lower()
 
 
 
@@ -108,7 +107,7 @@ def test_agent_rewrites_unsupported_continuation_promise(monkeypatch, tmp_path) 
 
     assert content == "Current result only: no ongoing work is running."
     assert client.calls == 2
-    assert "Do not tell the user to wait for more results" in client.messages[1][0]["content"]
+    assert "unsupported continued work" in client.messages[1][1]["content"].lower()
 
 
 

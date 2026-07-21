@@ -5,8 +5,20 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
 from app.config import get_settings
+from app.web.tool_commands import list_tool_commands
 
 router = APIRouter(tags=["web"])
+
+
+@router.get("/api/tool-commands")
+def tool_commands() -> list[dict[str, str]]:
+    """
+    Return quick-command buttons for the web UI.
+
+    Returns:
+        Tool command definitions.
+    """
+    return list_tool_commands()
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -27,10 +39,19 @@ def home() -> str:
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <title>{app_name}</title>
-            <link rel="stylesheet" href="/static/home.css?v=answer-copy-icon-1" />
-            <script defer src="/static/home.js?v=answer-copy-icon-1"></script>
+            <link rel="stylesheet" href="/static/home.css?v=tool-drawer-2" />
+            <script defer src="/static/home.js?v=tool-drawer-4"></script>
           </head>
           <body>
+            <button
+              id="commands-toggle"
+              class="ghost commands-toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="commands-panel"
+            >
+              Commands
+            </button>
             <main class="shell">
               <section class="masthead">
                 <h1 class="title"><span>Nano</span></h1>
@@ -122,6 +143,34 @@ def home() -> str:
                 </details>
               </section>
             </main>
+
+            <div id="commands-drawer" class="commands-drawer" aria-hidden="true">
+              <button
+                id="commands-backdrop"
+                class="commands-backdrop"
+                type="button"
+                aria-label="Close commands drawer"
+                tabindex="-1"
+              ></button>
+              <aside
+                id="commands-panel"
+                class="commands-panel"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="commands-title"
+              >
+                <header class="commands-header">
+                  <div>
+                    <h2 id="commands-title">Commands</h2>
+                    <p class="commands-subtitle">Run a tool without typing.</p>
+                  </div>
+                  <button id="commands-close" class="ghost commands-close" type="button" aria-label="Close commands">
+                    Close
+                  </button>
+                </header>
+                <div id="commands-list" class="commands-list"></div>
+              </aside>
+            </div>
           </body>
         </html>
         """

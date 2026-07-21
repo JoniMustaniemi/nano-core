@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.assistant.agent_router import AgentRouter
+from app.assistant.agent_router import AgentRouter, RouteDecision
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
 from app.assistant.flows.note import NoteInteractionHandler
@@ -12,13 +12,13 @@ from app.assistant.flows.wipe import WipeInteractionHandler
 from app.assistant.llm_factory import get_llm_client
 from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_composer import ResponseComposer
+from app.assistant.response_pipeline import finalize_response
 from app.assistant.response_source import ResponseSource
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
 from app.config import get_settings
 from app.llm.protocol import LLMClient
 from app.memory import repository
-from app.runtime.activity import activity
 
 
 class AgentOrchestrator:
@@ -120,45 +120,59 @@ class AgentOrchestrator:
         conversation_id: str,
         history: list[Any],
     ) -> ResponseSource:
-        timer_source = self.timer_handler.handle_direct_request(
+        decision = self.router.decide(
+            message,
+            conversation_id=conversation_id,
+            history=history,
+        )
+        return self._dispatch(
+            decision=decision,
             client=client,
             message=message,
             conversation_id=conversation_id,
-            user_message=message,
+            history=history,
         )
-        if timer_source is not None:
-            return timer_source
 
-        pending_source = self._handle_pending_interaction(
-            pending=pending_interactions.get(conversation_id),
-            message=message,
-            conversation_id=conversation_id,
-            user_message=message,
-        )
-        if pending_source is not None:
-            return pending_source
-
-        decision = self.router.decide(message, client=client, history=history)
-        if decision.mode == "interaction":
-            if decision.interaction == "wipe":
-                return self.wipe_handler.start(
-                    conversation_id=conversation_id,
-                    message=message,
-                )
-            note_source = self.note_handler.handle_direct_request(
+    def _dispatch(
+        self,
+        *,
+        decision: RouteDecision,
+        client: LLMClient,
+        message: str,
+        conversation_id: str,
+        history: list[Any],
+    ) -> ResponseSource:
+        if decision.mode == "pending":
+            pending_source = self._handle_pending_interaction(
+                pending=pending_interactions.get(conversation_id),
                 message=message,
                 conversation_id=conversation_id,
                 user_message=message,
             )
-            if note_source is not None:
-                return note_source
+            if pending_source is not None:
+                return pending_source
+            pending_interactions.clear(conversation_id)
+            decision = self.router.decide(
+                message,
+                conversation_id=conversation_id,
+                history=history,
+            )
+
+        if decision.mode == "interaction":
+            return self._dispatch_interaction(
+                decision=decision,
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+                user_message=message,
+            )
 
         if decision.mode == "tool":
             return self.tool_executor.run(
                 user_message=message,
                 conversation_id=conversation_id,
                 tool_name=decision.tool_name or "",
-                args=decision.tool_args,
+                args=decision.tool_args or {},
             )
 
         if decision.mode == "answer":
@@ -176,6 +190,49 @@ class AgentOrchestrator:
             message=message,
             history=history,
             messages=messages,
+        )
+
+    def _dispatch_interaction(
+        self,
+        *,
+        decision: RouteDecision,
+        client: LLMClient,
+        message: str,
+        conversation_id: str,
+        user_message: str,
+    ) -> ResponseSource:
+        if decision.interaction == "wipe":
+            return self.wipe_handler.start(
+                conversation_id=conversation_id,
+                message=message,
+            )
+
+        if decision.interaction == "timer":
+            timer_source = self.timer_handler.handle_direct_request(
+                message=message,
+                conversation_id=conversation_id,
+                user_message=user_message,
+            )
+            if timer_source is not None:
+                return timer_source
+
+        if decision.interaction == "note":
+            note_source = self.note_handler.handle_direct_request(
+                message=message,
+                conversation_id=conversation_id,
+                user_message=user_message,
+            )
+            if note_source is not None:
+                return note_source
+
+        return self.answer_executor.draft(
+            client=client,
+            message=message,
+            conversation_id=conversation_id,
+            history=repository.list_chat_messages(
+                conversation_id=conversation_id,
+                limit=get_settings().chat_history_limit,
+            ),
         )
 
     def _handle_pending_interaction(
@@ -208,16 +265,9 @@ class AgentOrchestrator:
         return None
 
     def _finalize(self, *, client: LLMClient, source: ResponseSource) -> str:
-        content = self.composer.compose(client, source)
-        if source.persist:
-            repository.add_chat_message(
-                conversation_id=source.conversation_id,
-                role="assistant",
-                content=content,
-            )
-        activity.standby(
-            title="Nano is back in standby.",
-            detail="The response is ready.",
-            source="assistant.orchestrator",
+        return finalize_response(
+            client,
+            source,
+            composer=self.composer,
+            standby_source="assistant.orchestrator",
         )
-        return content

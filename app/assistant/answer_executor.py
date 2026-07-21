@@ -81,4 +81,5 @@ class AnswerExecutor:
             user_message="wake phrase",
             facts=content,
             conversation_id="wake",
+            persist=False,
         )

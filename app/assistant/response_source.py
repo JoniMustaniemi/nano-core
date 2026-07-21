@@ -8,6 +8,17 @@ ResponseKind = Literal["answer", "tool_result", "tool_error", "follow_up", "conf
 
 @dataclass(frozen=True)
 class ResponseSource:
+    """
+    Structured facts produced before composition and guarding.
+
+    Compose strategy by kind:
+    - answer: pass-through (draft already uses SYSTEM_PROMPT)
+    - follow_up: pass-through
+    - confirmation: LLM wording for wipe prompts; pass-through otherwise
+    - tool_result: deterministic for health; hinted/LLM for JSON payloads
+    - tool_error: LLM for JSON payloads; pass-through for plain text
+    """
+
     kind: ResponseKind
     user_message: str
     facts: str

@@ -14,6 +14,12 @@ const brainsStatus = document.getElementById("brains-status");
 const storagePanel = document.querySelector(".storage");
 const storageStatus = document.getElementById("storage-status");
 const storageLog = document.getElementById("storage-log");
+const commandsToggle = document.getElementById("commands-toggle");
+const commandsDrawer = document.getElementById("commands-drawer");
+const commandsBackdrop = document.getElementById("commands-backdrop");
+const commandsClose = document.getElementById("commands-close");
+const commandsPanel = document.getElementById("commands-panel");
+const commandsList = document.getElementById("commands-list");
 
 let currentVoiceUrl = null;
 let voicePlaybackQueue = Promise.resolve();
@@ -39,6 +45,137 @@ let currentActivitySnapshot = {
   detail: "Ready for the next task.",
 };
 const activityStates = ["standby", "working", "error"];
+let toolCommands = [];
+
+function groupCommands(commands) {
+  const groups = new Map();
+  for (const command of commands) {
+    const category = command.category || "Other";
+    if (!groups.has(category)) {
+      groups.set(category, []);
+    }
+    groups.get(category).push(command);
+  }
+  return Array.from(groups.entries());
+}
+
+function renderToolCommands(commands) {
+  toolCommands = commands;
+  commandsList.replaceChildren();
+  for (const [category, items] of groupCommands(commands)) {
+    const group = document.createElement("section");
+    group.className = "commands-group";
+
+    const title = document.createElement("h3");
+    title.className = "commands-group-title";
+    title.textContent = category;
+
+    const grid = document.createElement("div");
+    grid.className = "commands-group-grid";
+
+    for (const command of items) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "command-button";
+      button.dataset.commandMessage = command.message;
+
+      const label = document.createElement("span");
+      label.className = "command-button-label";
+      label.textContent = command.label;
+
+      button.append(label);
+      if (command.description) {
+        const description = document.createElement("span");
+        description.className = "command-button-description";
+        description.textContent = command.description;
+        button.append(description);
+      }
+
+      button.addEventListener("click", () => {
+        void runToolCommand(command.message);
+      });
+      grid.append(button);
+    }
+
+    group.append(title, grid);
+    commandsList.append(group);
+  }
+}
+
+function setCommandButtonsDisabled(disabled) {
+  for (const button of commandsList.querySelectorAll(".command-button")) {
+    button.disabled = disabled;
+  }
+}
+
+function isBusy() {
+  if (listeningForCommand) {
+    return false;
+  }
+  return requestInFlight || wakeAcknowledging;
+}
+
+function getDisplayState() {
+  if (requestInFlight || wakeAcknowledging) {
+    return "working";
+  }
+  if (currentActivitySnapshot.state === "working") {
+    return "working";
+  }
+  if (isListeningStateActive()) {
+    return "listening";
+  }
+  return "standby";
+}
+
+function updateInputLock() {
+  const locked = isBusy();
+  messageBox.disabled = locked;
+  sendButton.disabled = locked;
+  commandsToggle.disabled = locked;
+  setCommandButtonsDisabled(locked);
+  if (!SpeechRecognitionCtor) {
+    listenButton.disabled = true;
+  } else {
+    listenButton.disabled = locked;
+  }
+  document.body.classList.toggle("inputs-locked", locked);
+}
+
+function openCommandsDrawer() {
+  if (isBusy()) {
+    return;
+  }
+  commandsDrawer.classList.add("open");
+  commandsDrawer.setAttribute("aria-hidden", "false");
+  commandsToggle.setAttribute("aria-expanded", "true");
+  commandsClose.focus();
+}
+
+function closeCommandsDrawer() {
+  commandsDrawer.classList.remove("open");
+  commandsDrawer.setAttribute("aria-hidden", "true");
+  commandsToggle.setAttribute("aria-expanded", "false");
+  commandsToggle.focus();
+}
+
+async function loadToolCommands() {
+  const response = await fetch("/api/tool-commands");
+  if (!response.ok) {
+    throw new Error("Could not load tool commands.");
+  }
+  return response.json();
+}
+
+async function runToolCommand(message) {
+  if (isBusy()) {
+    return;
+  }
+  messageBox.value = message;
+  closeCommandsDrawer();
+  await submitMessage(message, "command");
+  messageBox.value = "";
+}
 
 function updateListenButton() {
   if (!SpeechRecognitionCtor) {
@@ -69,25 +206,13 @@ function isListeningStateActive() {
   );
 }
 
-function getDisplayState() {
-  if (requestInFlight) {
-    return "working";
-  }
-  if (currentActivitySnapshot.state === "working") {
-    return "working";
-  }
-  if (isListeningStateActive()) {
-    return "listening";
-  }
-  return "standby";
-}
-
 function renderState() {
   const displayState = getDisplayState();
   stateLine.textContent = displayState;
   for (const segment of stateSegments) {
     segment.classList.toggle("active", segment.dataset.stateSegment === displayState);
   }
+  updateInputLock();
 }
 
 function resetVoiceListeningMode() {
@@ -191,7 +316,7 @@ function ensureRecognition() {
     }
 
     const transcript = finalTranscript.trim();
-    if (!transcript || requestInFlight) {
+    if (!transcript || isBusy()) {
       return;
     }
 
@@ -297,6 +422,9 @@ function waitForRecognitionToStop(timeoutMs = 1200) {
 }
 
 function startVoiceListening(mode = "manual", preserveCommandMode = false) {
+  if (!preserveCommandMode && isBusy()) {
+    return;
+  }
   if (!SpeechRecognitionCtor) {
     replyStatus.textContent = "This browser does not support voice listening.";
     setVoiceStatus("This browser does not support voice listening.");
@@ -399,10 +527,11 @@ async function requestWakeAcknowledgement() {
 }
 
 async function acknowledgeWakePhrase() {
-  if (wakeAcknowledging) {
+  if (wakeAcknowledging || isBusy()) {
     return;
   }
   wakeAcknowledging = true;
+  renderState();
   listeningEnabled = false;
   recognitionStarting = false;
   if (recognition) {
@@ -419,19 +548,43 @@ async function acknowledgeWakePhrase() {
   } finally {
     wakeAcknowledging = false;
     listeningForCommand = true;
+    renderState();
     if (microphoneReady) {
       startVoiceListening("resume", true);
     }
   }
 }
 
-function applyState(snapshot) {
+function applyStatusSnapshot(snapshot) {
   currentActivitySnapshot = {
     ...currentActivitySnapshot,
-    ...snapshot,
     state: activityStates.includes(snapshot.state) ? snapshot.state : "standby",
+    headline: snapshot.headline || currentActivitySnapshot.headline,
+    detail: snapshot.detail ?? currentActivitySnapshot.detail,
   };
   renderState();
+}
+
+function applyActivityEvent(event) {
+  if (event.kind !== "state") {
+    return;
+  }
+  currentActivitySnapshot = {
+    ...currentActivitySnapshot,
+    state: activityStates.includes(event.state) ? event.state : "standby",
+    headline: event.title || currentActivitySnapshot.headline,
+    detail: event.detail ?? currentActivitySnapshot.detail,
+  };
+  renderState();
+}
+
+async function syncRuntimeStatus() {
+  try {
+    const snapshot = await loadSnapshot();
+    applyStatusSnapshot(snapshot);
+  } catch (error) {
+    replyStatus.textContent = error.message;
+  }
 }
 
 function formatEvent(event) {
@@ -609,7 +762,7 @@ async function bootstrap() {
   try {
     const snapshot = await loadSnapshot();
     const storage = await loadStorage();
-    applyState(snapshot);
+    applyStatusSnapshot(snapshot);
     refreshEvents(snapshot);
     renderStorage(storage);
     const voiceResponse = await fetch("/api/voice/status");
@@ -620,6 +773,8 @@ async function bootstrap() {
         replyStatus.textContent = voice.detail;
       }
     }
+    const commands = await loadToolCommands();
+    renderToolCommands(commands);
     await connectMicrophoneOnStartup();
     const lastEventId = Array.isArray(snapshot.events)
       ? snapshot.events.reduce((maxId, event) => {
@@ -646,7 +801,7 @@ function listen(lastEventId = 0) {
   const source = new EventSource(`/events?since=${lastEventId}`);
   source.addEventListener("activity", (event) => {
     const payload = JSON.parse(event.data);
-    applyState(payload);
+    applyActivityEvent(payload);
     appendEvent(payload);
     refreshStorage();
   });
@@ -656,6 +811,10 @@ function listen(lastEventId = 0) {
 }
 
 async function sendMessage() {
+  if (isBusy()) {
+    replyStatus.textContent = "Nano is still working. Wait for the current answer.";
+    return;
+  }
   const message = messageBox.value.trim();
   if (!message) {
     replyStatus.textContent = "Write a message first.";
@@ -671,10 +830,11 @@ async function sendRecognizedMessage(message) {
 }
 
 async function submitMessage(message, source) {
-  sendButton.disabled = true;
   requestInFlight = true;
   renderState();
   replyStatus.textContent = source === "voice" ? "Sending voice command..." : "Sending...";
+  let answerText = "";
+  let requestFailed = false;
   try {
     const response = await fetch("/chat", {
       method: "POST",
@@ -690,30 +850,48 @@ async function submitMessage(message, source) {
     if (!response.ok) {
       throw new Error(data.detail || "Chat request failed.");
     }
-    setAnswer(data.content);
+    answerText = data.content;
+    setAnswer(answerText);
     replyStatus.textContent = "Nano answered.";
-    const needsVoiceFollowUp = answerNeedsVoiceFollowUp(data.content);
-    if (needsVoiceFollowUp) {
-      setVoiceStatus("Nano needs your answer. Listening after it finishes speaking.");
-      await playVoice(data.content, { pauseRecognition: true });
-      armVoiceFollowUp("Listening for your answer.");
-    } else {
-      await playVoice(data.content, { pauseRecognition: true });
-      returnToWakeDetection();
-    }
     await refreshStorage();
   } catch (error) {
+    requestFailed = true;
     replyStatus.textContent = error.message;
     returnToWakeDetection();
   } finally {
-    sendButton.disabled = false;
     requestInFlight = false;
-    renderState();
+    await syncRuntimeStatus();
   }
+
+  if (requestFailed || !answerText) {
+    return;
+  }
+
+  const needsVoiceFollowUp = answerNeedsVoiceFollowUp(answerText);
+  if (needsVoiceFollowUp) {
+    setVoiceStatus("Nano needs your answer. Listening after it finishes speaking.");
+    await playVoice(answerText, { pauseRecognition: true });
+    armVoiceFollowUp("Listening for your answer.");
+    return;
+  }
+
+  await playVoice(answerText, { pauseRecognition: true });
+  returnToWakeDetection();
 }
 
 sendButton.addEventListener("click", sendMessage);
+commandsToggle.addEventListener("click", openCommandsDrawer);
+commandsClose.addEventListener("click", closeCommandsDrawer);
+commandsBackdrop.addEventListener("click", closeCommandsDrawer);
+commandsPanel.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeCommandsDrawer();
+  }
+});
 listenButton.addEventListener("click", () => {
+  if (isBusy()) {
+    return;
+  }
   if (listeningEnabled || recognitionStarting) {
     stopVoiceListening();
     return;
@@ -738,6 +916,9 @@ copyAnswerButton.addEventListener("click", async () => {
 messageBox.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
+    if (isBusy()) {
+      return;
+    }
     sendMessage();
   }
 });
