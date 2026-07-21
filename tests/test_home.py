@@ -24,8 +24,11 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Start Listening" in response.text
     assert "Stop Audio" not in response.text
     assert "Voice standby." in response.text
-    assert 'href="/static/home.css?v=answer-copy-icon-1"' in response.text
-    assert 'src="/static/home.js?v=answer-copy-icon-1"' in response.text
+    assert 'href="/static/home.css?v=tool-drawer-2"' in response.text
+    assert 'src="/static/home.js?v=tool-drawer-4"' in response.text
+    assert 'id="commands-toggle"' in response.text
+    assert 'id="commands-drawer"' in response.text
+    assert "Commands" in response.text
     assert 'aria-label="Copy answer"' in response.text
     assert "Copy Answer" not in response.text
 
@@ -59,7 +62,7 @@ def test_homepage_serves_static_assets() -> None:
     assert "answerNeedsVoiceFollowUp" in js_response.text
     assert "how long should the timer run" in js_response.text
     assert "Listening for your answer." in js_response.text
-    assert "await playVoice(data.content, { pauseRecognition: true });" in js_response.text
+    assert "await playVoice(answerText, { pauseRecognition: true });" in js_response.text
     assert "voicePlaybackQueue" in js_response.text
     assert "playVoiceNow" in js_response.text
     assert "recognitionPausedForSpeech" in js_response.text
@@ -68,14 +71,39 @@ def test_homepage_serves_static_assets() -> None:
     assert "pauseRecognitionForSpeech" in js_response.text
     assert "returnToWakeDetection" in js_response.text
     assert 'copyAnswerButton.classList.add("copied")' in js_response.text
-    assert "stop-audio" not in js_response.text
-    assert "stopAudioButton" not in js_response.text
-    assert "if (requestInFlight)" in js_response.text
-    assert "requestInFlight = true;\n  renderState();" in js_response.text
+    assert "command-button" in css_response.text
+    assert "commands-drawer" in css_response.text
+    assert 'fetch("/api/tool-commands")' in js_response.text
+    assert "runToolCommand" in js_response.text
+    assert "applyActivityEvent" in js_response.text
+    assert "applyStatusSnapshot" in js_response.text
+    assert 'event.kind !== "state"' in js_response.text
+    assert "syncRuntimeStatus" in js_response.text
+    assert "inputs-locked" in css_response.text
+    assert "isBusy()" in js_response.text
+    assert "requestInFlight = false;" in js_response.text
     assert '"hey", "hi"' in js_response.text
     assert '"nana"' in js_response.text
     assert '"i know"' in js_response.text
     assert 'fetch("/chat/wake")' in js_response.text
+
+
+def test_tool_commands_endpoint_lists_quick_actions() -> None:
+    """
+    Verify that tool commands endpoint returns UI quick actions.
+
+    Returns:
+        None.
+    """
+    with TestClient(app) as client:
+        response = client.get("/api/tool-commands")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) >= 5
+    assert any(item["id"] == "check_health" for item in payload)
+    assert any(item["message"] == "List my notes." for item in payload)
 
 
 def test_status_endpoint_starts_in_standby() -> None:

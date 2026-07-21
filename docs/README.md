@@ -19,7 +19,57 @@ prompt because their UX is handled by interaction handlers.
 
 `AgentChatFlow` builds planner messages only; it is not an interaction handler.
 
-## Project Layout
+## Answer Pipeline
+
+Every user-facing reply follows one path:
+
+```
+User message
+  → AgentRouter.decide() (or AnswerExecutor.draft in chat mode)
+  → ResponseSource (facts + kind)
+  → finalize_response()
+      → ResponseComposer.compose()   # apply voice to facts
+      → enforce_user_facing_answer() # single guard pass
+      → persist + activity.standby
+```
+
+**Invariant:** compose runs once, guard runs once, persist runs once.
+
+`ResponseSource.kind` compose strategy:
+
+| Kind | Compose strategy |
+|------|------------------|
+| `answer` | pass-through (draft already used `SYSTEM_PROMPT`) |
+| `follow_up` | pass-through |
+| `confirmation` | LLM wording for wipe prompts; pass-through otherwise |
+| `tool_result` | deterministic for health; hinted/LLM for JSON payloads |
+| `tool_error` | LLM for JSON payloads; pass-through for plain text |
+
+## Routing
+
+`AgentRouter` is the single routing table for new agent messages:
+
+1. Timer status/cancel (clears pending timer follow-ups)
+2. Pending interaction resume
+3. Timer start/duration
+4. Wipe confirmation
+5. Note add/list/lookup
+6. Health check tool
+7. Pull request tool
+8. Direct answer without tools
+9. Planner fallback
+
+## Prompt Guide
+
+Edit [`app/assistant/prompts.py`](app/assistant/prompts.py) to change Nano's behavior.
+
+- **Shared primitives** (`_IDENTITY`, `_VOICE`, `_EVIDENCE`, etc.) define reusable rules.
+- **Composed constants** (`SYSTEM_PROMPT`, `AGENT_SYSTEM_PROMPT`, `GUARD_REWRITE_SYSTEM_PROMPT`, etc.) combine primitives for each call site.
+- **`COMPOSE_HINTS`** holds tool-specific composition rules (for example pull requests).
+- **`NOTE_CONTEXT_PREFIX`** formats note context injected in chat mode.
+
+Flow handler `facts` strings (timer follow-ups, note prompts) live in `app/assistant/flows/` and are UX copy, not system prompts.
+
 
 - `app/main.py` creates the FastAPI application and registers routers.
 - `app/api/*` contains the HTTP endpoints.

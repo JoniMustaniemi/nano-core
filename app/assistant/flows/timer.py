@@ -5,9 +5,6 @@ from typing import Any
 
 from app.assistant.agent_rules import (
     duration_args_from_message,
-    is_timer_cancel_request,
-    is_timer_start_request,
-    is_timer_status_request,
     needs_timer_duration,
     timer_confirmation,
 )
@@ -19,13 +16,12 @@ from app.assistant.response_source import (
 )
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
-from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
 
 
 class TimerInteractionHandler:
     """
-    Handle timer-specific direct requests and pending duration follow-ups.
+    Handle timer start requests and pending duration follow-ups.
     """
 
     def __init__(
@@ -47,16 +43,14 @@ class TimerInteractionHandler:
     def handle_direct_request(
         self,
         *,
-        client: LLMClient,
         message: str,
         conversation_id: str,
         user_message: str,
     ) -> ResponseSource | None:
         """
-        Handle timer requests that should bypass the planner.
+        Handle timer start requests routed by AgentRouter.
 
         Args:
-            client: LLM client retained for API compatibility.
             message: User message or prompt text.
             conversation_id: Conversation identifier used to scope history.
             user_message: Original user message.
@@ -64,41 +58,24 @@ class TimerInteractionHandler:
         Returns:
             Timer response source when handled; otherwise None.
         """
-        _ = client
-        if is_timer_status_request(message):
-            pending_interactions.clear(conversation_id)
-            return self.tool_executor.run(
-                user_message=user_message,
-                conversation_id=conversation_id,
-                tool_name="list_timers",
-                args={},
-            )
-
-        if is_timer_cancel_request(message):
-            pending_interactions.clear(conversation_id)
-            return self.tool_executor.run(
-                user_message=user_message,
-                conversation_id=conversation_id,
-                tool_name="cancel_timers",
-                args={},
-            )
-
         if needs_timer_duration(message):
             return self._request_timer_duration(
                 conversation_id=conversation_id,
                 user_message=user_message,
             )
 
-        if is_timer_start_request(message):
-            duration_args = duration_args_from_message(message)
-            if duration_args is not None:
-                return self._run_timer_request(
-                    conversation_id=conversation_id,
-                    user_message=user_message,
-                    args=duration_args,
-                )
+        duration_args = duration_args_from_message(message)
+        if duration_args is not None:
+            return self._run_timer_request(
+                conversation_id=conversation_id,
+                user_message=user_message,
+                args=duration_args,
+            )
 
-        return None
+        return self._request_timer_duration(
+            conversation_id=conversation_id,
+            user_message=user_message,
+        )
 
     def handle_pending(
         self,

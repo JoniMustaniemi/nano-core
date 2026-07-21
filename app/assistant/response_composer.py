@@ -3,15 +3,18 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.assistant.prompts import RESPONSE_COMPOSER_PROMPT, WIPE_CONFIRMATION_SYSTEM_PROMPT
-from app.assistant.response_guard import enforce_user_facing_answer
+from app.assistant.prompts import (
+    COMPOSE_HINTS,
+    RESPONSE_COMPOSER_PROMPT,
+    WIPE_CONFIRMATION_SYSTEM_PROMPT,
+)
 from app.assistant.response_source import ResponseSource
 from app.llm.protocol import LLMClient
 
 
 class ResponseComposer:
     """
-    Single personality gate for all user-facing assistant text.
+    Turn structured facts into Nano-voiced text before the guard pass runs.
     """
 
     def compose(self, client: LLMClient, source: ResponseSource) -> str:
@@ -23,21 +26,21 @@ class ResponseComposer:
             source: Structured response input.
 
         Returns:
-            User-facing assistant text.
+            User-facing assistant text before guarding.
         """
         if source.kind in {"follow_up", "confirmation", "answer"}:
             if source.kind == "confirmation":
                 return self._compose_confirmation(client, source)
-            return enforce_user_facing_answer(client, source.user_message, source.facts)
+            return source.facts
 
         if source.kind == "tool_result" and source.tool_name == "check_health":
             return self._compose_health_result(source.facts)
 
-        if source.kind == "tool_result" and source.tool_name == "create_pull_request":
-            return self._compose_pr_result(client, source)
+        if source.kind == "tool_result" and source.tool_name in COMPOSE_HINTS:
+            return self._compose_with_hint(client, source)
 
         if source.kind in {"tool_result", "tool_error"} and not self._looks_like_json(source.facts):
-            return enforce_user_facing_answer(client, source.user_message, source.facts)
+            return source.facts
 
         return self._compose_with_llm(client, source)
 
@@ -53,7 +56,7 @@ class ResponseComposer:
             Confirmation prompt text.
         """
         if not source.facts.startswith("User requested:"):
-            return enforce_user_facing_answer(client, source.user_message, source.facts)
+            return source.facts
         summary_messages = [
             {"role": "system", "content": WIPE_CONFIRMATION_SYSTEM_PROMPT},
             {"role": "user", "content": source.facts},
@@ -62,8 +65,39 @@ class ResponseComposer:
         if not draft:
             draft = source.facts
         cleaned = draft.replace("\n", " ").strip().rstrip(". ")
-        content = f"{cleaned}. Reply yes to proceed or no to cancel."
-        return enforce_user_facing_answer(client, source.user_message, content)
+        return f"{cleaned}. Reply yes to proceed or no to cancel."
+
+    def _compose_with_hint(self, client: LLMClient, source: ResponseSource) -> str:
+        """
+        Compose a tool result using a registered compose hint.
+
+        Args:
+            client: LLM client used for composition.
+            source: Tool result response source.
+
+        Returns:
+            Composed user-facing text.
+        """
+        hint = COMPOSE_HINTS.get(source.tool_name or "", "")
+        system_prompt = RESPONSE_COMPOSER_PROMPT
+        if hint:
+            system_prompt = f"{system_prompt}\n\n{hint}"
+        summary_messages = [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": (
+                    f"User request: {source.user_message}\n\n"
+                    f"Tool result:\n{source.facts}"
+                ),
+            },
+        ]
+        summary = client.complete(messages=summary_messages).strip()
+        if not summary:
+            if source.tool_name == "create_pull_request":
+                return self._pr_fallback_message(self._parse_json_dict(source.facts))
+            return "The procedure finished, though the summary failed to materialize."
+        return summary
 
     def _compose_with_llm(self, client: LLMClient, source: ResponseSource) -> str:
         """
@@ -99,17 +133,9 @@ class ResponseComposer:
         summary = client.complete(messages=summary_messages).strip()
         if not summary:
             if source.kind == "tool_error":
-                return enforce_user_facing_answer(
-                    client,
-                    source.user_message,
-                    self._tool_error_fallback(source),
-                )
-            return enforce_user_facing_answer(
-                client,
-                source.user_message,
-                "The procedure finished, though the summary failed to materialize.",
-            )
-        return enforce_user_facing_answer(client, source.user_message, summary)
+                return self._tool_error_fallback(source)
+            return "The procedure finished, though the summary failed to materialize."
+        return summary
 
     def _compose_health_result(self, tool_result: str) -> str:
         """
@@ -146,48 +172,12 @@ class ResponseComposer:
                 lines.append(f"My {name} check is failing.")
         return " ".join(lines)
 
-    def _compose_pr_result(self, client: LLMClient, source: ResponseSource) -> str:
-        """
-        Compose a pull request workflow announcement.
-
-        Args:
-            client: LLM client used for composition.
-            source: Pull request tool result source.
-
-        Returns:
-            Pull request announcement text.
-        """
+    def _parse_json_dict(self, value: str) -> dict[str, Any]:
         try:
-            payload = json.loads(source.facts)
+            payload = json.loads(value)
         except json.JSONDecodeError:
-            return "I attempted to open a pull request, but the result was unreadable."
-
-        if not isinstance(payload, dict):
-            return "I attempted to open a pull request, but the result was unreadable."
-
-        fallback = self._pr_fallback_message(payload)
-        summary_messages = [
-            {
-                "role": "system",
-                "content": (
-                    RESPONSE_COMPOSER_PROMPT
-                    + " Nano creates the feature branch automatically; never ask the user "
-                    + "to provide a branch name. If verification failed, say you refused to "
-                    + "commit and open a pull request; do not dump full test output."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"User request: {source.user_message}\n\n"
-                    f"Pull request workflow result:\n{json.dumps(payload, ensure_ascii=False)}"
-                ),
-            },
-        ]
-        summary = client.complete(messages=summary_messages).strip()
-        if not summary:
-            return fallback
-        return enforce_user_facing_answer(client, source.user_message, summary)
+            return {}
+        return payload if isinstance(payload, dict) else {}
 
     def _pr_fallback_message(self, payload: dict[str, Any]) -> str:
         """
