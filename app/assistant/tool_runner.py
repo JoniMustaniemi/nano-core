@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from app.assistant.agent_rules import tool_announcement
@@ -30,10 +31,14 @@ class ToolRunner:
                 detail=error_message,
                 spoken_message="I hit a tool error while trying to complete the task.",
             )
-            return ToolResult(tool=tool_name, content=error_message)
+            return ToolResult(
+                tool=tool_name,
+                content=json.dumps({"ok": False, "error": error_message}),
+                ok=False,
+            )
 
         try:
-            return ToolResult(tool=tool_name, content=tool.handler(args))
+            return ToolResult(tool=tool_name, content=tool.handler(args), ok=True)
         except Exception as exc:
             error_message = f"Error while running {tool_name}: {exc}"
             self.report_error(
@@ -41,7 +46,11 @@ class ToolRunner:
                 detail=error_message,
                 spoken_message="I hit an error while trying to complete the task.",
             )
-            return ToolResult(tool=tool_name, content=error_message)
+            return ToolResult(
+                tool=tool_name,
+                content=json.dumps({"ok": False, "error": error_message}),
+                ok=False,
+            )
 
     def announce_call(self, tool_name: str) -> None:
         """

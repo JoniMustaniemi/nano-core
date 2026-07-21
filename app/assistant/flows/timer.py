@@ -11,10 +11,14 @@ from app.assistant.agent_rules import (
     needs_timer_duration,
     timer_confirmation,
 )
-from app.assistant.flows.direct_tool import DirectToolHandler
 from app.assistant.pending import PendingInteraction, pending_interactions
+from app.assistant.response_source import (
+    ResponseSource,
+    confirmation_source,
+    follow_up_source,
+)
+from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
-from app.memory import repository
 from app.runtime.activity import activity
 
 
@@ -27,20 +31,17 @@ class TimerInteractionHandler:
         self,
         *,
         tool_runner: ToolRunner,
-        direct_tool_handler: DirectToolHandler,
+        tool_executor: ToolExecutor,
     ) -> None:
         """
         Initialize the TimerInteractionHandler instance.
 
         Args:
             tool_runner: Tool runner value.
-            direct_tool_handler: Direct tool handler value.
-
-        Returns:
-            None.
+            tool_executor: Tool executor value.
         """
         self.tool_runner = tool_runner
-        self.direct_tool_handler = direct_tool_handler
+        self.tool_executor = tool_executor
 
     def handle_direct_request(
         self,
@@ -48,34 +49,35 @@ class TimerInteractionHandler:
         client: Any,
         message: str,
         conversation_id: str,
-    ) -> str | None:
+        user_message: str,
+    ) -> ResponseSource | None:
         """
         Handle timer requests that should bypass the planner.
 
         Args:
-            client: LLM client used for direct tool handling.
+            client: LLM client retained for API compatibility.
             message: User message or prompt text.
             conversation_id: Conversation identifier used to scope history.
+            user_message: Original user message.
 
         Returns:
-            Timer response when handled; otherwise None.
+            Timer response source when handled; otherwise None.
         """
+        _ = client
         if is_timer_status_request(message):
             pending_interactions.clear(conversation_id)
-            return self.direct_tool_handler.run(
-                client=client,
+            return self.tool_executor.run(
+                user_message=user_message,
                 conversation_id=conversation_id,
-                user_message=message,
                 tool_name="list_timers",
                 args={},
             )
 
         if is_timer_cancel_request(message):
             pending_interactions.clear(conversation_id)
-            return self.direct_tool_handler.run(
-                client=client,
+            return self.tool_executor.run(
+                user_message=user_message,
                 conversation_id=conversation_id,
-                user_message=message,
                 tool_name="cancel_timers",
                 args={},
             )
@@ -83,7 +85,7 @@ class TimerInteractionHandler:
         if needs_timer_duration(message):
             return self._request_timer_duration(
                 conversation_id=conversation_id,
-                message=message,
+                user_message=user_message,
             )
 
         if is_timer_start_request(message):
@@ -91,6 +93,7 @@ class TimerInteractionHandler:
             if duration_args is not None:
                 return self._run_timer_request(
                     conversation_id=conversation_id,
+                    user_message=user_message,
                     args=duration_args,
                 )
 
@@ -102,7 +105,8 @@ class TimerInteractionHandler:
         pending: PendingInteraction,
         message: str,
         conversation_id: str,
-    ) -> str | None:
+        user_message: str,
+    ) -> ResponseSource | None:
         """
         Continue a pending timer duration request.
 
@@ -110,78 +114,78 @@ class TimerInteractionHandler:
             pending: Pending interaction.
             message: User message or prompt text.
             conversation_id: Conversation identifier used to scope history.
+            user_message: Original user message.
 
         Returns:
-            Timer response when handled; otherwise None.
+            Timer response source when handled; otherwise None.
         """
         if pending.kind != "timer_duration":
             return None
 
         duration_args = duration_args_from_message(message)
         if duration_args is None:
-            follow_up = "Specify the timer duration in seconds or minutes."
-            repository.add_chat_message(
+            return follow_up_source(
+                user_message=user_message,
+                facts="Specify the timer duration in seconds or minutes.",
                 conversation_id=conversation_id,
-                role="assistant",
-                content=follow_up,
             )
-            activity.standby(
-                title="Nano needs one detail.",
-                detail="Waiting for a valid timer duration.",
-                source="assistant.flows.timer",
-            )
-            return follow_up
 
         pending_interactions.clear(conversation_id)
         return self._run_timer_request(
             conversation_id=conversation_id,
+            user_message=user_message,
             args=duration_args,
         )
 
-    def _request_timer_duration(self, *, conversation_id: str, message: str) -> str:
+    def _request_timer_duration(
+        self,
+        *,
+        conversation_id: str,
+        user_message: str,
+    ) -> ResponseSource:
         """
         Ask the user for a missing timer duration.
 
         Args:
             conversation_id: Conversation identifier used to scope history.
-            message: User message or prompt text.
+            user_message: Original user message.
 
         Returns:
-            Follow-up question.
+            Follow-up response source.
         """
-        follow_up = "How long should the timer run?"
         pending_interactions.set(
             conversation_id=conversation_id,
             kind="timer_duration",
-            payload={"request": message},
-        )
-        repository.add_chat_message(
-            conversation_id=conversation_id,
-            role="assistant",
-            content=follow_up,
+            payload={"request": user_message},
         )
         activity.standby(
             title="Nano needs one detail.",
             detail="Waiting for the timer duration.",
             source="assistant.flows.timer",
         )
-        return follow_up
+        return follow_up_source(
+            user_message=user_message,
+            facts="How long should the timer run?",
+            conversation_id=conversation_id,
+        )
 
     def _run_timer_request(
         self,
         *,
         conversation_id: str,
+        user_message: str,
         args: dict[str, Any],
-    ) -> str:
+    ) -> ResponseSource:
         """
-        Start a timer and return a friendly confirmation.
+        Start a timer and return a confirmation response source.
 
         Args:
             conversation_id: Conversation identifier used to scope history.
+            user_message: Original user message.
             args: Timer tool arguments.
 
         Returns:
-            Timer confirmation text.
+            Timer confirmation response source.
         """
         activity.working(
             title="Nano is setting a timer.",
@@ -195,15 +199,13 @@ class TimerInteractionHandler:
         )
         self.tool_runner.announce_call("start_timer")
         result = self.tool_runner.execute("start_timer", args)
-        confirmation = timer_confirmation(args)
-        repository.add_chat_message(
-            conversation_id=conversation_id,
-            role="assistant",
-            content=confirmation,
-        )
         activity.standby(
             title="Nano finished the task.",
             detail=result.content,
             source="assistant.flows.timer",
         )
-        return confirmation
+        return confirmation_source(
+            user_message=user_message,
+            facts=timer_confirmation(args),
+            conversation_id=conversation_id,
+        )

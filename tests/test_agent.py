@@ -20,9 +20,9 @@ def _patch_agent(monkeypatch, *, client, tmp_path, announce=None) -> None:
     Returns:
         None.
     """
-    monkeypatch.setattr("app.assistant.agent.get_llm_client", lambda: client)
+    monkeypatch.setattr("app.assistant.orchestrator.get_llm_client", lambda: client)
     monkeypatch.setattr(
-        "app.assistant.agent.get_settings",
+        "app.assistant.orchestrator.get_settings",
         lambda: SimpleNamespace(
             chat_history_limit=12,
             workspace_root=str(tmp_path),

@@ -69,7 +69,7 @@ def test_health_check_sets_working_activity(monkeypatch) -> None:
     Returns:
         None.
     """
-    monkeypatch.setattr("app.assistant.agent.get_llm_client", lambda: _HealthClient())
+    monkeypatch.setattr("app.assistant.orchestrator.get_llm_client", lambda: _HealthClient())
     monkeypatch.setattr(
         "app.assistant.tool_runner.GladosVoiceService.announce",
         lambda self, text: None,

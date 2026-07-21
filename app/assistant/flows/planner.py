@@ -5,10 +5,10 @@ from typing import Any
 
 from app.assistant.agent_rules import parse_decision, tool_matches_request, tool_signature
 from app.assistant.agent_types import ToolResult
+from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
-from app.assistant.response_guard import enforce_user_facing_answer
+from app.assistant.response_source import ResponseSource, answer_source, tool_result_source
 from app.assistant.tool_runner import ToolRunner
-from app.memory import repository
 from app.runtime.activity import activity
 
 
@@ -22,6 +22,7 @@ class AgentPlanner:
         *,
         tool_runner: ToolRunner,
         chat_flow: AgentChatFlow,
+        answer_executor: AnswerExecutor | None = None,
     ) -> None:
         """
         Initialize the AgentPlanner instance.
@@ -29,12 +30,14 @@ class AgentPlanner:
         Args:
             tool_runner: Tool runner value.
             chat_flow: Chat fallback flow value.
+            answer_executor: Answer executor used for planner fallbacks.
 
         Returns:
             None.
         """
         self.tool_runner = tool_runner
         self.chat_flow = chat_flow
+        self.answer_executor = answer_executor or AnswerExecutor()
 
     def run(
         self,
@@ -44,9 +47,9 @@ class AgentPlanner:
         message: str,
         history: list[Any],
         messages: list[dict[str, str]],
-    ) -> str:
+    ) -> ResponseSource:
         """
-        Run the planner until it returns a final answer or reaches a limit.
+        Run the planner until it can build a response source or reaches a limit.
 
         Args:
             client: LLM client used to generate planner decisions.
@@ -56,7 +59,7 @@ class AgentPlanner:
             messages: Planner messages.
 
         Returns:
-            User-facing assistant answer.
+            Structured response source for composition.
         """
         activity.working(
             title="Nano is planning an action.",
@@ -70,18 +73,20 @@ class AgentPlanner:
             raw = client.complete(messages=messages)
             decision = parse_decision(raw)
 
-            if decision["type"] == "final":
-                return self._finish_response(
+            if decision["type"] in {"final", "answer_intent"}:
+                return self._build_answer_source(
                     client=client,
-                    user_message=message,
+                    message=message,
                     conversation_id=conversation_id,
-                    content=decision["content"],
+                    history=history,
+                    decision=decision,
+                    executed_tools=executed_tools,
                 )
 
             if decision["type"] != "tool_call":
                 invalid_json_attempts += 1
                 if invalid_json_attempts >= 2:
-                    return self.chat_flow.fallback_to_chat(
+                    return self.answer_executor.draft(
                         client=client,
                         message=message,
                         conversation_id=conversation_id,
@@ -102,7 +107,7 @@ class AgentPlanner:
                     raw=raw,
                     content=(
                         f"The tool call {tool_name} does not match the user's request. "
-                        "Do not call a tool here. Return a final answer directly."
+                        "Do not call a tool here. Return answer_intent when ready."
                     ),
                 )
                 continue
@@ -116,7 +121,7 @@ class AgentPlanner:
                     content=(
                         f"Tool {tool_name} was already called with the same arguments and "
                         f"returned:\n{existing_result.content}\n"
-                        "Do not call the same tool again. Return a final answer now."
+                        "Do not call the same tool again. Return answer_intent when ready."
                     ),
                 )
                 continue
@@ -132,50 +137,66 @@ class AgentPlanner:
             self._append_model_result(messages=messages, raw=raw, result=result)
 
         fallback = "I tried to complete the task, but I hit the step limit."
-        repository.add_chat_message(
-            conversation_id=conversation_id,
-            role="assistant",
-            content=fallback,
-        )
         self.tool_runner.report_error(
             title="Nano could not finish the task.",
             detail=fallback,
             spoken_message="I could not finish the task.",
         )
-        return fallback
+        return answer_source(
+            user_message=message,
+            facts=fallback,
+            conversation_id=conversation_id,
+        )
 
-    def _finish_response(
+    def _build_answer_source(
         self,
         *,
         client: Any,
-        user_message: str,
+        message: str,
         conversation_id: str,
-        content: str,
-    ) -> str:
+        history: list[Any],
+        decision: dict[str, Any],
+        executed_tools: dict[str, ToolResult],
+    ) -> ResponseSource:
         """
-        Guard, persist, and return a final planner answer.
+        Build a response source from a planner answer intent.
 
         Args:
-            client: LLM client used to revise responses.
-            user_message: User message or prompt text.
-            conversation_id: Conversation identifier used to scope history.
-            content: Draft final answer.
+            client: LLM client used for answer fallbacks.
+            message: User message text.
+            conversation_id: Conversation identifier.
+            history: Conversation history records.
+            decision: Parsed planner decision.
+            executed_tools: Executed tool results keyed by signature.
 
         Returns:
-            User-facing assistant answer.
+            Structured response source.
         """
-        content = enforce_user_facing_answer(client, user_message, content)
-        repository.add_chat_message(
+        _ = client
+        _ = history
+        content = decision.get("content")
+        if isinstance(content, str) and content.strip():
+            return answer_source(
+                user_message=message,
+                facts=content,
+                conversation_id=conversation_id,
+            )
+
+        if executed_tools:
+            latest = next(reversed(executed_tools.values()))
+            return tool_result_source(
+                user_message=message,
+                facts=latest.content,
+                tool_name=latest.tool,
+                conversation_id=conversation_id,
+            )
+
+        return self.answer_executor.draft(
+            client=client,
+            message=message,
             conversation_id=conversation_id,
-            role="assistant",
-            content=content,
+            history=history,
         )
-        activity.standby(
-            title="Nano finished the task.",
-            detail="The agent returned a final response.",
-            source="assistant.flows.planner",
-        )
-        return content
 
     def _append_model_correction(
         self,
@@ -222,7 +243,7 @@ class AgentPlanner:
                 "role": "system",
                 "content": (
                     f"Tool {result.tool} returned:\n{result.content}\n"
-                    "Use that result to continue or answer."
+                    "Use that result to continue or return answer_intent when ready."
                 ),
             }
         )

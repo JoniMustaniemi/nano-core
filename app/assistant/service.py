@@ -1,16 +1,14 @@
 from collections.abc import Mapping
+from typing import Any
 
 from app.assistant.agent import AgentService
-from app.assistant.prompts import (
-    ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT,
-    SYSTEM_PROMPT,
-    WAKE_RESPONSE_SYSTEM_PROMPT,
-)
+from app.assistant.answer_executor import AnswerExecutor
+from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_guard import (
-    enforce_first_person_self_reference,
     enforce_user_facing_answer,
     looks_like_self_description_instead_of_answer,
 )
+from app.assistant.response_source import answer_source
 from app.assistant.router import get_llm_client
 from app.config import get_settings
 from app.llm.schemas import ChatResponse
@@ -19,6 +17,22 @@ from app.runtime.activity import activity
 
 
 class AssistantService:
+    def __init__(
+        self,
+        *,
+        composer: ResponseComposer | None = None,
+        answer_executor: AnswerExecutor | None = None,
+    ) -> None:
+        """
+        Initialize the assistant service.
+
+        Args:
+            composer: Response composer used for chat and wake replies.
+            answer_executor: Answer executor used to draft chat replies.
+        """
+        self.composer = composer or ResponseComposer()
+        self.answer_executor = answer_executor or AnswerExecutor()
+
     def respond(self, message: str, mode: str = "agent") -> ChatResponse:
         """
         Respond to the requested operation.
@@ -44,20 +58,8 @@ class AssistantService:
             ChatResponse result.
         """
         client = get_llm_client()
-        messages: list[Mapping[str, str]] = [
-            {
-                "role": "system",
-                "content": WAKE_RESPONSE_SYSTEM_PROMPT,
-            },
-            {
-                "role": "user",
-                "content": "The user said your wake phrase and is waiting for acknowledgment.",
-            },
-        ]
-        content = client.complete(messages=messages).strip()
-        content = enforce_first_person_self_reference(client, content)
-        if not content:
-            content = "I am listening. Proceed."
+        source = self.answer_executor.draft_wake(client=client)
+        content = self.composer.compose(client, source)
         return ChatResponse(content=content)
 
     def _chat(self, message: str, conversation_id: str) -> str:
@@ -73,11 +75,9 @@ class AssistantService:
         """
         settings = get_settings()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
-        messages = self._build_messages(
-            user_message=message,
+        history = repository.list_chat_messages(
             conversation_id=conversation_id,
-            history_limit=settings.chat_history_limit,
-            note_limit=settings.note_context_limit,
+            limit=settings.chat_history_limit,
         )
         client = get_llm_client()
         activity.working(
@@ -85,16 +85,31 @@ class AssistantService:
             detail="Loading memory and talking to the local model.",
             source="assistant.chat",
         )
-        content = client.complete(messages=messages)
-        if looks_like_self_description_instead_of_answer(message, content):
+        source = self.answer_executor.draft(
+            client=client,
+            message=message,
+            conversation_id=conversation_id,
+            history=self._history_with_notes(
+                history=history,
+                user_message=message,
+                note_limit=settings.note_context_limit,
+            ),
+        )
+        draft = source.facts
+        if looks_like_self_description_instead_of_answer(message, draft):
+            from app.assistant.prompts import ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT
+
             retry_messages: list[Mapping[str, str]] = [
-                {
-                    "role": "system",
-                    "content": ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT,
-                },
+                {"role": "system", "content": ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT},
                 {"role": "user", "content": message},
             ]
-            content = client.complete(messages=retry_messages)
+            draft = client.complete(messages=retry_messages)
+            source = answer_source(
+                user_message=message,
+                facts=draft,
+                conversation_id=conversation_id,
+            )
+        content = self.composer.compose(client, source)
         content = enforce_user_facing_answer(client, message, content)
         repository.add_chat_message(
             conversation_id=conversation_id,
@@ -108,50 +123,43 @@ class AssistantService:
         )
         return content
 
-    def _build_messages(
+    def _history_with_notes(
         self,
         *,
+        history: list[Any],
         user_message: str,
-        conversation_id: str,
-        history_limit: int,
         note_limit: int,
-    ) -> list[Mapping[str, str]]:
+    ) -> list[Any]:
         """
-        Build messages.
+        Build chat history with note context for answer drafting.
 
         Args:
-            user_message: User message value.
-            conversation_id: Conversation identifier used to scope history and pending state.
-            history_limit: History limit value.
-            note_limit: Note limit value.
+            history: Stored chat history records.
+            user_message: Current user message.
+            note_limit: Maximum notes to include.
 
         Returns:
-            List of matching records or values.
+            History-like records including note context when available.
         """
-        messages: list[Mapping[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
-
         notes = repository.list_notes(limit=note_limit)
-        if notes:
-            note_lines = "\n".join(f"- {note.name}: {note.content}" for note in notes)
-            messages.append(
-                {
-                    "role": "system",
-                    "content": (
-                        "Relevant notes from Nano's memory:\n"
-                        f"{note_lines}\n"
-                        "Use them as background context when helpful."
-                    ),
-                }
-            )
+        if not notes:
+            return history
 
-        history = repository.list_chat_messages(
-            conversation_id=conversation_id,
-            limit=history_limit,
+        note_lines = "\n".join(f"- {note.name}: {note.content}" for note in notes)
+        note_context = SimpleHistoryEntry(
+            role="system",
+            content=(
+                "Relevant notes from Nano's memory:\n"
+                f"{note_lines}\n"
+                "Use them as background context when helpful."
+            ),
         )
-        for entry in history:
-            messages.append({"role": entry.role, "content": entry.content})
+        return [*history, note_context]
 
-        if not history or history[-1].role != "user" or history[-1].content != user_message:
-            messages.append({"role": "user", "content": user_message})
 
-        return messages
+class SimpleHistoryEntry:
+    """Minimal history entry for injecting note context into answer drafting."""
+
+    def __init__(self, *, role: str, content: str) -> None:
+        self.role = role
+        self.content = content
