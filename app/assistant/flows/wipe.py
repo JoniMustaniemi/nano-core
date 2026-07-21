@@ -8,7 +8,12 @@ from app.assistant.agent_rules import (
     normalize_wipe_request,
 )
 from app.assistant.pending import PendingInteraction, pending_interactions
-from app.assistant.response_source import ResponseSource, confirmation_source, follow_up_source, answer_source
+from app.assistant.response_source import (
+    ResponseSource,
+    answer_source,
+    confirmation_source,
+    follow_up_source,
+)
 from app.memory import repository
 from app.runtime.activity import activity
 
@@ -54,6 +59,10 @@ class WipeInteractionHandler:
             facts=f'User requested: "{normalize_wipe_request(message)}"',
             conversation_id=conversation_id,
         )
+
+    def handle_direct_request(self, **kwargs: Any) -> ResponseSource | None:
+        """Wipe requests are started via `start()` from the orchestrator."""
+        return None
 
     def handle_pending(
         self,

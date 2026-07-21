@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, Protocol, TypedDict
+
+from app.assistant.pending import PendingInteraction
+from app.assistant.response_source import ResponseSource
 
 AgentToolName = Literal[
     "run_python",
@@ -51,3 +54,17 @@ class InvalidDecision(TypedDict):
 
 
 Decision = AnswerIntentDecision | FinalDecision | ToolCallDecision | InvalidDecision
+
+
+class InteractionHandler(Protocol):
+    def handle_direct_request(self, **kwargs: Any) -> ResponseSource | None: ...
+
+    def handle_pending(
+        self,
+        *,
+        pending: PendingInteraction,
+        message: str,
+        conversation_id: str,
+        user_message: str,
+        **kwargs: Any,
+    ) -> ResponseSource | None: ...

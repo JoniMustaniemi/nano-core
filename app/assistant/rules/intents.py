@@ -1,0 +1,216 @@
+from __future__ import annotations
+
+import re
+
+DIRECT_ANSWER_TRIGGERS: tuple[str, ...] = (
+    "what can you do",
+    "what do you do",
+    "what are your capabilities",
+    "capabilities",
+    "who are you",
+    "introduce yourself",
+    "what are you",
+    "help",
+)
+
+WIPE_REQUEST_TRIGGERS: tuple[str, ...] = (
+    "wipe",
+    "erase",
+    "clear",
+    "reset",
+    "delete",
+    "remove",
+    "purge",
+    "forget",
+)
+
+WIPE_TARGET_TRIGGERS: tuple[str, ...] = (
+    "database",
+    "memory",
+    "data",
+    "local",
+    "stored",
+    "everything",
+    "yourself",
+    "your self",
+)
+
+NOTE_REQUEST_PATTERNS: tuple[str, ...] = (
+    r"\badd\s+(?:a\s+)?note\b",
+    r"\bsave\s+(?:a\s+)?note\b",
+    r"\bwrite\s+(?:this\s+)?down\b",
+    r"\bremember\s+(?:this|that)?\b",
+)
+
+NOTE_LIST_PATTERNS: tuple[str, ...] = (
+    r"\b(?:list|show|read|what(?:'s| is)?)\s+(?:my\s+)?notes\b",
+    r"\bwhat\s+(?:do\s+you\s+)?remember\b",
+    r"\bwhat\s+have\s+you\s+(?:remembered|saved)\b",
+)
+
+NOTE_LOOKUP_PATTERNS: tuple[str, ...] = (
+    r"\bwhat(?:'s| is| was| were)\s+(?:my|the)\b",
+    r"\bwhat\s+did\s+i\s+(?:save|write|note|remember)\b",
+    r"\bwhat\s+was\s+(?:the\s+)?\w+",
+    r"\bdo\s+you\s+remember\b",
+    r"\bfind\s+(?:my\s+)?note\b",
+    r"\bsearch\s+(?:my\s+)?notes\b",
+)
+
+PULL_REQUEST_PATTERNS: tuple[str, ...] = (
+    r"\b(?:create|open|make|start)\b.*\b(?:pull request|pr)\b",
+    r"\b(?:pull request|pr)\b.*\b(?:create|open|make|start)\b",
+    r"\b(?:need|want)\s+(?:a\s+)?(?:pull request|pr)\b",
+    r"^\s*(?:pr|pull request)\s*$",
+)
+
+
+def is_pull_request_request(message: str) -> bool:
+    """
+    Return whether the message is a pull request creation request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message requests pull request creation.
+    """
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in PULL_REQUEST_PATTERNS)
+
+
+def should_answer_without_tools(message: str) -> bool:
+    """
+    Return whether answer without tools.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = message.lower()
+    return any(trigger in lowered for trigger in DIRECT_ANSWER_TRIGGERS)
+
+
+def is_health_check_request(message: str) -> bool:
+    """
+    Return whether health check request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = " ".join(message.lower().split())
+    explicit_patterns = (
+        r"\bcheck\s+(?:your|my)\s+health\b",
+        r"\bhealth\s+check\b",
+        r"\brun\s+(?:a\s+)?(?:health\s+)?diagnostics?\b",
+        r"\bdiagnostics?\s+check\b",
+        r"\bcheck\s+diagnostics?\b",
+        r"\bcheck\s+yourself\b",
+        r"\bself\s+check\b",
+        r"\bsystem\s+check\b",
+    )
+    return any(re.search(pattern, lowered) for pattern in explicit_patterns)
+
+
+def is_note_add_request(message: str) -> bool:
+    """
+    Return whether note add request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in NOTE_REQUEST_PATTERNS)
+
+
+def is_note_list_request(message: str) -> bool:
+    """
+    Return whether note list request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in NOTE_LIST_PATTERNS)
+
+
+def is_note_lookup_request(message: str) -> bool:
+    """
+    Return whether note lookup request.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in NOTE_LOOKUP_PATTERNS)
+
+
+def needs_wipe_confirmation(message: str) -> bool:
+    """
+    Return whether wipe confirmation.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = message.lower()
+    return any(trigger in lowered for trigger in WIPE_REQUEST_TRIGGERS) and any(
+        trigger in lowered for trigger in WIPE_TARGET_TRIGGERS
+    )
+
+
+def tool_matches_request(message: str, tool_name: str) -> bool:
+    """
+    Build tool metadata for matches request.
+
+    Args:
+        message: User message or prompt text.
+        tool_name: Registered tool name.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    from app.assistant.rules.timers import (
+        is_timer_cancel_request,
+        is_timer_start_request,
+        is_timer_status_request,
+    )
+    from app.assistant.rules.tools import TOOL_RULES
+
+    lowered = message.lower()
+    rule = TOOL_RULES.get(tool_name)
+    if rule is None:
+        return True
+    if tool_name == "run_python" and re.search(r"\d+\s*[\+\-\*/]\s*\d+", lowered):
+        return True
+    if tool_name == "start_timer":
+        return is_timer_start_request(message)
+    if tool_name == "list_timers":
+        return is_timer_status_request(message)
+    if tool_name == "cancel_timers":
+        return is_timer_cancel_request(message)
+    if tool_name == "check_health":
+        return is_health_check_request(message)
+    if tool_name == "create_pull_request":
+        return is_pull_request_request(message)
+    if tool_name == "add_note":
+        return is_note_add_request(message)
+    if tool_name == "list_notes":
+        return is_note_list_request(message)
+    return any(keyword in lowered for keyword in rule.keywords)

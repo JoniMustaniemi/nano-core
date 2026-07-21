@@ -6,6 +6,7 @@ from typing import Any
 from app.duration import parse_duration_to_seconds
 from app.memory import repository
 from app.tools.base import ToolSpec
+from app.tools.errors import ToolError
 from app.tools.registry import register_tool
 
 
@@ -21,7 +22,7 @@ def _start_timer(args: dict[str, Any]) -> str:
     """
     duration_seconds = _resolve_duration_seconds(args)
     if duration_seconds <= 0:
-        return "Timer duration is required. Ask the user how long the timer should run."
+        raise ToolError("Timer duration is required. Ask the user how long the timer should run.")
 
     label = str(args.get("label", "")).strip() or "Timer"
     due_at = datetime.now(UTC) + timedelta(seconds=duration_seconds)

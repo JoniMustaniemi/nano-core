@@ -19,8 +19,8 @@ from app.tools.git_github import (
     is_git_repo,
     qualify_head_branch,
     resolve_executable,
-    run_git,
     run_gh,
+    run_git,
     working_tree_dirty,
 )
 from app.tools.pr_naming import PrNamingService

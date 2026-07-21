@@ -3,13 +3,13 @@ from typing import Any
 
 from app.assistant.agent import AgentService
 from app.assistant.answer_executor import AnswerExecutor
+from app.assistant.llm_factory import get_llm_client
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_guard import (
     enforce_user_facing_answer,
     looks_like_self_description_instead_of_answer,
 )
 from app.assistant.response_source import answer_source
-from app.assistant.router import get_llm_client
 from app.config import get_settings
 from app.llm.schemas import ChatResponse
 from app.memory import repository

@@ -7,6 +7,17 @@ from app.tools.base import ToolSpec
 
 _REGISTERED_TOOLS: dict[str, ToolSpec] = {}
 
+# Tools owned by multi-turn interaction flows; excluded from planner prompts.
+FLOW_OWNED_TOOLS: frozenset[str] = frozenset(
+    {
+        "add_note",
+        "list_notes",
+        "start_timer",
+        "list_timers",
+        "cancel_timers",
+    }
+)
+
 
 def register_tool(tool: ToolSpec) -> ToolSpec:
     """
@@ -36,26 +47,36 @@ def get_tool(name: str) -> ToolSpec | None:
     return _REGISTERED_TOOLS.get(name)
 
 
-def list_tools() -> list[ToolSpec]:
+def list_tools(*, exclude: frozenset[str] | None = None) -> list[ToolSpec]:
     """
     List tools.
+
+    Args:
+        exclude: Optional tool names to omit from the result.
 
     Returns:
         List of matching records or values.
     """
     _load_builtin_tool_modules()
-    return sorted(_REGISTERED_TOOLS.values(), key=lambda tool: tool.name)
+    excluded = exclude or frozenset()
+    return sorted(
+        (tool for tool in _REGISTERED_TOOLS.values() if tool.name not in excluded),
+        key=lambda tool: tool.name,
+    )
 
 
-def render_tool_prompt() -> str:
+def render_tool_prompt(*, exclude: frozenset[str] | None = None) -> str:
     """
     Render tool prompt.
+
+    Args:
+        exclude: Optional tool names to omit from the planner prompt.
 
     Returns:
         Generated or formatted string value.
     """
     lines = ["Available tools:"]
-    lines.extend(tool.prompt_line() for tool in list_tools())
+    lines.extend(tool.prompt_line() for tool in list_tools(exclude=exclude))
     lines.append("Return JSON only in one of these forms:")
     lines.append('{"type":"answer_intent"}')
     lines.append('{"type":"tool_call","tool":"tool_name","args":{"key":"value"}}')

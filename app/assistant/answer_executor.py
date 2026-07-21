@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from app.assistant.prompts import SYSTEM_PROMPT
 from app.assistant.response_source import ResponseSource, answer_source
+from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
 
 
@@ -15,7 +16,7 @@ class AnswerExecutor:
     def draft(
         self,
         *,
-        client: Any,
+        client: LLMClient,
         message: str,
         conversation_id: str,
         history: list[Any],
@@ -42,7 +43,7 @@ class AnswerExecutor:
             fallback_messages.append({"role": entry.role, "content": entry.content})
         if not history or history[-1].role != "user" or history[-1].content != message:
             fallback_messages.append({"role": "user", "content": message})
-        content = cast(str, client.complete(messages=fallback_messages)).strip()
+        content = client.complete(messages=fallback_messages).strip()
         activity.standby(
             title="Nano answered without tools.",
             detail="Drafted a direct answer for composition.",
@@ -54,7 +55,7 @@ class AnswerExecutor:
             conversation_id=conversation_id,
         )
 
-    def draft_wake(self, *, client: Any) -> ResponseSource:
+    def draft_wake(self, *, client: LLMClient) -> ResponseSource:
         """
         Draft a wake acknowledgment without final personality polish.
 
@@ -73,7 +74,7 @@ class AnswerExecutor:
                 "content": "The user said your wake phrase and is waiting for acknowledgment.",
             },
         ]
-        content = cast(str, client.complete(messages=messages)).strip()
+        content = client.complete(messages=messages).strip()
         if not content:
             content = "I am listening. Proceed."
         return answer_source(

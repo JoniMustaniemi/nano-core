@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlmodel import Session, desc, select
+from sqlmodel import Session, col, desc, select
 
 import app.memory.db as db
 from app.memory.models import ChatMessage, Note, Reminder
@@ -151,9 +151,9 @@ def list_reminders(*, include_sent: bool = False) -> list[Reminder]:
     Returns:
         List of matching records or values.
     """
-    statement = select(Reminder).order_by(desc(Reminder.due_at), desc(Reminder.id))
+    statement = select(Reminder).order_by(desc(col(Reminder.due_at)), desc(col(Reminder.id)))
     if not include_sent:
-        statement = statement.where(Reminder.sent_at.is_(None))
+        statement = statement.where(col(Reminder.sent_at).is_(None))
     with Session(db.engine) as session:
         return list(session.exec(statement))
 
@@ -171,9 +171,9 @@ def list_due_reminders(now: datetime | None = None) -> list[Reminder]:
     current_time = now or datetime.now(UTC)
     statement = (
         select(Reminder)
-        .where(Reminder.due_at <= current_time)
-        .where(Reminder.sent_at.is_(None))
-        .order_by(Reminder.due_at, Reminder.id)
+        .where(col(Reminder.due_at) <= current_time)
+        .where(col(Reminder.sent_at).is_(None))
+        .order_by(col(Reminder.due_at), col(Reminder.id))
     )
     with Session(db.engine) as session:
         return list(session.exec(statement))

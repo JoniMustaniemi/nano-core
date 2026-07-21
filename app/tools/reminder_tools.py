@@ -5,6 +5,7 @@ from typing import Any
 
 from app.memory import repository
 from app.tools.base import ToolSpec
+from app.tools.errors import ToolError
 from app.tools.registry import register_tool
 
 
@@ -19,7 +20,13 @@ def _add_reminder(args: dict[str, Any]) -> str:
         Generated or formatted string value.
     """
     content = str(args.get("content", ""))
-    due_at = datetime.fromisoformat(str(args.get("due_at", "")))
+    due_at_raw = str(args.get("due_at", "")).strip()
+    if not due_at_raw:
+        raise ToolError("Reminder due_at is required in ISO-8601 format.")
+    try:
+        due_at = datetime.fromisoformat(due_at_raw)
+    except ValueError as exc:
+        raise ToolError(f"Invalid reminder due_at: {due_at_raw}") from exc
     reminder = repository.add_reminder(content, due_at)
     return f"saved reminder {reminder.id}: {reminder.content}"
 

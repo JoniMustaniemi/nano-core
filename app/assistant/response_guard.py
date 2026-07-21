@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import re
-from typing import Any, cast
 
 from app.assistant.prompts import (
     ACTUAL_ANSWER_REWRITE_SYSTEM_PROMPT,
     THIRD_PERSON_REWRITE_SYSTEM_PROMPT,
     UNSUPPORTED_CONTINUATION_REWRITE_SYSTEM_PROMPT,
 )
+from app.llm.protocol import LLMClient
 
 _THIRD_PERSON_SELF_PATTERNS = (
     re.compile(
@@ -86,7 +86,7 @@ def talks_about_nano_in_third_person(content: str) -> bool:
     return any(pattern.search(content) for pattern in _THIRD_PERSON_SELF_PATTERNS)
 
 
-def enforce_first_person_self_reference(client: Any, content: str) -> str:
+def enforce_first_person_self_reference(client: LLMClient, content: str) -> str:
     """
     Rewrite model output once if it talks about Nano in third person.
 
@@ -107,7 +107,7 @@ def enforce_first_person_self_reference(client: Any, content: str) -> str:
         },
         {"role": "user", "content": content},
     ]
-    revised = cast(str, client.complete(messages=messages)).strip()
+    revised = client.complete(messages=messages).strip()
     return revised or content
 
 
@@ -128,7 +128,7 @@ def looks_like_self_description_instead_of_answer(user_message: str, content: st
     return any(pattern.search(content) for pattern in _SELF_DESCRIPTION_PATTERNS)
 
 
-def enforce_actual_answer(client: Any, user_message: str, content: str) -> str:
+def enforce_actual_answer(client: LLMClient, user_message: str, content: str) -> str:
     """
     Rewrite model output once if it dodges the question by describing Nano.
 
@@ -159,7 +159,7 @@ def enforce_actual_answer(client: Any, user_message: str, content: str) -> str:
             ),
         },
     ]
-    revised = cast(str, client.complete(messages=messages)).strip()
+    revised = client.complete(messages=messages).strip()
     return revised or content
 
 
@@ -177,7 +177,7 @@ def implies_unsupported_continuation(content: str) -> bool:
 
 
 def enforce_no_unsupported_continuation(
-    client: Any,
+    client: LLMClient,
     user_message: str,
     content: str,
 ) -> str:
@@ -208,11 +208,11 @@ def enforce_no_unsupported_continuation(
             ),
         },
     ]
-    revised = cast(str, client.complete(messages=messages)).strip()
+    revised = client.complete(messages=messages).strip()
     return revised or content
 
 
-def enforce_user_facing_answer(client: Any, user_message: str, content: str) -> str:
+def enforce_user_facing_answer(client: LLMClient, user_message: str, content: str) -> str:
     """
     Apply answer-quality guards to model output intended for the user.
 

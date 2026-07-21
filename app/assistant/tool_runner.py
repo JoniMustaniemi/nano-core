@@ -7,6 +7,7 @@ from app.assistant.agent_rules import tool_announcement
 from app.assistant.agent_types import ToolResult
 from app.runtime.activity import activity
 from app.tools import get_tool, list_tools
+from app.tools.errors import ToolError
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
 
@@ -39,6 +40,18 @@ class ToolRunner:
 
         try:
             return ToolResult(tool=tool_name, content=tool.handler(args), ok=True)
+        except ToolError as exc:
+            error_message = str(exc)
+            self.report_error(
+                title=f"Nano hit an error in {tool_name}.",
+                detail=error_message,
+                spoken_message="I hit an error while trying to complete the task.",
+            )
+            return ToolResult(
+                tool=tool_name,
+                content=json.dumps({"ok": False, "error": error_message}),
+                ok=False,
+            )
         except Exception as exc:
             error_message = f"Error while running {tool_name}: {exc}"
             self.report_error(

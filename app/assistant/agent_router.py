@@ -12,6 +12,7 @@ from app.assistant.agent_rules import (
     needs_wipe_confirmation,
     should_answer_without_tools,
 )
+from app.llm.protocol import LLMClient
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +32,7 @@ class AgentRouter:
         self,
         message: str,
         *,
-        client: Any,
+        client: LLMClient,
         history: list[Any],
     ) -> RouteDecision:
         """

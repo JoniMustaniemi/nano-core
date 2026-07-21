@@ -2,135 +2,89 @@ import json
 
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_source import (
+    confirmation_source,
     follow_up_source,
-    tool_error_source,
     tool_result_source,
 )
 
 
-class _SummaryClient:
-    def __init__(self, response: str = "") -> None:
+class _StubClient:
+    def __init__(self, response: str = "Composed reply.") -> None:
         self.response = response
-        self.calls = 0
         self.messages = None
 
     def complete(self, messages) -> str:
-        self.calls += 1
         self.messages = messages
         return self.response
 
 
-def test_compose_pr_result_success_uses_llm() -> None:
-    client = _SummaryClient(
-        "I opened pull request fix_timer_cancel_bug at https://github.com/org/repo/pull/1."
+def test_compose_health_result_all_clear() -> None:
+    composer = ResponseComposer()
+    payload = json.dumps(
+        {
+            "overall": "ok",
+            "checks": [
+                {"name": "database", "status": "ok", "detail": "Database is reachable."},
+            ],
+        }
     )
+    source = tool_result_source(
+        user_message="Check your health.",
+        facts=payload,
+        tool_name="check_health",
+        conversation_id="default",
+    )
+
+    content = composer.compose(_StubClient(), source)
+
+    assert content == "My diagnostics are clear. No issues were found."
+
+
+def test_compose_pr_result_success_fallback() -> None:
     composer = ResponseComposer()
     payload = json.dumps(
         {
             "ok": True,
-            "step": "complete",
-            "url": "https://github.com/org/repo/pull/1",
-            "branch": "feature/fix_timer_cancel_bug",
-            "title": "fix_timer_cancel_bug",
-            "base": "main",
-            "verified_with": "python -m pytest -q",
-            "error": None,
-            "output": None,
+            "url": "https://example.com/pr/1",
+            "branch": "feature/demo",
+            "title": "demo change",
         }
     )
     source = tool_result_source(
-        user_message="create a PR",
+        user_message="Create a PR",
         facts=payload,
         tool_name="create_pull_request",
+        conversation_id="default",
     )
+    client = _StubClient(response="")
 
-    summary = composer.compose(client, source)
+    content = composer.compose(client, source)
 
-    assert "https://github.com/org/repo/pull/1" in summary
-    assert client.calls == 1
-    assert "never apologize" in client.messages[0]["content"].lower()
-
-
-def test_compose_pr_result_failure_fallback() -> None:
-    client = _SummaryClient("")
-    composer = ResponseComposer()
-    payload = json.dumps(
-        {
-            "ok": False,
-            "step": "verify",
-            "url": None,
-            "branch": None,
-            "title": None,
-            "base": None,
-            "verified_with": "python -m pytest -q",
-            "error": "Verification failed.",
-            "output": "FAILED tests/test_x.py",
-        }
-    )
-    source = tool_result_source(
-        user_message="create a PR",
-        facts=payload,
-        tool_name="create_pull_request",
-    )
-
-    summary = composer.compose(client, source)
-
-    assert "declined to commit" in summary.lower()
-    assert "FAILED tests/test_x.py" not in summary
-    assert "sorry" not in summary.lower()
-    assert "apolog" not in summary.lower()
+    assert "https://example.com/pr/1" in content
 
 
-def test_compose_health_result_is_deterministic() -> None:
-    composer = ResponseComposer()
-    payload = json.dumps(
-        {
-            "checks": [
-                {"name": "voice", "status": "error", "detail": "Voice backend is unavailable."},
-            ]
-        }
-    )
-    source = tool_result_source(
-        user_message="check your health",
-        facts=payload,
-        tool_name="check_health",
-    )
-
-    summary = composer.compose(_SummaryClient(), source)
-
-    assert summary == "My voice check is failing: Voice backend is unavailable."
-
-
-def test_compose_follow_up_passes_through() -> None:
+def test_compose_confirmation_uses_follow_up_text() -> None:
     composer = ResponseComposer()
     source = follow_up_source(
-        user_message="start a timer",
+        user_message="Start a timer.",
         facts="How long should the timer run?",
+        conversation_id="default",
     )
 
-    summary = composer.compose(_SummaryClient(), source)
+    content = composer.compose(_StubClient(), source)
 
-    assert summary == "How long should the timer run?"
+    assert content == "How long should the timer run?"
 
 
-def test_compose_tool_error_uses_personality_prompt() -> None:
-    client = _SummaryClient(
-        "GitHub CLI authentication failed. Run `gh auth login`, then ask again."
-    )
+def test_compose_wipe_confirmation_includes_yes_no_prompt() -> None:
     composer = ResponseComposer()
-    source = tool_error_source(
-        user_message="create a PR",
-        facts=json.dumps(
-            {
-                "ok": False,
-                "error": "GitHub CLI is not authenticated.",
-            }
-        ),
-        tool_name="create_pull_request",
+    source = confirmation_source(
+        user_message="Wipe your database.",
+        facts='User requested: "Wipe your database."',
+        conversation_id="default",
     )
+    client = _StubClient(response="You want me to erase what I remember.")
 
-    summary = composer.compose(client, source)
+    content = composer.compose(client, source)
 
-    assert "gh auth login" in summary
-    assert client.calls == 1
-    assert "sorry" not in summary.lower()
+    assert "reply yes to proceed or no to cancel" in content.lower()

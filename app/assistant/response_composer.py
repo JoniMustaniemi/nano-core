@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
-from typing import Any, cast
+from typing import Any
 
 from app.assistant.prompts import RESPONSE_COMPOSER_PROMPT, WIPE_CONFIRMATION_SYSTEM_PROMPT
 from app.assistant.response_guard import enforce_user_facing_answer
 from app.assistant.response_source import ResponseSource
+from app.llm.protocol import LLMClient
 
 
 class ResponseComposer:
@@ -13,7 +14,7 @@ class ResponseComposer:
     Single personality gate for all user-facing assistant text.
     """
 
-    def compose(self, client: Any, source: ResponseSource) -> str:
+    def compose(self, client: LLMClient, source: ResponseSource) -> str:
         """
         Turn structured facts into a Nano-voiced reply.
 
@@ -40,7 +41,7 @@ class ResponseComposer:
 
         return self._compose_with_llm(client, source)
 
-    def _compose_confirmation(self, client: Any, source: ResponseSource) -> str:
+    def _compose_confirmation(self, client: LLMClient, source: ResponseSource) -> str:
         """
         Compose a destructive-action confirmation prompt.
 
@@ -57,14 +58,14 @@ class ResponseComposer:
             {"role": "system", "content": WIPE_CONFIRMATION_SYSTEM_PROMPT},
             {"role": "user", "content": source.facts},
         ]
-        draft = cast(str, client.complete(messages=summary_messages)).strip()
+        draft = client.complete(messages=summary_messages).strip()
         if not draft:
             draft = source.facts
         cleaned = draft.replace("\n", " ").strip().rstrip(". ")
         content = f"{cleaned}. Reply yes to proceed or no to cancel."
         return enforce_user_facing_answer(client, source.user_message, content)
 
-    def _compose_with_llm(self, client: Any, source: ResponseSource) -> str:
+    def _compose_with_llm(self, client: LLMClient, source: ResponseSource) -> str:
         """
         Compose a tool or error result with the shared personality prompt.
 
@@ -95,7 +96,7 @@ class ResponseComposer:
                 ),
             },
         ]
-        summary = cast(str, client.complete(messages=summary_messages)).strip()
+        summary = client.complete(messages=summary_messages).strip()
         if not summary:
             if source.kind == "tool_error":
                 return enforce_user_facing_answer(
@@ -145,7 +146,7 @@ class ResponseComposer:
                 lines.append(f"My {name} check is failing.")
         return " ".join(lines)
 
-    def _compose_pr_result(self, client: Any, source: ResponseSource) -> str:
+    def _compose_pr_result(self, client: LLMClient, source: ResponseSource) -> str:
         """
         Compose a pull request workflow announcement.
 
@@ -183,7 +184,7 @@ class ResponseComposer:
                 ),
             },
         ]
-        summary = cast(str, client.complete(messages=summary_messages)).strip()
+        summary = client.complete(messages=summary_messages).strip()
         if not summary:
             return fallback
         return enforce_user_facing_answer(client, source.user_message, summary)

@@ -123,13 +123,22 @@ def _makefile_has_test_target(text: str) -> bool:
     return False
 
 
-def _combine_output(stdout: str | None, stderr: str | None) -> str:
+def _combine_output(stdout: str | bytes | None, stderr: str | bytes | None) -> str:
     parts: list[str] = []
-    if stdout and stdout.strip():
-        parts.append(stdout.strip())
-    if stderr and stderr.strip():
-        parts.append(stderr.strip())
+    for value in (stdout, stderr):
+        text = _output_text(value)
+        if text:
+            parts.append(text)
     return "\n".join(parts)
+
+
+def _output_text(value: str | bytes | None) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace").strip() or None
+    stripped = value.strip()
+    return stripped or None
 
 
 def _truncate_output(output: str, max_chars: int = 2048) -> str:
