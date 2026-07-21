@@ -1,6 +1,10 @@
 from datetime import UTC, datetime, timedelta
 
-from helpers.agent_fixtures import WipeConfirmationClient, patch_agent
+from helpers.agent_fixtures import (
+    RefusalWipeConfirmationClient,
+    WipeConfirmationClient,
+    patch_agent,
+)
 
 from app.assistant.agent import AgentService
 from app.memory import repository
@@ -25,6 +29,29 @@ def test_agent_requires_confirmation_before_wiping_database(monkeypatch, tmp_pat
 
     assert "erase what I remember" in content
     assert "reply yes to proceed" in content.lower()
+    assert repository.list_notes()[0].content == "keep me for now"
+
+
+
+def test_agent_wipe_confirmation_recovers_from_refusal_draft(monkeypatch, tmp_path) -> None:
+    """
+    Verify that a refusal-style compose draft still yields a coherent confirmation.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        tmp_path: Temporary directory path provided by pytest.
+
+    Returns:
+        None.
+    """
+    patch_agent(monkeypatch, client=RefusalWipeConfirmationClient(), tmp_path=tmp_path)
+    repository.add_note("keep me for now")
+
+    content = AgentService().respond("Wipe your database.")
+
+    assert "reply yes to proceed" in content.lower()
+    assert "afraid" not in content.lower()
+    assert "can't assist" not in content.lower()
     assert repository.list_notes()[0].content == "keep me for now"
 
 

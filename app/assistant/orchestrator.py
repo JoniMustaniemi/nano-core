@@ -175,6 +175,21 @@ class AgentOrchestrator:
                 args=decision.tool_args or {},
             )
 
+        if decision.mode == "capabilities":
+            return self.answer_executor.draft_capabilities(
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+            )
+
+        if decision.mode == "identity":
+            return self.answer_executor.draft_identity(
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+                history=history,
+            )
+
         if decision.mode == "answer":
             return self.answer_executor.draft(
                 client=client,

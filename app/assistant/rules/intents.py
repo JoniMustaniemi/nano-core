@@ -3,14 +3,21 @@ from __future__ import annotations
 import re
 
 DIRECT_ANSWER_TRIGGERS: tuple[str, ...] = (
+    "help",
+)
+
+CAPABILITY_QUESTION_TRIGGERS: tuple[str, ...] = (
     "what can you do",
     "what do you do",
     "what are your capabilities",
+    "what are you able to do",
     "capabilities",
+)
+
+IDENTITY_QUESTION_TRIGGERS: tuple[str, ...] = (
     "who are you",
     "introduce yourself",
     "what are you",
-    "help",
 )
 
 WIPE_REQUEST_TRIGGERS: tuple[str, ...] = (
@@ -77,6 +84,34 @@ def is_pull_request_request(message: str) -> bool:
     """
     lowered = " ".join(message.lower().split())
     return any(re.search(pattern, lowered) for pattern in PULL_REQUEST_PATTERNS)
+
+
+def is_identity_question(message: str) -> bool:
+    """
+    Return whether the message asks who Nano is.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the user is asking about Nano's identity.
+    """
+    lowered = message.lower()
+    return any(trigger in lowered for trigger in IDENTITY_QUESTION_TRIGGERS)
+
+
+def is_capability_question(message: str) -> bool:
+    """
+    Return whether the message asks what Nano can do.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the user is asking about capabilities.
+    """
+    lowered = message.lower()
+    return any(trigger in lowered for trigger in CAPABILITY_QUESTION_TRIGGERS)
 
 
 def should_answer_without_tools(message: str) -> bool:

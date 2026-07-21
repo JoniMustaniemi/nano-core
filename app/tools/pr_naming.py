@@ -8,6 +8,10 @@ from app.assistant.agent_rules import extract_json
 from app.tools.git_github import ensure_unique_branch_slug
 
 _SLUG_PATTERN = re.compile(r"^[a-z0-9_]{3,48}$")
+_FILE_LINE_PATTERN = re.compile(
+    r"^[\s\-•*]*(?:[\w./@-]+/)?[\w./@-]+\.[a-z0-9]+:\s*[\d\s+\-|]+$",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,39 +39,41 @@ class PrNamingService:
             RuntimeError: If naming cannot be generated or validated.
         """
         prompt = _build_user_prompt(context)
-        raw = cast(
-            str,
-            client.complete(
-                messages=[
-                    {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
+        messages: list[dict[str, str]] = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+        raw = ""
+        naming: PrNaming | None = None
+
+        for _attempt in range(2):
+            raw = cast(str, client.complete(messages=messages)).strip()
+            naming = _parse_naming(raw, context=context)
+            if naming is not None and not looks_like_file_list_body(naming.body):
+                return naming
+            messages.extend(
+                [
+                    {"role": "assistant", "content": raw},
+                    {
+                        "role": "user",
+                        "content": _correction_message(
+                            naming=naming,
+                            invalid_json=naming is None,
+                        ),
+                    },
                 ]
-            ),
-        ).strip()
-        naming = _parse_naming(raw)
+            )
+
         if naming is not None:
+            body = _generate_prose_body(client=client, context=context, slug=naming.slug)
+            if body and not looks_like_file_list_body(body):
+                return _replace_body(naming, body)
+
+        naming = _parse_naming(raw, context=context, use_fallback_body=True)
+        if naming is not None and not looks_like_file_list_body(naming.body):
             return naming
 
-        correction = (
-            "Your previous response was invalid. Return JSON only with keys "
-            'slug, title, commit_message, body. slug and title must be lowercase '
-            "snake_case between 3 and 48 characters."
-        )
-        raw_retry = cast(
-            str,
-            client.complete(
-                messages=[
-                    {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
-                    {"role": "assistant", "content": raw},
-                    {"role": "user", "content": correction},
-                ]
-            ),
-        ).strip()
-        naming = _parse_naming(raw_retry)
-        if naming is None:
-            raise RuntimeError("Could not generate valid pull request naming from the diff.")
-        return naming
+        raise RuntimeError("Could not generate valid pull request naming from the diff.")
 
 
 _SYSTEM_PROMPT = (
@@ -76,8 +82,43 @@ _SYSTEM_PROMPT = (
     "slug and title must be lowercase snake_case using only a-z, 0-9, and underscores, "
     "3 to 48 characters. slug must describe the code change from the diff. "
     "commit_message subject must equal slug; an optional body line may follow after a blank line. "
-    "body is a 1-3 sentence pull request summary in normal prose."
+    "body must be 1-3 sentences of normal prose explaining what changed and why a reviewer should care. "
+    "Never put file paths, diff stats, line counts, bullet lists of files, or patch excerpts in body. "
+    "Use the diff only as context to understand the change."
 )
+
+_BODY_SYSTEM_PROMPT = (
+    "Write a pull request description for human reviewers. "
+    "Return plain text only: 1-3 sentences explaining what the code change does and why. "
+    "Do not list files, paths, diff stats, or line counts."
+)
+
+
+def looks_like_file_list_body(body: str) -> bool:
+    """
+    Return whether text looks like a copied diff stat or file inventory.
+
+    Args:
+        body: Candidate pull request body.
+
+    Returns:
+        True when the body appears to enumerate files instead of summarizing work.
+    """
+    lines = [line.strip() for line in body.strip().splitlines() if line.strip()]
+    if not lines:
+        return True
+
+    file_like_lines = sum(1 for line in lines if _FILE_LINE_PATTERN.match(line))
+    if file_like_lines >= 2:
+        return True
+    if len(lines) >= 3 and file_like_lines / len(lines) >= 0.5:
+        return True
+
+    lowered = body.lower()
+    if "file changed" in lowered or "files changed" in lowered:
+        return True
+
+    return False
 
 
 def sanitize_slug(raw: str) -> str:
@@ -115,7 +156,8 @@ def _build_user_prompt(context: dict[str, Any]) -> str:
     unpushed = context.get("unpushed_commits", [])
     unpushed_text = "\n".join(unpushed) or "(none)"
     return (
-        "Name this change for a git feature branch and pull request.\n\n"
+        "Name this change for a git feature branch and pull request.\n"
+        "The pull request body must explain the change in prose, not repeat the file list below.\n\n"
         f"Changed files:\n{files_text}\n\n"
         f"Diff stat:\n{context.get('diff_stat', '') or '(empty)'}\n\n"
         f"Diff patch:\n{context.get('diff_patch', '') or '(empty)'}\n\n"
@@ -123,7 +165,64 @@ def _build_user_prompt(context: dict[str, Any]) -> str:
     )
 
 
-def _parse_naming(raw: str) -> PrNaming | None:
+def _build_body_prompt(context: dict[str, Any], slug: str) -> str:
+    return (
+        f"Change slug: {slug}\n\n"
+        f"Diff patch:\n{context.get('diff_patch', '') or '(empty)'}\n\n"
+        "Write the pull request description."
+    )
+
+
+def _correction_message(*, naming: PrNaming | None, invalid_json: bool) -> str:
+    if invalid_json:
+        return (
+            "Your previous response was invalid. Return JSON only with keys "
+            "slug, title, commit_message, body. slug and title must be lowercase "
+            "snake_case between 3 and 48 characters."
+        )
+    return (
+        "Your JSON was valid, but body must not list files or diff stats. "
+        "Rewrite body as 1-3 sentences explaining what the change does and why. "
+        "Keep slug, title, and commit_message the same."
+    )
+
+
+def _generate_prose_body(*, client: Any, context: dict[str, Any], slug: str) -> str:
+    return cast(
+        str,
+        client.complete(
+            messages=[
+                {"role": "system", "content": _BODY_SYSTEM_PROMPT},
+                {"role": "user", "content": _build_body_prompt(context, slug)},
+            ]
+        ),
+    ).strip()
+
+
+def _fallback_body(slug: str, context: dict[str, Any] | None) -> str:
+    topic = slug.replace("_", " ")
+    changed_files = (context or {}).get("changed_files", [])
+    if not changed_files:
+        return f"This change implements {topic}."
+    return f"This change implements {topic} across the updated project files."
+
+
+def _replace_body(naming: PrNaming, body: str) -> PrNaming:
+    return PrNaming(
+        slug=naming.slug,
+        title=naming.title,
+        commit_message=naming.commit_message,
+        body=body,
+        branch=naming.branch,
+    )
+
+
+def _parse_naming(
+    raw: str,
+    *,
+    context: dict[str, Any] | None = None,
+    use_fallback_body: bool = False,
+) -> PrNaming | None:
     payload = extract_json(raw)
     if not isinstance(payload, dict):
         return None
@@ -139,7 +238,12 @@ def _parse_naming(raw: str) -> PrNaming | None:
     if commit_message.splitlines()[0].strip() != slug:
         commit_message = slug if "\n" not in commit_message else f"{slug}\n{commit_message.splitlines()[-1].strip()}"
 
-    body = str(payload.get("body", "")).strip() or f"Changes for {slug.replace('_', ' ')}."
+    body = str(payload.get("body", "")).strip()
+    if not body:
+        body = _fallback_body(slug, context)
+    elif use_fallback_body and looks_like_file_list_body(body):
+        body = _fallback_body(slug, context)
+
     unique_slug = ensure_unique_branch_slug(slug)
     final_title = unique_slug
     final_commit = unique_slug if unique_slug == slug else unique_slug

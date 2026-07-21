@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from helpers.agent_fixtures import wrap_with_alignment_intercept
 
 from app.main import app
 
@@ -44,7 +45,10 @@ def test_chat_updates_activity(monkeypatch) -> None:
     Returns:
         None.
     """
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: _FakeClient())
+    monkeypatch.setattr(
+        "app.assistant.service.get_llm_client",
+        lambda: wrap_with_alignment_intercept(_FakeClient()),
+    )
 
     with TestClient(app) as client:
         response = client.post("/chat", json={"message": "Hello", "mode": "chat"})
@@ -69,7 +73,10 @@ def test_health_check_sets_working_activity(monkeypatch) -> None:
     Returns:
         None.
     """
-    monkeypatch.setattr("app.assistant.orchestrator.get_llm_client", lambda: _HealthClient())
+    monkeypatch.setattr(
+        "app.assistant.orchestrator.get_llm_client",
+        lambda: wrap_with_alignment_intercept(_HealthClient()),
+    )
     monkeypatch.setattr(
         "app.assistant.tool_runner.GladosVoiceService.announce",
         lambda self, text: None,

@@ -2,8 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.assistant.prompts import SYSTEM_PROMPT
+from app.assistant.capabilities import format_capability_catalog
+from app.assistant.identity_context import format_identity_payload
+from app.assistant.prompts import (
+    CAPABILITIES_ANSWER_PROMPT,
+    IDENTITY_ANSWER_PROMPT,
+    SYSTEM_PROMPT,
+)
 from app.assistant.response_source import ResponseSource, answer_source
+from app.assistant.response_variation import choose_variation_hint
 from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
 
@@ -47,6 +54,105 @@ class AnswerExecutor:
         activity.standby(
             title="Nano answered without tools.",
             detail="Drafted a direct answer for composition.",
+            source="assistant.answer_executor",
+        )
+        return answer_source(
+            user_message=message,
+            facts=content,
+            conversation_id=conversation_id,
+        )
+
+    def draft_capabilities(
+        self,
+        *,
+        client: LLMClient,
+        message: str,
+        conversation_id: str,
+    ) -> ResponseSource:
+        """
+        Draft a capabilities answer from the current tool catalog.
+
+        Args:
+            client: LLM client used to draft the answer.
+            message: User message text.
+            conversation_id: Conversation identifier.
+
+        Returns:
+            Answer response source with a factual draft.
+        """
+        activity.working(
+            title="Nano is reviewing capabilities.",
+            detail="Checking registered tools and drafting a capability summary.",
+            source="assistant.answer_executor",
+        )
+        catalog = format_capability_catalog()
+        messages = [
+            {"role": "system", "content": CAPABILITIES_ANSWER_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    f"User question: {message}\n\n"
+                    f"Factual payload:\n{catalog}\n\n"
+                    f"Variation guidance:\n- {choose_variation_hint()}"
+                ),
+            },
+        ]
+        content = client.complete(messages=messages).strip()
+        if not content:
+            content = catalog
+        activity.standby(
+            title="Nano summarized capabilities.",
+            detail="Drafted a capability answer from the current tool catalog.",
+            source="assistant.answer_executor",
+        )
+        return answer_source(
+            user_message=message,
+            facts=content,
+            conversation_id=conversation_id,
+        )
+
+    def draft_identity(
+        self,
+        *,
+        client: LLMClient,
+        message: str,
+        conversation_id: str,
+        history: list[Any],
+    ) -> ResponseSource:
+        """
+        Draft an identity answer with dynamic context and varied phrasing.
+
+        Args:
+            client: LLM client used to draft the answer.
+            message: User message text.
+            conversation_id: Conversation identifier.
+            history: Conversation history records.
+
+        Returns:
+            Answer response source with a factual draft.
+        """
+        activity.working(
+            title="Nano is introducing itself.",
+            detail="Drafting an identity answer with current context.",
+            source="assistant.answer_executor",
+        )
+        payload = format_identity_payload(message=message, history=history)
+        messages = [
+            {"role": "system", "content": IDENTITY_ANSWER_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    f"User question: {message}\n\n"
+                    f"Factual payload:\n{payload}"
+                ),
+            },
+        ]
+        content = client.complete(messages=messages).strip()
+        if not content:
+            content = "I am Nano. State your business."
+        activity.standby(
+            title="Nano introduced itself.",
+            detail="Drafted a dynamic identity answer.",
             source="assistant.answer_executor",
         )
         return answer_source(

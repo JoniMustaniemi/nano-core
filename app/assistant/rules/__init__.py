@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from app.assistant.rules.intents import (
+    is_capability_question,
     is_health_check_request,
+    is_identity_question,
     is_note_add_request,
     is_note_list_request,
     is_note_lookup_request,
@@ -36,6 +38,8 @@ __all__ = [
     "duration_args_from_message",
     "extract_json",
     "is_confirmation_message",
+    "is_capability_question",
+    "is_identity_question",
     "is_health_check_request",
     "is_note_add_request",
     "is_note_list_request",

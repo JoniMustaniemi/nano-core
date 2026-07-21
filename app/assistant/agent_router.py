@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from app.assistant.agent_rules import (
+    is_capability_question,
     is_health_check_request,
+    is_identity_question,
     is_note_add_request,
     is_note_list_request,
     is_note_lookup_request,
@@ -21,7 +23,7 @@ from app.assistant.pending import pending_interactions
 
 @dataclass(frozen=True, slots=True)
 class RouteDecision:
-    mode: Literal["answer", "tool", "interaction", "planner", "pending"]
+    mode: Literal["answer", "capabilities", "identity", "tool", "interaction", "planner", "pending"]
     tool_name: str | None = None
     tool_args: dict[str, Any] | None = None
     interaction: str | None = None
@@ -40,7 +42,9 @@ class AgentRouter:
     5. Health check tool
     6. Pull request tool
     7. Direct answer without tools
-    8. Planner fallback
+    8. Capabilities answer from tool catalog
+    9. Identity answer with dynamic context
+    10. Planner fallback
     """
 
     def decide(
@@ -89,6 +93,12 @@ class AgentRouter:
 
         if is_pull_request_request(message):
             return RouteDecision(mode="tool", tool_name="create_pull_request", tool_args={})
+
+        if is_capability_question(message):
+            return RouteDecision(mode="capabilities")
+
+        if is_identity_question(message):
+            return RouteDecision(mode="identity")
 
         if should_answer_without_tools(message):
             return RouteDecision(mode="answer")
