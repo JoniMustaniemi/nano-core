@@ -13,7 +13,12 @@ from app.config import get_settings
 from app.llm.schemas import ChatResponse
 from app.memory import repository
 from app.runtime.activity import activity
-from app.runtime.status_copy import STANDBY_DETAIL_WAITING, THINKING_DETAIL, THINKING_TITLE, choose_wake_ack_response
+from app.runtime.status_copy import (
+    STANDBY_DETAIL_WAITING,
+    THINKING_DETAIL,
+    THINKING_TITLE,
+    choose_wake_ack_response,
+)
 from app.runtime.user_activity import user_activity
 
 

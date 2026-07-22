@@ -9,7 +9,11 @@ from app.config import get_settings
 from app.memory import codebase_index
 from app.proactive.codebase_files import list_all_app_files
 from app.runtime.activity import activity
-from app.runtime.status_copy import PLANNING_SELF_IMPROVE_TITLE, VERIFYING_SELF_IMPROVE_DETAIL, VERIFYING_SELF_IMPROVE_TITLE
+from app.runtime.status_copy import (
+  PLANNING_SELF_IMPROVE_TITLE,
+  VERIFYING_SELF_IMPROVE_DETAIL,
+  VERIFYING_SELF_IMPROVE_TITLE,
+)
 from app.tools.files import read_text_file, write_text_file
 from app.tools.pr_service import PullRequestService
 from app.tools.pr_verify import run_pr_verification
