@@ -41,7 +41,7 @@ _CAPABILITY_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
     (
         "Diagnostics and GitHub",
-        ("check_health", "create_pull_request"),
+        ("check_health", "create_pull_request", "propose_self_changes", "apply_updates_and_restart"),
     ),
 )
 

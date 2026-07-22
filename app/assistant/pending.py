@@ -10,6 +10,8 @@ PendingKind = Literal[
     "note_selection",
     "timer_duration",
     "wipe_confirmation",
+    "presence_check",
+    "self_update_confirmation",
 ]
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.assistant.rules.intents import (
+    extract_self_improve_goal,
     is_capability_question,
     is_health_check_request,
     is_identity_question,
@@ -8,12 +9,16 @@ from app.assistant.rules.intents import (
     is_note_list_request,
     is_note_lookup_request,
     is_pull_request_request,
+    is_self_improve_follow_up,
+    is_self_improve_request,
+    is_self_update_request,
     needs_wipe_confirmation,
     should_answer_without_tools,
     tool_matches_request,
 )
 from app.assistant.rules.messages import (
     is_confirmation_message,
+    is_presence_confirmation,
     is_rejection_message,
     is_wipe_confirmation_prompt,
     normalize_wipe_request,
@@ -45,6 +50,11 @@ __all__ = [
     "is_note_list_request",
     "is_note_lookup_request",
     "is_pull_request_request",
+    "is_presence_confirmation",
+    "is_self_improve_follow_up",
+    "is_self_improve_request",
+    "is_self_update_request",
+    "extract_self_improve_goal",
     "is_rejection_message",
     "is_timer_cancel_request",
     "is_timer_start_request",

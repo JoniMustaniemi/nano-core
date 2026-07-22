@@ -43,7 +43,7 @@ let recognitionStopWaiters = [];
 let currentActivitySnapshot = {
   state: "standby",
   headline: "Nano is in standby.",
-  detail: "Ready for the next task.",
+  detail: "Awaiting input.",
 };
 const activityStates = ["standby", "working", "error"];
 let toolCommands = [];
@@ -399,7 +399,7 @@ function ensureRecognition() {
       return;
     }
     resetVoiceListeningMode();
-    setVoiceStatus("Voice standby.");
+    setVoiceStatus("Voice on standby.");
     updateListenButton();
   };
 
@@ -567,6 +567,21 @@ async function acknowledgeWakePhrase() {
   }
 }
 
+function applyProactiveSnapshot(proactive) {
+  if (!proactive || typeof proactive !== "object") {
+    return;
+  }
+  if (proactive.waiting_for_presence && proactive.prompt) {
+    setAnswer(proactive.prompt);
+    void playVoice(proactive.prompt, { resumeListening: false });
+    return;
+  }
+  if (proactive.dismissal) {
+    setAnswer(proactive.dismissal);
+    void playVoice(proactive.dismissal, { resumeListening: false });
+  }
+}
+
 function applyStatusSnapshot(snapshot) {
   currentActivitySnapshot = {
     ...currentActivitySnapshot,
@@ -574,6 +589,7 @@ function applyStatusSnapshot(snapshot) {
     headline: snapshot.headline || currentActivitySnapshot.headline,
     detail: snapshot.detail ?? currentActivitySnapshot.detail,
   };
+  applyProactiveSnapshot(snapshot.proactive);
   renderState();
 }
 
@@ -587,7 +603,23 @@ function applyActivityEvent(event) {
     headline: event.title || currentActivitySnapshot.headline,
     detail: event.detail ?? currentActivitySnapshot.detail,
   };
+  if (event.source === "proactive.presence_gate") {
+    void fetchProactiveStatus();
+  }
   renderState();
+}
+
+async function fetchProactiveStatus() {
+  try {
+    const response = await fetch("/api/proactive");
+    if (!response.ok) {
+      return;
+    }
+    const proactive = await response.json();
+    applyProactiveSnapshot(proactive);
+  } catch (_error) {
+    return;
+  }
 }
 
 async function syncRuntimeStatus() {
@@ -745,7 +777,7 @@ function returnToWakeDetection() {
   if (listeningEnabled) {
     setVoiceStatus('Waiting for wake phrase: "hey nano".');
   } else {
-    setVoiceStatus("Voice standby.");
+    setVoiceStatus("Voice on standby.");
   }
 }
 
@@ -951,6 +983,6 @@ window.addEventListener("beforeunload", () => {
 });
 
 setAnswer("");
-setVoiceStatus("Voice standby.");
+setVoiceStatus("Voice on standby.");
 updateListenButton();
 bootstrap();

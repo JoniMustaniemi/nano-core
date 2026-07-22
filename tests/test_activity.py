@@ -59,7 +59,7 @@ def test_chat_updates_activity(monkeypatch) -> None:
 
     payload = status.json()
     assert payload["state"] == "standby"
-    assert payload["headline"] == "Nano is back in standby."
+    assert payload["headline"] == "Nano is in standby."
     assert any(event["source"] == "assistant.chat" for event in payload["events"])
 
 

@@ -24,3 +24,17 @@ class Reminder(SQLModel, table=True):
     due_at: datetime = Field(index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     sent_at: datetime | None = Field(default=None, index=True)
+
+
+class InternalNote(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    kind: str = Field(index=True)
+    title: str
+    content: str
+    payload_json: str
+    status: str = Field(default="pending", index=True)
+    attempt_count: int = Field(default=0)
+    next_attempt_at: datetime = Field(index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
+    last_attempt_at: datetime | None = Field(default=None)
+    delivered_at: datetime | None = Field(default=None)

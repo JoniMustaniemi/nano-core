@@ -5,6 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from app.config import get_settings
 from app.health import HealthCheckResult, run_health_checks
 from app.memory.repository import delete_reminder, list_due_reminders, mark_reminder_sent
+from app.proactive.background_tick import check_presence_timeouts, run_proactive_background_tick
 from app.runtime.activity import activity
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
@@ -165,6 +166,22 @@ def register_jobs() -> None:
         "interval",
         seconds=settings.health_check_interval_seconds,
         id="check_system_health",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        run_proactive_background_tick,
+        "interval",
+        seconds=settings.proactive_background_interval_seconds,
+        id="run_proactive_background_tick",
+        replace_existing=True,
+        max_instances=1,
+    )
+    scheduler.add_job(
+        check_presence_timeouts,
+        "interval",
+        seconds=settings.presence_check_poll_interval_seconds,
+        id="check_presence_timeouts",
         replace_existing=True,
         max_instances=1,
     )

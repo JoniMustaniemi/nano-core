@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.llm.schemas import ChatResponse
 from app.memory import repository
 from app.runtime.activity import activity
+from app.runtime.user_activity import user_activity
 
 
 class AssistantService:
@@ -57,12 +58,12 @@ class AssistantService:
             ChatResponse result.
         """
         client = get_llm_client()
+        user_activity.touch()
         source = self.answer_executor.draft_wake(client=client)
         content = finalize_response(
             client,
             source,
             composer=self.composer,
-            standby_detail="The wake response is ready.",
             standby_source="assistant.wake",
         )
         return ChatResponse(content=content)
@@ -79,6 +80,7 @@ class AssistantService:
             Generated or formatted string value.
         """
         settings = get_settings()
+        user_activity.touch()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
         history = repository.list_chat_messages(
             conversation_id=conversation_id,
@@ -120,7 +122,6 @@ class AssistantService:
             client,
             source,
             composer=self.composer,
-            standby_detail="The chat response is ready.",
             standby_source="assistant.chat",
         )
 

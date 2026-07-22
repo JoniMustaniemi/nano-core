@@ -84,7 +84,7 @@ def home() -> str:
                     <button id="send" type="button">Send</button>
                     <button id="voice-listen" class="ghost" type="button">Start Listening</button>
                   </div>
-                  <div class="reply-status" id="voice-status">Voice standby.</div>
+                  <div class="reply-status" id="voice-status">Voice on standby.</div>
                   <div class="reply-status" id="reply-status"></div>
                 </div>
 

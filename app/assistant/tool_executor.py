@@ -60,11 +60,6 @@ class ToolExecutor:
             detail=result.content,
             source="assistant.tool_executor",
         )
-        activity.standby(
-            title="Nano finished the task.",
-            detail=f"{tool_name} completed.",
-            source="assistant.tool_executor",
-        )
         if result.ok:
             return tool_result_source(
                 user_message=user_message,

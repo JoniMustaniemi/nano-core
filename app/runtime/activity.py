@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 from threading import RLock
 from typing import Literal
 
+from app.runtime.status_copy import STANDBY_DETAIL_DEFAULT, STANDBY_TITLE
+
 ActivityState = Literal["standby", "working", "error"]
 EventKind = Literal["state", "action", "log"]
 
@@ -53,15 +55,15 @@ class ActivityHub:
         self._events: deque[ActivityEvent] = deque(maxlen=max_events)
         self._next_id = 1
         self._state: ActivityState = "standby"
-        self._headline = "Nano is in standby."
-        self._detail: str | None = None
+        self._headline = STANDBY_TITLE
+        self._detail: str | None = STANDBY_DETAIL_DEFAULT
         self._updated_at = datetime.now(UTC)
         self._record(
             kind="state",
             state="standby",
             source="system",
-            title="Nano is in standby.",
-            detail="Ready for the next task.",
+            title=STANDBY_TITLE,
+            detail=STANDBY_DETAIL_DEFAULT,
         )
 
     def reset(self) -> None:
@@ -75,8 +77,8 @@ class ActivityHub:
             self._events.clear()
             self._next_id = 1
             self._state = "standby"
-            self._headline = "Nano is in standby."
-            self._detail = "Ready for the next task."
+            self._headline = STANDBY_TITLE
+            self._detail = STANDBY_DETAIL_DEFAULT
             self._updated_at = datetime.now(UTC)
             self._record(
                 kind="state",
@@ -88,8 +90,8 @@ class ActivityHub:
 
     def standby(
         self,
-        title: str = "Nano is in standby.",
-        detail: str | None = None,
+        title: str = STANDBY_TITLE,
+        detail: str | None = STANDBY_DETAIL_DEFAULT,
         source: str = "system",
     ) -> ActivityEvent:
         """
@@ -187,19 +189,16 @@ class ActivityHub:
         )
 
     def snapshot(self) -> dict[str, object]:
-        """
-        Return a snapshot of the requested operation.
-
-        Returns:
-            Dictionary containing the requested data.
-        """
         with self._lock:
+            from app.proactive.store import proactive_store
+
             return {
                 "state": self._state,
                 "headline": self._headline,
                 "detail": self._detail,
                 "updated_at": self._updated_at.isoformat(),
                 "events": [event.to_dict() for event in self._events],
+                "proactive": proactive_store.snapshot(),
             }
 
     def _record(
