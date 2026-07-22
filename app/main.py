@@ -18,6 +18,7 @@ from app.runtime.status_copy import BOOT_DETAIL, BOOT_SOURCE, BOOT_TITLE
 from app.scheduler.jobs import register_jobs, scheduler
 from app.web.home import router as home_router
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     
