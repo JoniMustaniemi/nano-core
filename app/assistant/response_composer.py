@@ -204,18 +204,6 @@ class ResponseComposer:
             First-person announcement without URLs or markdown.
         """
         if payload.get("ok"):
-            branch = str(payload.get("branch", "")).strip()
-            title = str(payload.get("title", "")).strip()
-            if branch and title:
-                return (
-                    f"I opened the pull request for {title} on {branch}. "
-                    "Review it on GitHub when you are ready."
-                )
-            if branch:
-                return (
-                    f"I opened the pull request on {branch}. "
-                    "Review it on GitHub when you are ready."
-                )
             return "I opened the pull request. Review it on GitHub when you are ready."
 
         step = str(payload.get("step", "unknown")).strip()
@@ -242,10 +230,8 @@ class ResponseComposer:
     def _compose_self_improve_result(self, tool_result: str) -> str:
         payload = self._parse_json_dict(tool_result)
         if payload.get("ok"):
-            files = payload.get("changed_files") or []
-            file_summary = ", ".join(str(path) for path in files) if files else "updated files"
             return (
-                f"I prepared a self-improvement pull request for {file_summary}. "
+                "I prepared a self-improvement pull request. "
                 "Review it on GitHub when you are ready."
             )
         error = str(payload.get("error", "")).strip()
