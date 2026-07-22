@@ -11,6 +11,7 @@ from app.assistant.response_source import ResponseSource, answer_source, tool_re
 from app.assistant.tool_runner import ToolRunner
 from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
+from app.runtime.status_copy import COULD_NOT_FINISH_TITLE, PLANNING_ACTION_TITLE, ran_tool_title
 
 
 class AgentPlanner:
@@ -63,7 +64,7 @@ class AgentPlanner:
             Structured response source for composition.
         """
         activity.working(
-            title="Nano is planning an action.",
+            title=PLANNING_ACTION_TITLE,
             detail="Using the local model to decide whether to answer or run a tool.",
             source="assistant.flows.planner",
         )
@@ -128,7 +129,7 @@ class AgentPlanner:
                 continue
 
             activity.log(
-                title=f"Nano called {tool_name}.",
+                title=ran_tool_title(tool_name),
                 detail=json.dumps(args, ensure_ascii=False),
                 source="assistant.flows.planner",
             )
@@ -139,7 +140,7 @@ class AgentPlanner:
 
         fallback = "I tried to complete the task, but I hit the step limit."
         self.tool_runner.report_error(
-            title="Nano could not finish the task.",
+            title=COULD_NOT_FINISH_TITLE,
             detail=fallback,
             spoken_message="I could not finish the task.",
         )

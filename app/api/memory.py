@@ -3,7 +3,8 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.memory.models import ChatMessage, Note, Reminder
+from app.memory.internal_notes import list_internal_notes
+from app.memory.models import ChatMessage, InternalNote, Note, Reminder
 from app.memory.repository import (
     add_note,
     add_reminder,
@@ -29,6 +30,7 @@ class StorageSnapshot(BaseModel):
     notes: list[Note]
     reminders: list[Reminder]
     chat_messages: list[ChatMessage]
+    internal_notes: list[InternalNote]
 
 
 @router.get("/notes", response_model=list[Note])
@@ -98,4 +100,5 @@ def read_storage_snapshot() -> StorageSnapshot:
         notes=list_notes(),
         reminders=list_reminders(include_sent=True),
         chat_messages=list_recent_chat_messages(),
+        internal_notes=list_internal_notes(),
     )

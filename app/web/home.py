@@ -70,7 +70,7 @@ def home() -> str:
                   </div>
                 </section>
                 <p id="activity-status" class="activity-status" aria-live="polite">
-                  Ready for the next task.
+                  I'm in standby. Awaiting your input.
                 </p>
                 <div class="sr-only" id="state-line">standby</div>
               </section>

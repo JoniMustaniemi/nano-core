@@ -6,7 +6,11 @@ from datetime import UTC, datetime
 from threading import RLock
 from typing import Literal
 
-from app.runtime.status_copy import STANDBY_DETAIL_DEFAULT, STANDBY_TITLE
+from app.runtime.status_copy import (
+  STANDBY_DETAIL_DEFAULT,
+  STANDBY_DETAIL_READY,
+  STANDBY_TITLE,
+)
 
 ActivityState = Literal["standby", "working", "error"]
 EventKind = Literal["state", "action", "log"]
@@ -84,8 +88,8 @@ class ActivityHub:
                 kind="state",
                 state="standby",
                 source="system",
-                title="Nano is in standby.",
-                detail="Ready for the next task.",
+                title=STANDBY_TITLE,
+                detail=STANDBY_DETAIL_READY,
             )
 
     def standby(

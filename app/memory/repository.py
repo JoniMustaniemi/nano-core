@@ -5,6 +5,7 @@ from sqlmodel import Session, col, desc, select
 import app.memory.db as db
 from app.memory.models import ChatMessage, Note, Reminder
 from app.runtime.activity import activity
+from app.runtime.status_copy import SAVED_NOTE_TITLE, SCHEDULED_REMINDER_TITLE
 
 
 def add_note(content: str, name: str = "Untitled note") -> Note:
@@ -24,7 +25,7 @@ def add_note(content: str, name: str = "Untitled note") -> Note:
         session.commit()
         session.refresh(note)
         activity.log(
-            title="Nano saved a note.",
+            title=SAVED_NOTE_TITLE,
             detail=f"Stored note #{note.id}.",
             source="memory.notes",
         )
@@ -134,7 +135,7 @@ def add_reminder(content: str, due_at: datetime) -> Reminder:
         session.commit()
         session.refresh(reminder)
         activity.log(
-            title="Nano scheduled a reminder.",
+            title=SCHEDULED_REMINDER_TITLE,
             detail=f"Reminder #{reminder.id} due at {reminder.due_at.isoformat()}.",
             source="memory.reminders",
         )

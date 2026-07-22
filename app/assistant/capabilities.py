@@ -29,7 +29,7 @@ _EXTRA_CAPABILITIES: tuple[CapabilityItem, ...] = (
 _CAPABILITY_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "Notes and memory",
-        ("add_note", "list_notes", "memory_wipe", "conversation"),
+        ("add_note", "list_notes", "list_internal_notes", "memory_wipe", "conversation"),
     ),
     (
         "Reminders and timers",

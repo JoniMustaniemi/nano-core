@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.llm.schemas import ChatResponse
 from app.memory import repository
 from app.runtime.activity import activity
+from app.runtime.status_copy import THINKING_TITLE
 from app.runtime.user_activity import user_activity
 
 
@@ -88,7 +89,7 @@ class AssistantService:
         )
         client = get_llm_client()
         activity.working(
-            title="Nano is thinking.",
+            title=THINKING_TITLE,
             detail="Loading memory and talking to the local model.",
             source="assistant.chat",
         )

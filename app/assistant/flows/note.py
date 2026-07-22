@@ -19,6 +19,13 @@ from app.assistant.response_source import (
 )
 from app.memory import repository
 from app.runtime.activity import activity
+from app.runtime.status_copy import (
+    CANCELLED_NOTE_TITLE,
+    CHECKED_NOTES_TITLE,
+    NEEDS_DETAIL_TITLE,
+    SAVED_NOTE_TITLE,
+    SAVING_NOTE_TITLE,
+)
 
 
 class NoteInteractionHandler:
@@ -137,7 +144,7 @@ class NoteInteractionHandler:
             payload=payload,
         )
         activity.standby(
-            title="Nano needs one detail.",
+            title=NEEDS_DETAIL_TITLE,
             detail="Waiting for the note name.",
             source="assistant.flows.note",
         )
@@ -165,7 +172,7 @@ class NoteInteractionHandler:
             payload={"name": name},
         )
         activity.standby(
-            title="Nano needs one detail.",
+            title=NEEDS_DETAIL_TITLE,
             detail="Waiting for the note content.",
             source="assistant.flows.note",
         )
@@ -211,14 +218,14 @@ class NoteInteractionHandler:
             )
 
         activity.working(
-            title="Nano is saving a note.",
+            title=SAVING_NOTE_TITLE,
             detail="Writing the note into local memory.",
             source="assistant.flows.note",
         )
         note = repository.add_note(cleaned, name=cleaned_name)
         pending_interactions.clear(conversation_id)
         activity.standby(
-            title="Nano saved a note.",
+            title=SAVED_NOTE_TITLE,
             detail=f"Stored note #{note.id}.",
             source="assistant.flows.note",
         )
@@ -246,7 +253,7 @@ class NoteInteractionHandler:
             note_lines = "\n".join(f"- {note.name}: {note.content}" for note in notes)
             facts = f"Here is what I remember:\n{note_lines}"
         activity.standby(
-            title="Nano checked notes.",
+            title=CHECKED_NOTES_TITLE,
             detail="Returned stored notes.",
             source="assistant.flows.note",
         )
@@ -508,7 +515,7 @@ class NoteInteractionHandler:
         """
         pending_interactions.clear(conversation_id)
         activity.standby(
-            title="Nano cancelled the note.",
+            title=CANCELLED_NOTE_TITLE,
             detail="No note was saved.",
             source="assistant.flows.note",
         )

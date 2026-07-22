@@ -56,3 +56,4 @@ def test_storage_snapshot_exposes_saved_records() -> None:
     assert payload["notes"][0]["content"] == "buy milk"
     assert payload["reminders"][0]["content"] == "stretch"
     assert payload["chat_messages"] == []
+    assert payload["internal_notes"] == []

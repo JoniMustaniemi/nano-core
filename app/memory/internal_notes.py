@@ -53,6 +53,16 @@ def list_due_internal_notes(
     return list(session.exec(statement))
 
 
+def list_internal_notes(*, limit: int = 50) -> list[InternalNote]:
+  statement = (
+    select(InternalNote)
+    .order_by(col(InternalNote.created_at).desc())
+    .limit(limit)
+  )
+  with Session(db.engine) as session:
+    return list(session.exec(statement))
+
+
 def mark_internal_note_attempted(note_id: int, *, attempted_at: datetime | None = None) -> None:
   current = attempted_at or datetime.now(UTC)
   with Session(db.engine) as session:

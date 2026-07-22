@@ -34,6 +34,10 @@ TOOL_RULES: dict[str, ToolIntentRule] = {
         announcement="Checking memory.",
         keywords=("notes", "note", "remembered"),
     ),
+    "list_internal_notes": ToolIntentRule(
+        announcement="Reviewing internal follow-up notes.",
+        keywords=("internal notes", "follow-up notes", "discuss later"),
+    ),
     "add_reminder": ToolIntentRule(
         announcement="Scheduling a reminder.",
         keywords=("reminder", "remind me"),
