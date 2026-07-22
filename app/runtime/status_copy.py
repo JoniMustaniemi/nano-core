@@ -85,6 +85,11 @@ PULLING_CHANGES_TITLE = "I'm pulling latest changes."
 PULLING_CHANGES_DETAIL = "Updating from the latest source."
 SWITCHING_BRANCH_TITLE = "I'm switching branches."
 SWITCHING_BRANCH_DETAIL = "Moving to the right branch before pulling updates."
+SELF_IMPROVE_FAILED_TITLE = "I could not improve myself."
+SELF_IMPROVE_RELOAD_BLOCKED_ERROR = (
+    "Self-improve cannot run while auto-reload is on. "
+    "Restart with: python -m app.cli dev --no-reload"
+)
 PLANNING_SELF_IMPROVE_TITLE = "I'm planning self-improvement."
 VERIFYING_SELF_IMPROVE_TITLE = "I'm verifying self-improvement."
 VERIFYING_SELF_IMPROVE_DETAIL = "Making sure nothing broke before I ask for a review."

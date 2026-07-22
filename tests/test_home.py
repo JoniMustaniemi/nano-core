@@ -25,8 +25,8 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Start Listening" in response.text
     assert "Stop Audio" not in response.text
     assert "Voice on standby." in response.text
-    assert 'href="/static/home.css?v=working-status-text-1"' in response.text
-    assert 'src="/static/home.js?v=working-status-text-1"' in response.text
+    assert 'href="/static/home.css?v=standby-sync-1"' in response.text
+    assert 'src="/static/home.js?v=standby-sync-1"' in response.text
     assert 'id="activity-status"' in response.text
     assert "Enter to send" in response.text
     assert 'id="commands-toggle"' in response.text
@@ -78,6 +78,12 @@ def test_homepage_serves_static_assets() -> None:
     assert "renderActivityStatus" in js_response.text
     assert "resolveActivityHeadline" in js_response.text
     assert "WORKING_HEADLINE_DEFAULT" in js_response.text
+    assert "STANDBY_DETAIL_DEFAULT" in js_response.text
+    assert "resetStandbySnapshot" in js_response.text
+    assert "useServerCopy" in js_response.text
+    submit_block = js_response.text.split("async function submitMessage(message, source)")[1]
+    submit_block = submit_block.split("renderState();")[0]
+    assert 'state: "working"' not in submit_block
     assert 'headline === STANDBY_HEADLINE' in js_response.text
     assert "commands-drawer" in css_response.text
     assert 'fetch("/api/tool-commands")' in js_response.text

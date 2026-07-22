@@ -11,6 +11,15 @@ from app.tools import get_tool, list_tools
 from app.tools.errors import ToolError
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
+_STRUCTURED_RESULT_TOOLS = frozenset(
+    {"propose_self_changes", "create_pull_request", "apply_updates_and_restart"}
+)
+_STRUCTURED_FAILURE_SPOKEN: dict[str, str] = {
+    "propose_self_changes": "I could not complete the self-improvement.",
+    "create_pull_request": "I could not complete the pull request.",
+    "apply_updates_and_restart": "I could not pull the latest changes.",
+}
+
 
 class ToolRunner:
     def execute(self, tool_name: str, args: dict[str, Any]) -> ToolResult:
@@ -40,7 +49,28 @@ class ToolRunner:
             )
 
         try:
-            return ToolResult(tool=tool_name, content=tool.handler(args), ok=True)
+            content = tool.handler(args)
+            structured = self._parse_structured_result(content)
+            if (
+                tool_name in _STRUCTURED_RESULT_TOOLS
+                and structured is not None
+                and structured.get("ok") is False
+            ):
+                error_message = str(structured.get("error", "")).strip()
+                self.report_error(
+                    title=tool_error_title(tool_name),
+                    detail=error_message or "The tool reported a failure.",
+                    spoken_message=_STRUCTURED_FAILURE_SPOKEN.get(
+                        tool_name,
+                        "I hit an error while trying to complete the task.",
+                    ),
+                )
+                return ToolResult(
+                    tool=tool_name,
+                    content=content if isinstance(content, str) else json.dumps(structured),
+                    ok=False,
+                )
+            return ToolResult(tool=tool_name, content=content, ok=True)
         except ToolError as exc:
             error_message = str(exc)
             self.report_error(
@@ -107,3 +137,15 @@ class ToolRunner:
             GladosVoiceService().announce(message)
         except VoiceUnavailableError:
             return
+
+    def _parse_structured_result(self, content: Any) -> dict[str, Any] | None:
+        if isinstance(content, dict):
+            payload = content
+        elif isinstance(content, str) and content.strip().startswith("{"):
+            try:
+                payload = json.loads(content)
+            except json.JSONDecodeError:
+                return None
+        else:
+            return None
+        return payload if isinstance(payload, dict) and "ok" in payload else None

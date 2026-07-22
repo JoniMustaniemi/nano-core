@@ -49,6 +49,7 @@ let currentActivitySnapshot = {
 };
 const activityStates = ["standby", "working", "error"];
 const STANDBY_HEADLINE = "I'm in standby.";
+const STANDBY_DETAIL_DEFAULT = "Awaiting your input.";
 const WORKING_HEADLINE_DEFAULT = "I'm working.";
 const LISTENING_HEADLINE_DEFAULT = "I'm listening.";
 const WORKING_DETAIL_DEFAULT = "Processing your message.";
@@ -699,12 +700,28 @@ function applyProactiveSnapshot(proactive) {
   }
 }
 
-function applyStatusSnapshot(snapshot) {
+function resetStandbySnapshot() {
   currentActivitySnapshot = {
     ...currentActivitySnapshot,
-    state: activityStates.includes(snapshot.state) ? snapshot.state : "standby",
-    headline: snapshot.headline || currentActivitySnapshot.headline,
-    detail: snapshot.detail ?? currentActivitySnapshot.detail,
+    state: "standby",
+    headline: STANDBY_HEADLINE,
+    detail: STANDBY_DETAIL_DEFAULT,
+  };
+  renderState();
+}
+
+function applyStatusSnapshot(snapshot) {
+  const nextState = activityStates.includes(snapshot.state) ? snapshot.state : "standby";
+  const useServerCopy = nextState === "standby" || nextState === "error";
+  currentActivitySnapshot = {
+    ...currentActivitySnapshot,
+    state: nextState,
+    headline: useServerCopy
+      ? (snapshot.headline || STANDBY_HEADLINE)
+      : (snapshot.headline || currentActivitySnapshot.headline),
+    detail: useServerCopy
+      ? (snapshot.detail ?? STANDBY_DETAIL_DEFAULT)
+      : (snapshot.detail ?? currentActivitySnapshot.detail),
   };
   applyProactiveSnapshot(snapshot.proactive);
   renderState();
@@ -714,11 +731,17 @@ function applyActivityEvent(event) {
   if (event.kind !== "state") {
     return;
   }
+  const nextState = activityStates.includes(event.state) ? event.state : "standby";
+  const useServerCopy = nextState === "standby" || nextState === "error";
   currentActivitySnapshot = {
     ...currentActivitySnapshot,
-    state: activityStates.includes(event.state) ? event.state : "standby",
-    headline: event.title || currentActivitySnapshot.headline,
-    detail: event.detail ?? currentActivitySnapshot.detail,
+    state: nextState,
+    headline: useServerCopy
+      ? (event.title || STANDBY_HEADLINE)
+      : (event.title || currentActivitySnapshot.headline),
+    detail: useServerCopy
+      ? (event.detail ?? STANDBY_DETAIL_DEFAULT)
+      : (event.detail ?? currentActivitySnapshot.detail),
   };
   if (event.source === "proactive.presence_gate") {
     void fetchProactiveStatus();
@@ -744,6 +767,7 @@ async function syncRuntimeStatus() {
     const snapshot = await loadSnapshot();
     applyStatusSnapshot(snapshot);
   } catch (error) {
+    resetStandbySnapshot();
     replyStatus.textContent = error.message;
   }
 }
@@ -1039,7 +1063,6 @@ async function submitMessage(message, source) {
   requestInFlight = true;
   currentActivitySnapshot = {
     ...currentActivitySnapshot,
-    state: "working",
     headline: WORKING_HEADLINE_DEFAULT,
     detail: WORKING_DETAIL_DEFAULT,
   };
