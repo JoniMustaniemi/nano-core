@@ -61,8 +61,7 @@ def test_compose_pr_result_success_is_voice_friendly() -> None:
     content = composer.compose(client, source)
 
     assert content == (
-        "I opened the pull request for demo change on feature/demo. "
-        "Review it on GitHub when you are ready."
+        "I opened the pull request. Review it on GitHub when you are ready."
     )
     assert "http" not in content
     assert client.messages is None

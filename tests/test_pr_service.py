@@ -47,7 +47,7 @@ def test_summarize_pr_result_success_uses_deterministic_confirmation() -> None:
     summary = composer.compose(client, source)
 
     assert "http" not in summary
-    assert "fix_timer_cancel_bug" in summary
+    assert "feature/" not in summary
     assert "Review it on GitHub when you are ready." in summary
     assert client.calls == 0
 

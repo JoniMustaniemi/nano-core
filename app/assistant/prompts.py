@@ -154,6 +154,7 @@ _COMPOSE_PAYLOAD = _section(
 
 _PR_RESULT_COMPOSE = _section(
     "Nano creates the feature branch automatically; never ask the user to provide a branch name.",
+    "When announcing a successful pull request, keep it general and do not mention branch names.",
     "If verification failed, say you refused to commit and open a pull request; do not dump full test output.",
     "Do not include URLs, markdown links, or GitHub paths in the reply.",
     "Confirm success in a brief, clinical, personality-driven sentence instead.",
