@@ -1,7 +1,21 @@
 from types import SimpleNamespace
 
-from app.tools.self_improve_service import SelfImproveService
+from app.tools.self_improve_service import SelfImproveService, _fallback_files_for_goal
 from app.tools.self_update_service import SelfUpdateService
+
+
+class _PatchPlanClient:
+    def complete(self, messages) -> str:
+        content = messages[-1]["content"]
+        if "Known files:" in content:
+            return '{"files_to_read": ["app/runtime/status_copy.py"]}'
+        if "old_text" in messages[0]["content"]:
+            return (
+                '{"path": "app/runtime/status_copy.py", '
+                '"old_text": "SETTING_TIMER_TITLE = \\"I\'m setting a timer.\\"", '
+                '"new_text": "SETTING_TIMER_TITLE = \\"I\'m starting a timer.\\""}'
+            )
+        return '{"path": "app/runtime/status_copy.py", "content": "# updated\\n"}'
 
 
 class _PlanClient:
@@ -116,6 +130,104 @@ def test_self_improve_service_retries_invalid_plan_json(monkeypatch, tmp_path) -
     assert result.ok
     assert client.plan_attempts == 1
     assert result.changed_files == ["app/main.py"]
+
+
+def test_fallback_files_for_timer_message_goal() -> None:
+    files = _fallback_files_for_goal(
+        "making timer messages clearer",
+        allowed="app/",
+    )
+    assert "app/runtime/status_copy.py" in files
+    assert "app/assistant/flows/timer.py" in files
+
+
+def test_self_improve_service_applies_patch_plan(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    status_copy = (
+        'SETTING_TIMER_TITLE = "I\'m setting a timer."\n'
+        "SETTING_TIMER_DETAIL = \"Scheduling the requested timer.\"\n"
+    )
+    (tmp_path / "app" / "runtime" / "status_copy.py").write_text(status_copy, encoding="utf-8")
+
+    monkeypatch.setattr(
+        "app.tools.self_improve_service._file_selection_lines",
+        lambda goal, limit=40: ["- app/runtime/status_copy.py: Status strings."],
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_verification",
+        lambda: SimpleNamespace(ok=True, error=None),
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.PullRequestService.run",
+        lambda self, client: SimpleNamespace(ok=True, url="https://example/pr", step="complete"),
+    )
+    monkeypatch.setattr(
+        "app.config.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_max_files=5,
+            self_improve_max_file_chars=8000,
+        ),
+    )
+
+    result = SelfImproveService().run(
+        client=_PatchPlanClient(),
+        goal="making timer messages clearer",
+    )
+
+    assert result.ok
+    assert result.changed_files == ["app/runtime/status_copy.py"]
+    updated = (tmp_path / "app" / "runtime" / "status_copy.py").read_text(encoding="utf-8")
+    assert 'SETTING_TIMER_TITLE = "I\'m starting a timer."' in updated
+
+
+def test_self_improve_service_uses_goal_fallback_when_selection_invalid(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    (tmp_path / "app" / "runtime" / "status_copy.py").write_text(
+        'SETTING_TIMER_TITLE = "I\'m setting a timer."\n',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "app.tools.self_improve_service._file_selection_lines",
+        lambda goal, limit=40: ["- app/runtime/status_copy.py: Status strings."],
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_verification",
+        lambda: SimpleNamespace(ok=True, error=None),
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.PullRequestService.run",
+        lambda self, client: SimpleNamespace(ok=True, url="https://example/pr", step="complete"),
+    )
+    monkeypatch.setattr(
+        "app.config.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_max_files=5,
+            self_improve_max_file_chars=8000,
+        ),
+    )
+
+    class _BadSelectPatchClient:
+        def complete(self, messages) -> str:
+            if "Known files:" in messages[-1]["content"]:
+                return "not json"
+            return (
+                '{"path": "app/runtime/status_copy.py", '
+                '"old_text": "SETTING_TIMER_TITLE = \\"I\'m setting a timer.\\"", '
+                '"new_text": "SETTING_TIMER_TITLE = \\"I\'m starting a timer.\\""}'
+            )
+
+    result = SelfImproveService().run(
+        client=_BadSelectPatchClient(),
+        goal="making timer messages clearer",
+    )
+
+    assert result.ok
+    assert result.changed_files == ["app/runtime/status_copy.py"]
 
 
 def test_self_update_rejects_dirty_tree(monkeypatch) -> None:

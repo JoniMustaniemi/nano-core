@@ -18,18 +18,9 @@ from app.runtime.status_copy import BOOT_DETAIL, BOOT_SOURCE, BOOT_TITLE
 from app.scheduler.jobs import register_jobs, scheduler
 from app.web.home import router as home_router
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """
-    Manage the application lifespan.
-
-    Args:
-        app: FastAPI application instance.
-
-    Returns:
-        Parsed value when available; otherwise None.
-    """
+    
     create_db_and_tables()
     register_jobs()
     scheduler.start()
@@ -46,9 +37,9 @@ settings = get_settings()
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.mount(
-    "/static",
-    StaticFiles(directory=Path(__file__).parent / "web" / "static"),
-    name="static",
+    '/static',
+    StaticFiles(directory=Path(__file__).parent / 'web' / 'static'),
+    name='static',
 )
 app.include_router(home_router)
 app.include_router(health_router)
@@ -56,4 +47,4 @@ app.include_router(memory_router)
 app.include_router(runtime_router)
 app.include_router(proactive_router)
 app.include_router(voice_router)
-app.include_router(chat_router, prefix="/chat", tags=["chat"])
+app.include_router(chat_router, prefix='/chat', tags=['chat'])
