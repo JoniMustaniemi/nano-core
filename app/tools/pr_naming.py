@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import Any, cast
 
 from app.assistant.agent_rules import extract_json
@@ -11,6 +12,10 @@ _SLUG_PATTERN = re.compile(r"^[a-z0-9_]{3,48}$")
 _FILE_LINE_PATTERN = re.compile(
     r"^[\s\-•*]*(?:[\w./@-]+/)?[\w./@-]+\.[a-z0-9]+:\s*[\d\s+\-|]+$",
     re.IGNORECASE,
+)
+_LLM_UNAVAILABLE_MARKERS = (
+    "Local LLM is not available yet",
+    "LLM_MODEL_PATH",
 )
 
 
@@ -48,6 +53,8 @@ class PrNamingService:
 
         for _attempt in range(2):
             raw = cast(str, client.complete(messages=messages)).strip()
+            if looks_like_llm_unavailable(raw):
+                return _build_fallback_naming(context)
             naming = _parse_naming(raw, context=context)
             if naming is not None and not looks_like_file_list_body(naming.body):
                 return naming
@@ -64,16 +71,16 @@ class PrNamingService:
                 ]
             )
 
-        if naming is not None:
+        if naming is not None and not looks_like_llm_unavailable(raw):
             body = _generate_prose_body(client=client, context=context, slug=naming.slug)
-            if body and not looks_like_file_list_body(body):
+            if body and not looks_like_file_list_body(body) and not looks_like_llm_unavailable(body):
                 return _replace_body(naming, body)
 
         naming = _parse_naming(raw, context=context, use_fallback_body=True)
         if naming is not None and not looks_like_file_list_body(naming.body):
             return naming
 
-        raise RuntimeError("Could not generate valid pull request naming from the diff.")
+        return _build_fallback_naming(context)
 
 
 _SYSTEM_PROMPT = (
@@ -92,6 +99,19 @@ _BODY_SYSTEM_PROMPT = (
     "Return plain text only: 1-3 sentences explaining what the code change does and why. "
     "Do not list files, paths, diff stats, or line counts."
 )
+
+
+def looks_like_llm_unavailable(raw: str) -> bool:
+    """
+    Return whether model output indicates the local LLM is unavailable.
+
+    Args:
+        raw: Raw model response.
+
+    Returns:
+        True when the response is a known LLM setup error instead of naming JSON.
+    """
+    return any(marker in raw for marker in _LLM_UNAVAILABLE_MARKERS)
 
 
 def looks_like_file_list_body(body: str) -> bool:
@@ -197,6 +217,43 @@ def _generate_prose_body(*, client: Any, context: dict[str, Any], slug: str) -> 
             ]
         ),
     ).strip()
+
+
+def _derive_slug_from_context(context: dict[str, Any]) -> str:
+    changed_files = context.get("changed_files", [])
+    app_files = [
+        path
+        for path in changed_files
+        if path.startswith("app/") and not path.endswith("__init__.py")
+    ]
+    non_test = [path for path in changed_files if not path.startswith("tests/")]
+    candidates = app_files or non_test or changed_files
+
+    stems: list[str] = []
+    for path in candidates[:3]:
+        stem = sanitize_slug(PurePosixPath(path).stem)
+        if stem and stem not in stems:
+            stems.append(stem)
+
+    slug = sanitize_slug("_".join(stems) if stems else "code_update")
+    if not is_valid_slug(slug):
+        return "code_update"
+    return slug
+
+
+def _build_fallback_naming(context: dict[str, Any]) -> PrNaming:
+    slug = _derive_slug_from_context(context)
+    unique_slug = ensure_unique_branch_slug(slug)
+    body = _fallback_body(unique_slug, context)
+    if unique_slug != slug:
+        body = f"{body} (branch suffix adjusted for uniqueness.)"
+    return PrNaming(
+        slug=unique_slug,
+        title=unique_slug,
+        commit_message=unique_slug,
+        body=body,
+        branch=f"feature/{unique_slug}",
+    )
 
 
 def _fallback_body(slug: str, context: dict[str, Any] | None) -> str:

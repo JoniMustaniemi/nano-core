@@ -50,6 +50,8 @@ const activityStates = ["standby", "working", "error"];
 let toolCommands = [];
 let lastActivityEventId = 0;
 let activityLogHiddenBeforeId = 0;
+let answerClearTimer = null;
+const ANSWER_CLEAR_DELAY_MS = 20000;
 
 function groupCommands(commands) {
   const groups = new Map();
@@ -686,8 +688,24 @@ function appendEvent(event) {
   activityLog.scrollTop = activityLog.scrollHeight;
 }
 
+function clearAnswerClearTimer() {
+  if (answerClearTimer !== null) {
+    window.clearTimeout(answerClearTimer);
+    answerClearTimer = null;
+  }
+}
+
+function scheduleAnswerClear() {
+  clearAnswerClearTimer();
+  answerClearTimer = window.setTimeout(() => {
+    answerClearTimer = null;
+    setAnswer("");
+  }, ANSWER_CLEAR_DELAY_MS);
+}
+
 function setAnswer(text) {
   const content = text.trim();
+  clearAnswerClearTimer();
   if (!content) {
     answerOutput.textContent = "Awaiting signal.";
     answerOutput.classList.add("empty");
@@ -695,6 +713,7 @@ function setAnswer(text) {
   }
   answerOutput.textContent = content;
   answerOutput.classList.remove("empty");
+  scheduleAnswerClear();
 }
 
 async function playVoice(text, options = {}) {
