@@ -3,8 +3,8 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.memory.models import ChatMessage, InternalNote, Note, Reminder
 from app.memory.internal_notes import list_internal_notes
+from app.memory.models import ChatMessage, InternalNote, Note, Reminder
 from app.memory.repository import (
     add_note,
     add_reminder,
