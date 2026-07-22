@@ -6,6 +6,7 @@ from app.tools.pr_naming import (
     PrNamingService,
     is_valid_slug,
     looks_like_file_list_body,
+    looks_like_llm_unavailable,
     sanitize_slug,
 )
 
@@ -48,6 +49,36 @@ def test_looks_like_file_list_body_allows_prose_summary() -> None:
     )
 
     assert not looks_like_file_list_body(body)
+
+
+def test_looks_like_llm_unavailable_detects_setup_message() -> None:
+    assert looks_like_llm_unavailable(
+        "Local LLM is not available yet. Set LLM_MODEL_PATH to a GGUF model file."
+    )
+
+
+def test_pr_naming_service_falls_back_when_llm_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.tools.pr_naming.ensure_unique_branch_slug", lambda slug: slug)
+    client = _NamingClient(
+        [
+            "Local LLM is not available yet. Set LLM_MODEL_PATH to a GGUF model file.",
+        ]
+    )
+    service = PrNamingService()
+
+    naming = service.generate(
+        client=client,
+        context={
+            "changed_files": ["app/web/home.py", "app/web/static/home.js"],
+            "diff_stat": "2 files changed",
+            "diff_patch": "diff",
+            "unpushed_commits": [],
+        },
+    )
+
+    assert naming.slug == "home"
+    assert naming.branch == "feature/home"
+    assert client.calls == 1
 
 
 def test_pr_naming_service_retries_file_list_body(monkeypatch: pytest.MonkeyPatch) -> None:

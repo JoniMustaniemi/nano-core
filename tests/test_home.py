@@ -25,8 +25,8 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Start Listening" in response.text
     assert "Stop Audio" not in response.text
     assert "Voice on standby." in response.text
-    assert 'href="/static/home.css?v=brains-clear-1"' in response.text
-    assert 'src="/static/home.js?v=brains-clear-1"' in response.text
+    assert 'href="/static/home.css?v=answer-clear-20s-1"' in response.text
+    assert 'src="/static/home.js?v=answer-clear-20s-1"' in response.text
     assert 'id="activity-status"' in response.text
     assert "Enter to send" in response.text
     assert 'id="commands-toggle"' in response.text
@@ -91,6 +91,8 @@ def test_homepage_serves_static_assets() -> None:
     assert '"i know"' in js_response.text
     assert "clearActivityLog" in js_response.text
     assert 'getElementById("brains-clear")' in js_response.text
+    assert "ANSWER_CLEAR_DELAY_MS = 20000" in js_response.text
+    assert "scheduleAnswerClear" in js_response.text
 
 
 def test_tool_commands_endpoint_lists_quick_actions() -> None:
