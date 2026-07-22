@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.assistant.response_source import ResponseSource, answer_source
 from app.llm.protocol import LLMClient
+from app.proactive.registry import ProactiveDeliveryRegistry
 from app.proactive.types import ProactiveOffer
 
 
@@ -26,7 +27,7 @@ class SelfImprovementSuggestionHandler:
     )
 
 
-def register_delivery_handlers(registry) -> None:
+def register_delivery_handlers(registry: ProactiveDeliveryRegistry) -> None:
   handler = SelfImprovementSuggestionHandler()
   registry.register("self_improvement_suggestion", handler)
   registry.register("deferred_offer", handler)

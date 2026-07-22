@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.assistant.pending import pending_interactions
+from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_source import (
   ResponseSource,
   answer_source,
@@ -39,7 +39,7 @@ class SelfUpdateInteractionHandler:
   def handle_pending(
     self,
     *,
-    pending,
+    pending: PendingInteraction,
     message: str,
     conversation_id: str,
     user_message: str,
