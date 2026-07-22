@@ -16,6 +16,7 @@ def test_homepage_shows_standby_ui() -> None:
     assert response.status_code == 200
     assert "Nano" in response.text
     assert "Nano's brains" in response.text
+    assert 'id="brains-clear"' in response.text
     assert "Stored data" in response.text
     assert "Standby" in response.text
     assert "Working" in response.text
@@ -24,8 +25,8 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Start Listening" in response.text
     assert "Stop Audio" not in response.text
     assert "Voice on standby." in response.text
-    assert 'href="/static/home.css?v=activity-status-1"' in response.text
-    assert 'src="/static/home.js?v=activity-status-1"' in response.text
+    assert 'href="/static/home.css?v=brains-clear-1"' in response.text
+    assert 'src="/static/home.js?v=brains-clear-1"' in response.text
     assert 'id="activity-status"' in response.text
     assert "Enter to send" in response.text
     assert 'id="commands-toggle"' in response.text
@@ -88,7 +89,8 @@ def test_homepage_serves_static_assets() -> None:
     assert '"hey", "hi"' in js_response.text
     assert '"nana"' in js_response.text
     assert '"i know"' in js_response.text
-    assert 'fetch("/chat/wake")' in js_response.text
+    assert "clearActivityLog" in js_response.text
+    assert 'getElementById("brains-clear")' in js_response.text
 
 
 def test_tool_commands_endpoint_lists_quick_actions() -> None:
