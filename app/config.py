@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     llm_base_url: str = "http://localhost:11434"
     llm_model: str = "local-assistant"
     llm_timeout_seconds: int = Field(default=60, ge=1)
-    llm_context_size: int = Field(default=16384, ge=512)
+    llm_context_size: int = Field(default=32768, ge=512)
     llm_max_tokens: int = Field(default=512, ge=1)
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     voice_backend: Literal["glados"] = "glados"
