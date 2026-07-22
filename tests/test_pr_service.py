@@ -6,6 +6,7 @@ import pytest
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_source import tool_result_source
 from app.tools.pr_service import PrResult, PullRequestService
+from app.tools.git_github import OpenPullRequest
 
 
 class _SummaryClient:
@@ -90,6 +91,7 @@ def test_pr_service_verify_failure_does_not_mutate_git(monkeypatch: pytest.Monke
     monkeypatch.setattr("app.tools.pr_service.is_git_repo", lambda: True)
     monkeypatch.setattr("app.tools.pr_service.gh_available", lambda: True)
     monkeypatch.setattr("app.tools.pr_service.gh_authenticated", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.get_open_pull_request", lambda: None)
     monkeypatch.setattr("app.tools.pr_service.has_publishable_changes", lambda: True)
     monkeypatch.setattr(
         "app.tools.pr_service.collect_change_context",
@@ -144,6 +146,7 @@ def test_pr_service_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.tools.pr_service.is_git_repo", lambda: True)
     monkeypatch.setattr("app.tools.pr_service.gh_available", lambda: True)
     monkeypatch.setattr("app.tools.pr_service.gh_authenticated", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.get_open_pull_request", lambda: None)
     monkeypatch.setattr("app.tools.pr_service.has_publishable_changes", lambda: True)
     monkeypatch.setattr(
         "app.tools.pr_service.collect_change_context",
@@ -198,3 +201,59 @@ def test_pr_service_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     assert ("push", "-u", "origin", "HEAD") in git_calls
     assert gh_calls[0][:2] == ("pr", "create")
     assert "--head" not in gh_calls[0]
+
+
+def test_pr_service_blocks_when_open_pr_exists(monkeypatch: pytest.MonkeyPatch) -> None:
+    git_calls: list[tuple[str, ...]] = []
+
+    def fake_run_git(*args: str):
+        git_calls.append(args)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    open_pr = OpenPullRequest(
+        number=3,
+        url="https://github.com/org/repo/pull/3",
+        title="pending change",
+        branch="feature/pending_change",
+    )
+
+    monkeypatch.setattr("app.tools.pr_service.is_git_repo", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.gh_available", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.gh_authenticated", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.get_open_pull_request", lambda: open_pr)
+    monkeypatch.setattr("app.tools.pr_service.run_git", fake_run_git)
+    monkeypatch.setattr("app.tools.pr_service.activity.working", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.error", lambda **kwargs: None)
+
+    result = PullRequestService().run(client=SimpleNamespace())
+
+    assert result.ok is False
+    assert result.step == "preflight"
+    assert result.url == open_pr.url
+    assert "already open" in (result.error or "").lower()
+    assert not git_calls
+
+
+def test_summarize_pr_result_open_pr_blocks_without_url() -> None:
+    composer = ResponseComposer()
+    payload = json.dumps(
+        {
+            "ok": False,
+            "step": "preflight",
+            "url": "https://github.com/org/repo/pull/3",
+            "branch": "feature/pending_change",
+            "title": "pending change",
+            "error": "Pull request #3 is already open and waiting for review.",
+        }
+    )
+    source = tool_result_source(
+        user_message="create a PR",
+        facts=payload,
+        tool_name="create_pull_request",
+        conversation_id="default",
+    )
+
+    summary = composer.compose(_SummaryClient(), source)
+
+    assert "http" not in summary
+    assert "already waiting for your review" in summary

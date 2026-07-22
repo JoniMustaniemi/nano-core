@@ -11,6 +11,7 @@ from app.tools.git_github import (
     ensure_feature_branch,
     format_command_result,
     get_current_branch,
+    get_open_pull_request,
     gh_authenticated,
     gh_available,
     gh_missing_message,
@@ -89,6 +90,22 @@ class PullRequestService:
 
         if not gh_authenticated():
             return self._fail("preflight", "GitHub CLI is not authenticated. Run gh auth login.")
+
+        open_pr = get_open_pull_request()
+        if open_pr is not None:
+            branch_suffix = f" on {open_pr.branch}" if open_pr.branch else ""
+            return PrResult(
+                ok=False,
+                step="preflight",
+                url=open_pr.url,
+                branch=open_pr.branch or None,
+                title=open_pr.title,
+                error=(
+                    f"Pull request #{open_pr.number} is already open{branch_suffix} "
+                    f"and waiting for review ({open_pr.title}). "
+                    "Merge or close it before opening another."
+                ),
+            )
 
         if not has_publishable_changes():
             return self._fail("preflight", "Nothing to open a pull request for.")

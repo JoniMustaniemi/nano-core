@@ -19,6 +19,14 @@ class GitCommandResult:
     stderr: str
 
 
+@dataclass(frozen=True, slots=True)
+class OpenPullRequest:
+    number: int
+    url: str
+    title: str
+    branch: str
+
+
 def run_git(*args: str) -> GitCommandResult:
     """
     Run a git command in the workspace root.
@@ -147,6 +155,48 @@ def gh_authenticated() -> bool:
     """
     result = run_gh("auth", "status")
     return result.returncode == 0
+
+
+def get_open_pull_request() -> OpenPullRequest | None:
+    """
+    Return the oldest open pull request for this repo, if any.
+
+    Returns:
+        Open pull request metadata when one exists; otherwise None.
+    """
+    result = run_gh(
+        "pr",
+        "list",
+        "--state",
+        "open",
+        "--limit",
+        "1",
+        "--json",
+        "number,url,title,headRefName",
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    try:
+        items = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(items, list) or not items:
+        return None
+    item = items[0]
+    if not isinstance(item, dict):
+        return None
+    number = item.get("number")
+    url = item.get("url")
+    title = item.get("title")
+    branch = item.get("headRefName")
+    if not isinstance(number, int) or not isinstance(url, str) or not url:
+        return None
+    return OpenPullRequest(
+        number=number,
+        url=url,
+        title=str(title or "").strip() or f"PR #{number}",
+        branch=str(branch or "").strip(),
+    )
 
 
 def get_current_branch() -> str:

@@ -224,6 +224,17 @@ class ResponseComposer:
             return "Your tests failed, so I declined to commit anything or open a pull request."
         if step == "preflight" and "nothing" in error.lower():
             return "There is nothing to publish, so I did not open a pull request."
+        if step == "preflight" and "already open" in error.lower():
+            title = str(payload.get("title", "")).strip()
+            if title:
+                return (
+                    f"An open pull request is already waiting for your review ({title}). "
+                    "Resolve it on GitHub before I open another."
+                )
+            return (
+                "An open pull request is already waiting for your review. "
+                "Resolve it on GitHub before I open another."
+            )
         if error:
             return f"I could not complete the pull request during {step}: {error}"
         return "I could not complete the pull request."
@@ -239,6 +250,11 @@ class ResponseComposer:
             )
         error = str(payload.get("error", "")).strip()
         step = str(payload.get("step", "unknown")).strip()
+        if step == "preflight" and "already open" in error.lower():
+            return (
+                "An open pull request is already waiting for your review. "
+                "Resolve it on GitHub before I prepare another self-improvement pull request."
+            )
         if error:
             return f"I could not complete self-improvement during {step}: {error}"
         return "I could not complete the self-improvement workflow."
