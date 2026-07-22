@@ -8,6 +8,11 @@ from app.assistant.response_source import (
 )
 from app.assistant.rules.messages import is_confirmation_message, is_rejection_message
 from app.runtime.activity import activity
+from app.runtime.status_copy import (
+  CANCELLED_UPDATE_TITLE,
+  NEEDS_CONFIRMATION_TITLE,
+  PREPARING_CONFIRMATION_TITLE,
+)
 from app.tools.self_update_service import SelfUpdateService
 
 
@@ -16,7 +21,7 @@ class SelfUpdateInteractionHandler:
 
   def start(self, *, conversation_id: str, message: str) -> ResponseSource:
     activity.working(
-      title="Nano is preparing confirmation.",
+      title=PREPARING_CONFIRMATION_TITLE,
       detail="Preparing confirmation for pulling latest changes.",
       source="assistant.flows.self_update",
     )
@@ -26,7 +31,7 @@ class SelfUpdateInteractionHandler:
       payload={"request": message},
     )
     activity.standby(
-      title="Nano needs confirmation.",
+      title=NEEDS_CONFIRMATION_TITLE,
       detail="Awaiting confirmation before pulling updates.",
       source="assistant.flows.self_update",
     )
@@ -50,7 +55,7 @@ class SelfUpdateInteractionHandler:
     if is_rejection_message(message):
       pending_interactions.clear(conversation_id)
       activity.standby(
-        title="Nano cancelled the update.",
+        title=CANCELLED_UPDATE_TITLE,
         detail="The local checkout was left unchanged.",
         source="assistant.flows.self_update",
       )

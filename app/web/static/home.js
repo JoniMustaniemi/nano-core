@@ -43,8 +43,8 @@ let recognitionPausedForSpeech = false;
 let recognitionStopWaiters = [];
 let currentActivitySnapshot = {
   state: "standby",
-  headline: "Nano is in standby.",
-  detail: "Awaiting input.",
+  headline: "I'm in standby.",
+  detail: "Awaiting your input.",
 };
 const activityStates = ["standby", "working", "error"];
 let bootAnnouncementPlayed = false;
@@ -246,7 +246,7 @@ function isListeningStateActive() {
 }
 
 function renderActivityStatus() {
-  const headline = (currentActivitySnapshot.headline || "Nano is in standby.").trim();
+  const headline = (currentActivitySnapshot.headline || "I'm in standby.").trim();
   const detail = (currentActivitySnapshot.detail || "").trim();
   if (detail && detail !== headline && !headline.includes(detail)) {
     activityStatus.textContent = `${headline} — ${detail}`;
@@ -591,7 +591,7 @@ async function acknowledgeWakePhrase() {
   try {
     const wakeReply = await requestWakeAcknowledgement();
     setAnswer(wakeReply);
-    replyStatus.textContent = "Nano is listening.";
+    replyStatus.textContent = "I'm listening.";
     await playVoice(wakeReply);
   } catch (error) {
     replyStatus.textContent = error.message;
@@ -784,7 +784,7 @@ async function playVoiceNow(text, options = {}) {
     await voiceAudio.play();
     await waitForVoicePlayback();
   } catch (error) {
-    replyStatus.textContent = `Nano answered, but voice playback failed: ${error.message}`;
+    replyStatus.textContent = `I answered, but voice playback failed: ${error.message}`;
   } finally {
     clearVoiceSource();
     if (shouldResumeRecognition && microphoneReady) {
@@ -939,7 +939,7 @@ function listen(lastEventId = 0) {
 
 async function sendMessage() {
   if (isBusy()) {
-    replyStatus.textContent = "Nano is still working. Wait for the current answer.";
+    replyStatus.textContent = "I'm still working. Wait for the current answer.";
     return;
   }
   const message = messageBox.value.trim();
@@ -979,7 +979,7 @@ async function submitMessage(message, source) {
     }
     answerText = data.content;
     setAnswer(answerText);
-    replyStatus.textContent = "Nano answered.";
+    replyStatus.textContent = "Answer ready.";
     await refreshStorage();
   } catch (error) {
     requestFailed = true;
@@ -996,7 +996,7 @@ async function submitMessage(message, source) {
 
   const needsVoiceFollowUp = answerNeedsVoiceFollowUp(answerText);
   if (needsVoiceFollowUp) {
-    setVoiceStatus("Nano needs your answer. Listening after it finishes speaking.");
+    setVoiceStatus("I need your answer. Listening after I finish speaking.");
     await playVoice(answerText, { pauseRecognition: true });
     armVoiceFollowUp("Listening for your answer.");
     return;

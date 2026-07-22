@@ -59,7 +59,7 @@ def test_chat_updates_activity(monkeypatch) -> None:
 
     payload = status.json()
     assert payload["state"] == "standby"
-    assert payload["headline"] == "Nano is in standby."
+    assert payload["headline"] == "I'm in standby."
     assert any(event["source"] == "assistant.chat" for event in payload["events"])
 
 
@@ -90,6 +90,6 @@ def test_health_check_sets_working_activity(monkeypatch) -> None:
     payload = status.json()
     assert payload["state"] == "standby"
     assert any(
-        event["state"] == "working" and event["title"] == "Nano is running check_health."
+        event["state"] == "working" and event["title"] == "I'm running check_health."
         for event in payload["events"]
     )

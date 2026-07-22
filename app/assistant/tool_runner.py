@@ -6,6 +6,7 @@ from typing import Any
 from app.assistant.agent_rules import tool_announcement
 from app.assistant.agent_types import ToolResult
 from app.runtime.activity import activity
+from app.runtime.status_copy import could_not_call_tool_title, tool_error_title
 from app.tools import get_tool, list_tools
 from app.tools.errors import ToolError
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
@@ -28,7 +29,7 @@ class ToolRunner:
             available = ", ".join(tool_spec.name for tool_spec in list_tools())
             error_message = f"Unknown tool: {tool_name}. Available tools: {available}"
             self.report_error(
-                title=f"Nano could not call {tool_name}.",
+                title=could_not_call_tool_title(tool_name),
                 detail=error_message,
                 spoken_message="I hit a tool error while trying to complete the task.",
             )
@@ -43,7 +44,7 @@ class ToolRunner:
         except ToolError as exc:
             error_message = str(exc)
             self.report_error(
-                title=f"Nano hit an error in {tool_name}.",
+                title=tool_error_title(tool_name),
                 detail=error_message,
                 spoken_message="I hit an error while trying to complete the task.",
             )
@@ -55,7 +56,7 @@ class ToolRunner:
         except Exception as exc:
             error_message = f"Error while running {tool_name}: {exc}"
             self.report_error(
-                title=f"Nano hit an error in {tool_name}.",
+                title=tool_error_title(tool_name),
                 detail=error_message,
                 spoken_message="I hit an error while trying to complete the task.",
             )

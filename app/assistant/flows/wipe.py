@@ -16,6 +16,13 @@ from app.assistant.response_source import (
 )
 from app.memory import repository
 from app.runtime.activity import activity
+from app.runtime.status_copy import (
+    CANCELLED_WIPE_TITLE,
+    NEEDS_CONFIRMATION_TITLE,
+    PREPARING_CONFIRMATION_TITLE,
+    WIPED_DATABASE_TITLE,
+    WIPING_DATABASE_TITLE,
+)
 
 
 class WipeInteractionHandler:
@@ -40,7 +47,7 @@ class WipeInteractionHandler:
             Confirmation response source.
         """
         activity.working(
-            title="Nano is preparing confirmation.",
+            title=PREPARING_CONFIRMATION_TITLE,
             detail="Preparing confirmation for the destructive request.",
             source="assistant.flows.wipe",
         )
@@ -50,7 +57,7 @@ class WipeInteractionHandler:
             payload={"request": message},
         )
         activity.standby(
-            title="Nano needs confirmation.",
+            title=NEEDS_CONFIRMATION_TITLE,
             detail="Waiting for confirmation before wiping the database.",
             source="assistant.flows.wipe",
         )
@@ -90,7 +97,7 @@ class WipeInteractionHandler:
         if is_rejection_message(message):
             pending_interactions.clear(conversation_id)
             activity.standby(
-                title="Nano cancelled the wipe.",
+                title=CANCELLED_WIPE_TITLE,
                 detail="The database was left intact.",
                 source="assistant.flows.wipe",
             )
@@ -108,14 +115,14 @@ class WipeInteractionHandler:
             )
 
         activity.working(
-            title="Nano is wiping the database.",
+            title=WIPING_DATABASE_TITLE,
             detail="Deleting stored notes, reminders, and chat history.",
             source="assistant.flows.wipe",
         )
         repository.wipe_database()
         pending_interactions.clear(conversation_id)
         activity.standby(
-            title="Nano wiped the database.",
+            title=WIPED_DATABASE_TITLE,
             detail="Notes, reminders, and chat history were deleted.",
             source="assistant.flows.wipe",
         )

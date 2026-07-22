@@ -9,6 +9,7 @@ from app.memory import codebase_index
 from app.proactive.codebase_files import file_content_hash, list_all_app_files
 from app.proactive.types import ProactiveOffer
 from app.runtime.activity import activity
+from app.runtime.status_copy import SCANNED_SOURCE_FILE_TITLE
 from app.tools.files import read_text_file
 
 
@@ -74,7 +75,7 @@ class CodebaseCrawlService:
       last_confidence=confidence or None,
     )
     activity.log(
-      title="Nano scanned a source file.",
+      title=SCANNED_SOURCE_FILE_TITLE,
       detail=path,
       source="proactive.codebase_crawl",
     )

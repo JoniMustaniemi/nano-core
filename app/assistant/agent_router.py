@@ -8,6 +8,7 @@ from app.assistant.agent_rules import (
     is_capability_question,
     is_health_check_request,
     is_identity_question,
+    is_internal_note_list_request,
     is_note_add_request,
     is_note_list_request,
     is_note_lookup_request,
@@ -108,6 +109,9 @@ class AgentRouter:
             message
         ):
             return RouteDecision(mode="interaction", interaction="note")
+
+        if is_internal_note_list_request(message):
+            return RouteDecision(mode="tool", tool_name="list_internal_notes", tool_args={})
 
         if is_health_check_request(message):
             return RouteDecision(mode="tool", tool_name="check_health", tool_args={})

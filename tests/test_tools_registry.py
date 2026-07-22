@@ -20,6 +20,7 @@ def test_tool_registry_loads_builtin_tool_modules() -> None:
     assert "start_timer" in tool_names
     assert "check_health" in tool_names
     assert "create_pull_request" in tool_names
+    assert "list_internal_notes" in tool_names
 
 
 def test_tool_prompt_lists_registered_tools() -> None:

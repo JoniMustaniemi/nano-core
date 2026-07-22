@@ -37,6 +37,13 @@ TOOL_COMMANDS: tuple[ToolCommand, ...] = (
         description="Show saved notes.",
     ),
     ToolCommand(
+        id="list_internal_notes",
+        label="Internal notes",
+        message="Tell me about your internal notes.",
+        category="Notes",
+        description="Show Nano's private follow-up notes.",
+    ),
+    ToolCommand(
         id="start_timer",
         label="Start 5 min timer",
         message="Start a 5 minute timer.",

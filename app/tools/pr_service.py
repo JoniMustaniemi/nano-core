@@ -5,6 +5,21 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from app.runtime.activity import activity
+from app.runtime.status_copy import (
+    COLLECTED_CHANGE_CONTEXT_TITLE,
+    COMMITTING_CHANGES_TITLE,
+    CREATING_FEATURE_BRANCH_TITLE,
+    NAMING_PR_TITLE,
+    OPENING_PR_TITLE,
+    PR_CREATED_TITLE,
+    PR_NAMING_FAILED_TITLE,
+    PR_WORKFLOW_FAILED_TITLE,
+    PREPARING_PR_TITLE,
+    PUSHING_BRANCH_TITLE,
+    VERIFICATION_FAILED_TITLE,
+    VERIFICATION_PASSED_TITLE,
+    VERIFYING_PROJECT_TITLE,
+)
 from app.tools.git_github import (
     collect_change_context,
     detect_default_base_branch,
@@ -75,7 +90,7 @@ class PullRequestService:
             Structured pull request result.
         """
         activity.working(
-            title="Nano is preparing a pull request.",
+            title=PREPARING_PR_TITLE,
             detail="Running preflight checks.",
             source="tools.pr_service",
         )
@@ -112,7 +127,7 @@ class PullRequestService:
 
         context = collect_change_context()
         activity.log(
-            title="Nano collected change context.",
+            title=COLLECTED_CHANGE_CONTEXT_TITLE,
             detail=json.dumps(
                 {
                     "changed_files": context.get("changed_files", []),
@@ -124,14 +139,14 @@ class PullRequestService:
         )
 
         activity.working(
-            title="Nano is verifying the project.",
+            title=VERIFYING_PROJECT_TITLE,
             detail="Running tests before any git writes.",
             source="tools.pr_service",
         )
         verify = run_pr_verification()
         if not verify.ok:
             activity.error(
-                title="Verification failed.",
+                title=VERIFICATION_FAILED_TITLE,
                 detail=verify.error or verify.output,
                 source="tools.pr_service",
             )
@@ -144,13 +159,13 @@ class PullRequestService:
             )
 
         activity.log(
-            title="Verification passed.",
+            title=VERIFICATION_PASSED_TITLE,
             detail=command_display(verify.command),
             source="tools.pr_service",
         )
 
         activity.working(
-            title="Nano is naming the pull request.",
+            title=NAMING_PR_TITLE,
             detail="Using the local model to derive branch and title.",
             source="tools.pr_service",
         )
@@ -158,7 +173,7 @@ class PullRequestService:
             naming = self.naming_service.generate(client=client, context=context)
         except RuntimeError as exc:
             activity.error(
-                title="Pull request naming failed.",
+                title=PR_NAMING_FAILED_TITLE,
                 detail=str(exc),
                 source="tools.pr_service",
             )
@@ -168,7 +183,7 @@ class PullRequestService:
         base_branch = detect_default_base_branch()
         if current_branch == base_branch or current_branch != naming.branch:
             activity.working(
-                title="Nano is creating a feature branch.",
+                title=CREATING_FEATURE_BRANCH_TITLE,
                 detail=naming.branch,
                 source="tools.pr_service",
             )
@@ -185,7 +200,7 @@ class PullRequestService:
 
         if working_tree_dirty():
             activity.working(
-                title="Nano is committing changes.",
+                title=COMMITTING_CHANGES_TITLE,
                 detail=naming.commit_message,
                 source="tools.pr_service",
             )
@@ -198,7 +213,7 @@ class PullRequestService:
                 return self._fail("commit", format_command_result(commit_result))
 
         activity.working(
-            title="Nano is pushing the branch.",
+            title=PUSHING_BRANCH_TITLE,
             detail=naming.branch,
             source="tools.pr_service",
         )
@@ -214,7 +229,7 @@ class PullRequestService:
             )
 
         activity.working(
-            title="Nano is opening the pull request.",
+            title=OPENING_PR_TITLE,
             detail=f"{current_branch} -> {base_branch}",
             source="tools.pr_service",
         )
@@ -255,7 +270,7 @@ class PullRequestService:
 
         url = pr_result.stdout.strip()
         activity.standby(
-            title="Pull request created.",
+            title=PR_CREATED_TITLE,
             detail=url,
             source="tools.pr_service",
         )
@@ -271,7 +286,7 @@ class PullRequestService:
 
     def _fail(self, step: str, error: str) -> PrResult:
         activity.error(
-            title="Pull request workflow failed.",
+            title=PR_WORKFLOW_FAILED_TITLE,
             detail=error,
             source="tools.pr_service",
         )

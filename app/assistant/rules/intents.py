@@ -64,6 +64,15 @@ NOTE_LOOKUP_PATTERNS: tuple[str, ...] = (
     r"\bsearch\s+(?:my\s+)?notes\b",
 )
 
+INTERNAL_NOTE_LIST_PATTERNS: tuple[str, ...] = (
+    r"\b(?:list|show|tell(?: me)?(?: about)?|read|what(?:'s| are)?)\b.*\binternal notes?\b",
+    r"\binternal notes?\b.*\b(?:list|show|tell|read|what)\b",
+    r"\bwhat\b.*\b(?:follow[\s-]?up|deferred)\b.*\bnotes?\b",
+    r"\bwhat\b.*\bnotes?\b.*\b(?:follow[\s-]?up|discuss later|saved for later)\b",
+    r"\bwhat do you want to discuss\b",
+    r"\bwhat are you saving to discuss\b",
+)
+
 PULL_REQUEST_PATTERNS: tuple[str, ...] = (
     r"\b(?:create|open|make|start)\b.*\b(?:pull request|pr)\b",
     r"\b(?:pull request|pr)\b.*\b(?:create|open|make|start)\b",
@@ -246,6 +255,20 @@ def is_note_lookup_request(message: str) -> bool:
     return any(re.search(pattern, lowered) for pattern in NOTE_LOOKUP_PATTERNS)
 
 
+def is_internal_note_list_request(message: str) -> bool:
+    """
+    Return whether the user is asking about Nano's internal follow-up notes.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message asks for internal notes.
+    """
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in INTERNAL_NOTE_LIST_PATTERNS)
+
+
 def needs_wipe_confirmation(message: str) -> bool:
     """
     Return whether wipe confirmation.
@@ -304,4 +327,6 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_note_add_request(message)
     if tool_name == "list_notes":
         return is_note_list_request(message)
+    if tool_name == "list_internal_notes":
+        return is_internal_note_list_request(message)
     return any(keyword in lowered for keyword in rule.keywords)

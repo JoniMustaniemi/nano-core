@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 
 from app.config import get_settings
 from app.runtime.activity import activity
+from app.runtime.status_copy import PULLING_CHANGES_TITLE, SWITCHING_BRANCH_TITLE
 from app.tools.git_github import (
   checkout_branch,
   format_command_result,
@@ -36,7 +37,7 @@ class SelfUpdateService:
     base_branch = settings.self_update_base_branch or settings.github_default_base_branch
 
     activity.working(
-      title="Nano is pulling latest changes.",
+      title=PULLING_CHANGES_TITLE,
       detail=f"Updating from origin/{base_branch}.",
       source="tools.self_update_service",
     )
@@ -54,7 +55,7 @@ class SelfUpdateService:
     current_branch = get_current_branch()
     if current_branch != base_branch:
       activity.working(
-        title="Nano is switching branches.",
+        title=SWITCHING_BRANCH_TITLE,
         detail=f"Moving from {current_branch} to {base_branch} before pulling updates.",
         source="tools.self_update_service",
       )

@@ -13,6 +13,11 @@ from app.assistant.response_source import ResponseSource, answer_source
 from app.assistant.response_variation import choose_variation_hint
 from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
+from app.runtime.status_copy import (
+    ANSWERING_TITLE,
+    INTRODUCING_TITLE,
+    REVIEWING_CAPABILITIES_TITLE,
+)
 
 
 class AnswerExecutor:
@@ -41,7 +46,7 @@ class AnswerExecutor:
             Answer response source with a factual draft.
         """
         activity.working(
-            title="Nano is answering.",
+            title=ANSWERING_TITLE,
             detail="Using plain chat mode with the local model.",
             source="assistant.answer_executor",
         )
@@ -76,7 +81,7 @@ class AnswerExecutor:
             Answer response source with a factual draft.
         """
         activity.working(
-            title="Nano is reviewing capabilities.",
+            title=REVIEWING_CAPABILITIES_TITLE,
             detail="Checking registered tools and drafting a capability summary.",
             source="assistant.answer_executor",
         )
@@ -122,7 +127,7 @@ class AnswerExecutor:
             Answer response source with a factual draft.
         """
         activity.working(
-            title="Nano is introducing itself.",
+            title=INTRODUCING_TITLE,
             detail="Drafting an identity answer with current context.",
             source="assistant.answer_executor",
         )

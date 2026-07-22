@@ -7,6 +7,11 @@ from app.memory import internal_notes
 from app.memory.models import InternalNote
 from app.proactive.types import ProactiveOffer
 from app.runtime.activity import activity
+from app.runtime.status_copy import (
+  DISMISSED_FOLLOW_UP_TITLE,
+  NOTED_FOR_LATER_TITLE,
+  RESCHEDULED_FOLLOW_UP_TITLE,
+)
 
 
 class InternalNoteService:
@@ -30,7 +35,7 @@ class InternalNoteService:
       next_attempt_at=scheduled_at,
     )
     activity.log(
-      title="Nano noted something to discuss later.",
+      title=NOTED_FOR_LATER_TITLE,
       detail=offer.title,
       source="memory.internal_notes",
     )
@@ -71,7 +76,7 @@ class InternalNoteService:
     if next_count >= settings.internal_note_max_attempts:
       internal_notes.dismiss_internal_note(note.id or 0)
       activity.log(
-        title="Nano dismissed a follow-up note.",
+        title=DISMISSED_FOLLOW_UP_TITLE,
         detail=f"{note.title} ({reason})",
         source="memory.internal_notes",
       )
@@ -84,7 +89,7 @@ class InternalNoteService:
     internal_notes.reschedule_internal_note(note.id or 0, next_attempt_at=next_attempt_at)
     internal_notes.mark_internal_note_attempted(note.id or 0)
     activity.log(
-      title="Nano rescheduled a follow-up note.",
+      title=RESCHEDULED_FOLLOW_UP_TITLE,
       detail=f"{note.title} ({reason})",
       source="memory.internal_notes",
     )

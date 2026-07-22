@@ -17,6 +17,7 @@ from app.assistant.response_source import (
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
 from app.runtime.activity import activity
+from app.runtime.status_copy import NEEDS_DETAIL_TITLE, SETTING_TIMER_TITLE, ran_tool_title
 
 
 class TimerInteractionHandler:
@@ -137,7 +138,7 @@ class TimerInteractionHandler:
             payload={"request": user_message},
         )
         activity.standby(
-            title="Nano needs one detail.",
+            title=NEEDS_DETAIL_TITLE,
             detail="Waiting for the timer duration.",
             source="assistant.flows.timer",
         )
@@ -166,12 +167,12 @@ class TimerInteractionHandler:
             Timer confirmation response source.
         """
         activity.working(
-            title="Nano is setting a timer.",
+            title=SETTING_TIMER_TITLE,
             detail="Scheduling the requested timer.",
             source="assistant.flows.timer",
         )
         activity.log(
-            title="Nano called start_timer.",
+            title=ran_tool_title("start_timer"),
             detail=json.dumps(args, ensure_ascii=False),
             source="assistant.flows.timer",
         )

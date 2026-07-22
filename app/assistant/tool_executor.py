@@ -6,6 +6,7 @@ from typing import Any
 from app.assistant.response_source import ResponseSource, tool_error_source, tool_result_source
 from app.assistant.tool_runner import ToolRunner
 from app.runtime.activity import activity
+from app.runtime.status_copy import ran_tool_title, running_tool_title
 
 
 class ToolExecutor:
@@ -44,12 +45,12 @@ class ToolExecutor:
         """
         tool_args = args or {}
         activity.working(
-            title=f"Nano is running {tool_name}.",
+            title=running_tool_title(tool_name),
             detail="Executing the requested tool.",
             source="assistant.tool_executor",
         )
         activity.log(
-            title=f"Nano called {tool_name}.",
+            title=ran_tool_title(tool_name),
             detail=json.dumps(tool_args, ensure_ascii=False),
             source="assistant.tool_executor",
         )

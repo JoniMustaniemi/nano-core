@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.memory import codebase_index
 from app.proactive.codebase_files import list_all_app_files
 from app.runtime.activity import activity
+from app.runtime.status_copy import PLANNING_SELF_IMPROVE_TITLE, VERIFYING_SELF_IMPROVE_TITLE
 from app.tools.files import read_text_file, write_text_file
 from app.tools.pr_service import PullRequestService
 from app.tools.pr_verify import run_pr_verification
@@ -57,7 +58,7 @@ class SelfImproveService:
     allowed = settings.self_improve_allowed_prefix
 
     activity.working(
-      title="Nano is planning self-improvement.",
+      title=PLANNING_SELF_IMPROVE_TITLE,
       detail=goal,
       source="tools.self_improve_service",
     )
@@ -141,7 +142,7 @@ class SelfImproveService:
       return SelfImproveResult(ok=False, step="apply", error="No valid file writes.", goal=goal)
 
     activity.working(
-      title="Nano is verifying self-improvement.",
+      title=VERIFYING_SELF_IMPROVE_TITLE,
       detail="Running tests before opening a pull request.",
       source="tools.self_improve_service",
     )

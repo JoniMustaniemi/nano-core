@@ -7,6 +7,7 @@ from app.health import HealthCheckResult, run_health_checks
 from app.memory.repository import delete_reminder, list_due_reminders, mark_reminder_sent
 from app.proactive.background_tick import check_presence_timeouts, run_proactive_background_tick
 from app.runtime.activity import activity
+from app.runtime.status_copy import HEALTH_ISSUE_DETECTED_TITLE
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
 scheduler = BackgroundScheduler(daemon=True)
@@ -119,7 +120,7 @@ def check_system_health() -> list[HealthCheckResult]:
         if result.ok:
             continue
         activity.error(
-            title="Nano detected a health issue.",
+            title=HEALTH_ISSUE_DETECTED_TITLE,
             detail=f"{result.name}: {result.detail}",
             source="scheduler.health",
         )
