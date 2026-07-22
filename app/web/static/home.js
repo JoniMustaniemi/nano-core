@@ -48,6 +48,10 @@ let currentActivitySnapshot = {
   detail: "Awaiting your input.",
 };
 const activityStates = ["standby", "working", "error"];
+const STANDBY_HEADLINE = "I'm in standby.";
+const WORKING_HEADLINE_DEFAULT = "I'm working.";
+const LISTENING_HEADLINE_DEFAULT = "I'm listening.";
+const WORKING_DETAIL_DEFAULT = "Processing your message.";
 let bootAnnouncementPlayed = false;
 let lastActivityEventId = 0;
 let activityLogHiddenBeforeId = 0;
@@ -259,14 +263,31 @@ function isListeningStateActive() {
   );
 }
 
-function renderActivityStatus() {
-  const headline = (currentActivitySnapshot.headline || "I'm in standby.").trim();
+function resolveActivityHeadline() {
+  const displayState = getDisplayState();
+  let headline = (currentActivitySnapshot.headline || "").trim();
   const detail = (currentActivitySnapshot.detail || "").trim();
-  if (detail && detail !== headline && !headline.includes(detail)) {
-    activityStatus.textContent = `${headline} — ${detail}`;
-    return;
+
+  if (displayState === "working") {
+    if (!headline || headline === STANDBY_HEADLINE) {
+      headline = WORKING_HEADLINE_DEFAULT;
+    }
+  } else if (displayState === "listening") {
+    if (!headline || headline === STANDBY_HEADLINE) {
+      headline = LISTENING_HEADLINE_DEFAULT;
+    }
+  } else if (!headline) {
+    headline = STANDBY_HEADLINE;
   }
-  activityStatus.textContent = headline;
+
+  if (detail && detail !== headline && !headline.includes(detail)) {
+    return `${headline} — ${detail}`;
+  }
+  return headline;
+}
+
+function renderActivityStatus() {
+  activityStatus.textContent = resolveActivityHeadline();
 }
 
 function renderState() {
@@ -1016,6 +1037,12 @@ async function sendRecognizedMessage(message) {
 
 async function submitMessage(message, source) {
   requestInFlight = true;
+  currentActivitySnapshot = {
+    ...currentActivitySnapshot,
+    state: "working",
+    headline: WORKING_HEADLINE_DEFAULT,
+    detail: WORKING_DETAIL_DEFAULT,
+  };
   renderState();
   replyStatus.textContent = source === "voice" ? "Sending voice command..." : "Sending...";
   let answerText = "";

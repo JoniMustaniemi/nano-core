@@ -17,7 +17,13 @@ from app.assistant.response_source import (
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
 from app.runtime.activity import activity
-from app.runtime.status_copy import NEEDS_DETAIL_TITLE, SETTING_TIMER_TITLE, ran_tool_title
+from app.runtime.status_copy import (
+    NEEDS_DETAIL_TITLE,
+    SETTING_TIMER_DETAIL,
+    SETTING_TIMER_TITLE,
+    WAITING_TIMER_DURATION_DETAIL,
+    ran_tool_title,
+)
 
 
 class TimerInteractionHandler:
@@ -139,7 +145,7 @@ class TimerInteractionHandler:
         )
         activity.standby(
             title=NEEDS_DETAIL_TITLE,
-            detail="Waiting for the timer duration.",
+            detail=WAITING_TIMER_DURATION_DETAIL,
             source="assistant.flows.timer",
         )
         return follow_up_source(
@@ -168,7 +174,7 @@ class TimerInteractionHandler:
         """
         activity.working(
             title=SETTING_TIMER_TITLE,
-            detail="Scheduling the requested timer.",
+            detail=SETTING_TIMER_DETAIL,
             source="assistant.flows.timer",
         )
         activity.log(

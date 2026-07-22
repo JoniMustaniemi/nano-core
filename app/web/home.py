@@ -39,8 +39,8 @@ def home() -> str:
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <title>{app_name}</title>
-            <link rel="stylesheet" href="/static/home.css?v=answer-clear-20s-1" />
-            <script defer src="/static/home.js?v=answer-clear-20s-1"></script>
+            <link rel="stylesheet" href="/static/home.css?v=working-status-text-1" />
+            <script defer src="/static/home.js?v=working-status-text-1"></script>
           </head>
           <body>
             <button

@@ -20,8 +20,13 @@ from app.runtime.status_copy import (
     CANCELLED_WIPE_TITLE,
     NEEDS_CONFIRMATION_TITLE,
     PREPARING_CONFIRMATION_TITLE,
-    WIPED_DATABASE_TITLE,
-    WIPING_DATABASE_TITLE,
+    PREPARING_WIPE_DETAIL,
+    WAITING_WIPE_CONFIRMATION_DETAIL,
+    WIPE_CANCELLED_DETAIL,
+    WIPED_MEMORY_DETAIL,
+    WIPED_MEMORY_TITLE,
+    WIPING_MEMORY_DETAIL,
+    WIPING_MEMORY_TITLE,
 )
 
 
@@ -48,7 +53,7 @@ class WipeInteractionHandler:
         """
         activity.working(
             title=PREPARING_CONFIRMATION_TITLE,
-            detail="Preparing confirmation for the destructive request.",
+            detail=PREPARING_WIPE_DETAIL,
             source="assistant.flows.wipe",
         )
         pending_interactions.set(
@@ -58,7 +63,7 @@ class WipeInteractionHandler:
         )
         activity.standby(
             title=NEEDS_CONFIRMATION_TITLE,
-            detail="Waiting for confirmation before wiping the database.",
+            detail=WAITING_WIPE_CONFIRMATION_DETAIL,
             source="assistant.flows.wipe",
         )
         return confirmation_source(
@@ -98,7 +103,7 @@ class WipeInteractionHandler:
             pending_interactions.clear(conversation_id)
             activity.standby(
                 title=CANCELLED_WIPE_TITLE,
-                detail="The database was left intact.",
+                detail=WIPE_CANCELLED_DETAIL,
                 source="assistant.flows.wipe",
             )
             return answer_source(
@@ -115,15 +120,15 @@ class WipeInteractionHandler:
             )
 
         activity.working(
-            title=WIPING_DATABASE_TITLE,
-            detail="Deleting stored notes, reminders, and chat history.",
+            title=WIPING_MEMORY_TITLE,
+            detail=WIPING_MEMORY_DETAIL,
             source="assistant.flows.wipe",
         )
         repository.wipe_database()
         pending_interactions.clear(conversation_id)
         activity.standby(
-            title=WIPED_DATABASE_TITLE,
-            detail="Notes, reminders, and chat history were deleted.",
+            title=WIPED_MEMORY_TITLE,
+            detail=WIPED_MEMORY_DETAIL,
             source="assistant.flows.wipe",
         )
         return answer_source(

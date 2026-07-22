@@ -9,12 +9,15 @@ from app.runtime.status_copy import (
     COLLECTED_CHANGE_CONTEXT_TITLE,
     COMMITTING_CHANGES_TITLE,
     CREATING_FEATURE_BRANCH_TITLE,
+    NAMING_PR_DETAIL,
     NAMING_PR_TITLE,
     OPENING_PR_TITLE,
     PR_CREATED_TITLE,
     PR_NAMING_FAILED_TITLE,
     PR_WORKFLOW_FAILED_TITLE,
+    PREPARING_PR_PREFLIGHT_DETAIL,
     PREPARING_PR_TITLE,
+    PREPARING_PR_VERIFY_DETAIL,
     PUSHING_BRANCH_TITLE,
     VERIFICATION_FAILED_TITLE,
     VERIFICATION_PASSED_TITLE,
@@ -91,7 +94,7 @@ class PullRequestService:
         """
         activity.working(
             title=PREPARING_PR_TITLE,
-            detail="Running preflight checks.",
+            detail=PREPARING_PR_PREFLIGHT_DETAIL,
             source="tools.pr_service",
         )
 
@@ -140,7 +143,7 @@ class PullRequestService:
 
         activity.working(
             title=VERIFYING_PROJECT_TITLE,
-            detail="Running tests before any git writes.",
+            detail=PREPARING_PR_VERIFY_DETAIL,
             source="tools.pr_service",
         )
         verify = run_pr_verification()
@@ -166,7 +169,7 @@ class PullRequestService:
 
         activity.working(
             title=NAMING_PR_TITLE,
-            detail="Using the local model to derive branch and title.",
+            detail=NAMING_PR_DETAIL,
             source="tools.pr_service",
         )
         try:

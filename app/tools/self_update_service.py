@@ -5,7 +5,12 @@ from dataclasses import asdict, dataclass
 
 from app.config import get_settings
 from app.runtime.activity import activity
-from app.runtime.status_copy import PULLING_CHANGES_TITLE, SWITCHING_BRANCH_TITLE
+from app.runtime.status_copy import (
+  PULLING_CHANGES_DETAIL,
+  PULLING_CHANGES_TITLE,
+  SWITCHING_BRANCH_DETAIL,
+  SWITCHING_BRANCH_TITLE,
+)
 from app.tools.git_github import (
   checkout_branch,
   format_command_result,
@@ -38,7 +43,7 @@ class SelfUpdateService:
 
     activity.working(
       title=PULLING_CHANGES_TITLE,
-      detail=f"Updating from origin/{base_branch}.",
+      detail=PULLING_CHANGES_DETAIL,
       source="tools.self_update_service",
     )
 
@@ -56,7 +61,7 @@ class SelfUpdateService:
     if current_branch != base_branch:
       activity.working(
         title=SWITCHING_BRANCH_TITLE,
-        detail=f"Moving from {current_branch} to {base_branch} before pulling updates.",
+        detail=SWITCHING_BRANCH_DETAIL,
         source="tools.self_update_service",
       )
       checkout_result = checkout_branch(base_branch)

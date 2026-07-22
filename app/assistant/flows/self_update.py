@@ -12,6 +12,9 @@ from app.runtime.status_copy import (
   CANCELLED_UPDATE_TITLE,
   NEEDS_CONFIRMATION_TITLE,
   PREPARING_CONFIRMATION_TITLE,
+  PREPARING_UPDATE_DETAIL,
+  UPDATE_CANCELLED_DETAIL,
+  WAITING_UPDATE_CONFIRMATION_DETAIL,
 )
 from app.tools.self_update_service import SelfUpdateService
 
@@ -22,7 +25,7 @@ class SelfUpdateInteractionHandler:
   def start(self, *, conversation_id: str, message: str) -> ResponseSource:
     activity.working(
       title=PREPARING_CONFIRMATION_TITLE,
-      detail="Preparing confirmation for pulling latest changes.",
+      detail=PREPARING_UPDATE_DETAIL,
       source="assistant.flows.self_update",
     )
     pending_interactions.set(
@@ -32,7 +35,7 @@ class SelfUpdateInteractionHandler:
     )
     activity.standby(
       title=NEEDS_CONFIRMATION_TITLE,
-      detail="Awaiting confirmation before pulling updates.",
+      detail=WAITING_UPDATE_CONFIRMATION_DETAIL,
       source="assistant.flows.self_update",
     )
     return confirmation_source(
@@ -56,7 +59,7 @@ class SelfUpdateInteractionHandler:
       pending_interactions.clear(conversation_id)
       activity.standby(
         title=CANCELLED_UPDATE_TITLE,
-        detail="The local checkout was left unchanged.",
+        detail=UPDATE_CANCELLED_DETAIL,
         source="assistant.flows.self_update",
       )
       return answer_source(
