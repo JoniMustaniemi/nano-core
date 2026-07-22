@@ -1,25 +1,21 @@
 from app.proactive.codebase_examine import CodebaseExamineService
 
 
-class _SelectClient:
+class _CrawlClient:
     def complete(self, messages) -> str:
-        if "File index" in messages[-1]["content"]:
-            return '{"files_to_read": ["app/main.py"]}'
         return (
-            '{"suggestion": "Add clearer health messages.", '
-            '"goal": "health copy", "confidence": "medium"}'
+            '{"summary": "Main entrypoint.", '
+            '"suggestion": "Add clearer health messages.", '
+            '"confidence": "medium"}'
         )
 
 
-def test_codebase_examine_returns_offer(monkeypatch) -> None:
+def test_codebase_examine_alias_delegates_to_crawl(monkeypatch) -> None:
     monkeypatch.setattr(
-        "app.proactive.codebase_examine.walk_app_files",
-        lambda max_files=40: ["app/main.py"],
+        "app.proactive.codebase_crawl.CodebaseCrawlService.scan_next_file",
+        lambda self, client: "offer",
     )
-    monkeypatch.setattr(
-        "app.proactive.codebase_examine.read_text_file",
-        lambda path: "print('nano')",
-    )
-    offer = CodebaseExamineService().run(client=_SelectClient())
-    assert offer is not None
-    assert offer.kind == "self_improvement_suggestion"
+
+    result = CodebaseExamineService().run(client=_CrawlClient())
+
+    assert result == "offer"

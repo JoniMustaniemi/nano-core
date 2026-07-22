@@ -7,7 +7,7 @@ from app.assistant.llm_factory import get_llm_client
 from app.assistant.pending import pending_interactions
 from app.config import get_settings
 from app.memory.internal_note_service import internal_note_service
-from app.proactive.codebase_examine import CodebaseExamineService
+from app.proactive.codebase_crawl import CodebaseCrawlService
 from app.proactive.store import proactive_store
 from app.runtime.activity import activity
 from app.runtime.user_activity import user_activity
@@ -24,7 +24,7 @@ def run_proactive_background_tick() -> None:
     if settings.idle_examine_enabled and not proactive_store.has_offer():
       pending = pending_interactions.get(conversation_id)
       if pending is None:
-        offer = CodebaseExamineService().run(client=get_llm_client())
+        offer = CodebaseCrawlService().scan_next_file(client=get_llm_client())
         if offer is not None:
           internal_note_service.record_from_offer(offer, next_attempt_at=datetime.now(UTC))
 

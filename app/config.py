@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     idle_examine_idle_seconds: int = Field(default=300, ge=60)
     proactive_outreach_idle_seconds: int = Field(default=600, ge=60)
     idle_examine_enabled: bool = True
+    codebase_crawl_files_per_tick: int = Field(default=1, ge=1)
     presence_check_timeout_seconds: int = Field(default=60, ge=10)
     presence_check_poll_interval_seconds: int = Field(default=10, ge=1)
     internal_note_retry_interval_seconds: int = Field(default=1800, ge=60)
