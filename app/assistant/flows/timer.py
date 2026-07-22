@@ -176,12 +176,7 @@ class TimerInteractionHandler:
             source="assistant.flows.timer",
         )
         self.tool_runner.announce_call("start_timer")
-        result = self.tool_runner.execute("start_timer", args)
-        activity.standby(
-            title="Nano finished the task.",
-            detail=result.content,
-            source="assistant.flows.timer",
-        )
+        self.tool_runner.execute("start_timer", args)
         return confirmation_source(
             user_message=user_message,
             facts=timer_confirmation(args),

@@ -51,11 +51,6 @@ class AnswerExecutor:
         if not history or history[-1].role != "user" or history[-1].content != message:
             fallback_messages.append({"role": "user", "content": message})
         content = client.complete(messages=fallback_messages).strip()
-        activity.standby(
-            title="Nano answered without tools.",
-            detail="Drafted a direct answer for composition.",
-            source="assistant.answer_executor",
-        )
         return answer_source(
             user_message=message,
             facts=content,
@@ -100,11 +95,6 @@ class AnswerExecutor:
         content = client.complete(messages=messages).strip()
         if not content:
             content = catalog
-        activity.standby(
-            title="Nano summarized capabilities.",
-            detail="Drafted a capability answer from the current tool catalog.",
-            source="assistant.answer_executor",
-        )
         return answer_source(
             user_message=message,
             facts=content,
@@ -150,11 +140,6 @@ class AnswerExecutor:
         content = client.complete(messages=messages).strip()
         if not content:
             content = "I am Nano. State your business."
-        activity.standby(
-            title="Nano introduced itself.",
-            detail="Drafted a dynamic identity answer.",
-            source="assistant.answer_executor",
-        )
         return answer_source(
             user_message=message,
             facts=content,

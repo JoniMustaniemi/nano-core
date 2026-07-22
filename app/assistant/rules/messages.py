@@ -86,6 +86,20 @@ def note_keywords_from_message(message: str) -> list[str]:
     return keywords
 
 
+def is_presence_confirmation(message: str) -> bool:
+    lowered = " ".join(message.strip().lower().strip(" .!?").split())
+    if is_confirmation_message(message):
+        return True
+    return lowered in {
+        "yeah",
+        "yep",
+        "i'm here",
+        "im here",
+        "here",
+        "present",
+    }
+
+
 def is_confirmation_message(message: str) -> bool:
     """
     Return whether confirmation message.

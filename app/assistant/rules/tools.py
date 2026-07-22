@@ -74,6 +74,14 @@ TOOL_RULES: dict[str, ToolIntentRule] = {
         announcement="Opening a pull request.",
         keywords=("pull request", "open pr", "create pr", "github pr"),
     ),
+    "propose_self_changes": ToolIntentRule(
+        announcement="Planning self-improvement changes.",
+        keywords=("improve yourself", "fix yourself", "your code", "propose self"),
+    ),
+    "apply_updates_and_restart": ToolIntentRule(
+        announcement="Pulling latest changes.",
+        keywords=("pull latest", "download updates", "restart nano", "apply updates"),
+    ),
 }
 
 

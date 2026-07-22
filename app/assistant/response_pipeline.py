@@ -7,6 +7,7 @@ from app.assistant.response_source import ResponseSource
 from app.llm.protocol import LLMClient
 from app.memory import repository
 from app.runtime.activity import activity
+from app.runtime.status_copy import STANDBY_DETAIL_WAITING, STANDBY_TITLE
 
 
 def finalize_response(
@@ -14,7 +15,7 @@ def finalize_response(
     source: ResponseSource,
     *,
     composer: ResponseComposer,
-    standby_detail: str = "The response is ready.",
+    standby_detail: str = STANDBY_DETAIL_WAITING,
     standby_source: str = "assistant.response_pipeline",
 ) -> str:
     """
@@ -43,7 +44,7 @@ def finalize_response(
         return content
     finally:
         activity.standby(
-            title="Nano is back in standby.",
+            title=STANDBY_TITLE,
             detail=standby_detail,
             source=standby_source,
         )

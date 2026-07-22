@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.tools import git_github
-from app.tools.git_github import ensure_feature_branch
+from app.tools.git_github import OpenPullRequest, ensure_feature_branch, get_open_pull_request
 
 
 def test_ensure_feature_branch_checks_out_existing_branch(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -63,3 +63,34 @@ def test_run_gh_returns_clear_error_when_missing(monkeypatch: pytest.MonkeyPatch
 
     assert result.returncode == 127
     assert "GitHub CLI" in result.stderr
+
+
+def test_get_open_pull_request_returns_none_when_no_open_prs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.tools.git_github.run_gh",
+        lambda *args: SimpleNamespace(returncode=0, stdout="[]", stderr=""),
+    )
+
+    assert get_open_pull_request() is None
+
+
+def test_get_open_pull_request_parses_first_open_pr(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = (
+        '[{"number": 7, "url": "https://github.com/org/repo/pull/7", '
+        '"title": "fix timer", "headRefName": "feature/fix_timer"}]'
+    )
+    monkeypatch.setattr(
+        "app.tools.git_github.run_gh",
+        lambda *args: SimpleNamespace(returncode=0, stdout=payload, stderr=""),
+    )
+
+    open_pr = get_open_pull_request()
+
+    assert open_pr == OpenPullRequest(
+        number=7,
+        url="https://github.com/org/repo/pull/7",
+        title="fix timer",
+        branch="feature/fix_timer",
+    )

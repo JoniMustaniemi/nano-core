@@ -7,6 +7,8 @@ from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
 from app.assistant.flows.note import NoteInteractionHandler
 from app.assistant.flows.planner import AgentPlanner
+from app.assistant.flows.presence_gate import PresenceGateHandler, presence_gate
+from app.assistant.flows.self_update import SelfUpdateInteractionHandler
 from app.assistant.flows.timer import TimerInteractionHandler
 from app.assistant.flows.wipe import WipeInteractionHandler
 from app.assistant.llm_factory import get_llm_client
@@ -19,6 +21,7 @@ from app.assistant.tool_runner import ToolRunner
 from app.config import get_settings
 from app.llm.protocol import LLMClient
 from app.memory import repository
+from app.runtime.user_activity import user_activity
 
 
 class AgentOrchestrator:
@@ -38,6 +41,8 @@ class AgentOrchestrator:
         note_handler: NoteInteractionHandler | None = None,
         timer_handler: TimerInteractionHandler | None = None,
         wipe_handler: WipeInteractionHandler | None = None,
+        presence_handler: PresenceGateHandler | None = None,
+        self_update_handler: SelfUpdateInteractionHandler | None = None,
         planner: AgentPlanner | None = None,
     ) -> None:
         """
@@ -67,6 +72,8 @@ class AgentOrchestrator:
             tool_executor=self.tool_executor,
         )
         self.wipe_handler = wipe_handler or WipeInteractionHandler()
+        self.presence_handler = presence_handler or presence_gate
+        self.self_update_handler = self_update_handler or SelfUpdateInteractionHandler()
         self.planner = planner or AgentPlanner(
             tool_runner=self.tool_runner,
             chat_flow=self.chat_flow,
@@ -85,6 +92,7 @@ class AgentOrchestrator:
             Composed assistant response.
         """
         settings = get_settings()
+        user_activity.touch()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
         history = repository.list_chat_messages(
             conversation_id=conversation_id,
@@ -222,6 +230,12 @@ class AgentOrchestrator:
                 message=message,
             )
 
+        if decision.interaction == "self_update":
+            return self.self_update_handler.start(
+                conversation_id=conversation_id,
+                message=message,
+            )
+
         if decision.interaction == "timer":
             timer_source = self.timer_handler.handle_direct_request(
                 message=message,
@@ -261,7 +275,17 @@ class AgentOrchestrator:
         if pending is None:
             return None
 
+        if pending.kind == "presence_check":
+            response = self.presence_handler.handle_pending(
+                message=message,
+                conversation_id=conversation_id,
+                client=get_llm_client(),
+            )
+            if response is not None:
+                return response
+
         handlers = (
+            self.self_update_handler,
             self.timer_handler,
             self.note_handler,
             self.wipe_handler,

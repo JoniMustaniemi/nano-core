@@ -23,7 +23,7 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Type to Nano..." in response.text
     assert "Start Listening" in response.text
     assert "Stop Audio" not in response.text
-    assert "Voice standby." in response.text
+    assert "Voice on standby." in response.text
     assert 'href="/static/home.css?v=activity-status-1"' in response.text
     assert 'src="/static/home.js?v=activity-status-1"' in response.text
     assert 'id="activity-status"' in response.text

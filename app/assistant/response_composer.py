@@ -41,6 +41,12 @@ class ResponseComposer:
         if source.kind == "tool_result" and source.tool_name == "create_pull_request":
             return self._compose_pr_result(source.facts)
 
+        if source.kind == "tool_result" and source.tool_name == "propose_self_changes":
+            return self._compose_self_improve_result(source.facts)
+
+        if source.kind == "tool_result" and source.tool_name == "apply_updates_and_restart":
+            return self._compose_self_update_result(source.facts)
+
         if source.kind == "tool_result" and source.tool_name in COMPOSE_HINTS:
             return self._compose_with_hint(client, source)
 
@@ -218,9 +224,51 @@ class ResponseComposer:
             return "Your tests failed, so I declined to commit anything or open a pull request."
         if step == "preflight" and "nothing" in error.lower():
             return "There is nothing to publish, so I did not open a pull request."
+        if step == "preflight" and "already open" in error.lower():
+            title = str(payload.get("title", "")).strip()
+            if title:
+                return (
+                    f"An open pull request is already waiting for your review ({title}). "
+                    "Resolve it on GitHub before I open another."
+                )
+            return (
+                "An open pull request is already waiting for your review. "
+                "Resolve it on GitHub before I open another."
+            )
         if error:
             return f"I could not complete the pull request during {step}: {error}"
         return "I could not complete the pull request."
+
+    def _compose_self_improve_result(self, tool_result: str) -> str:
+        payload = self._parse_json_dict(tool_result)
+        if payload.get("ok"):
+            files = payload.get("changed_files") or []
+            file_summary = ", ".join(str(path) for path in files) if files else "updated files"
+            return (
+                f"I prepared a self-improvement pull request for {file_summary}. "
+                "Review it on GitHub when you are ready."
+            )
+        error = str(payload.get("error", "")).strip()
+        step = str(payload.get("step", "unknown")).strip()
+        if step == "preflight" and "already open" in error.lower():
+            return (
+                "An open pull request is already waiting for your review. "
+                "Resolve it on GitHub before I prepare another self-improvement pull request."
+            )
+        if error:
+            return f"I could not complete self-improvement during {step}: {error}"
+        return "I could not complete the self-improvement workflow."
+
+    def _compose_self_update_result(self, tool_result: str) -> str:
+        payload = self._parse_json_dict(tool_result)
+        if payload.get("ok"):
+            if payload.get("reload_expected"):
+                return "I pulled the latest changes. Uvicorn should reload app/ changes automatically."
+            return "I pulled the latest changes. No app/ files changed."
+        error = str(payload.get("error", "")).strip()
+        if error:
+            return error
+        return "I could not pull the latest changes."
 
     def _parse_json_dict(self, value: str) -> dict[str, Any]:
         try:

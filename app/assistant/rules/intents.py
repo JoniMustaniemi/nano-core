@@ -71,6 +71,22 @@ PULL_REQUEST_PATTERNS: tuple[str, ...] = (
     r"^\s*(?:pr|pull request)\s*$",
 )
 
+SELF_IMPROVE_PATTERNS: tuple[str, ...] = (
+    r"\b(?:improve|fix|change|update|modify)\b.*\b(?:your(?:self)?|your code|nano)\b",
+    r"\badd\b.*\b(?:to yourself|to nano)\b",
+    r"\bpropose\s+self[\s-]?changes?\b",
+)
+
+SELF_UPDATE_PATTERNS: tuple[str, ...] = (
+    r"\b(?:pull|download|fetch)\b.*\b(?:latest|newest|updates?)\b",
+    r"\brestart\b.*\b(?:yourself|nano)\b",
+    r"\bapply\s+updates?\b",
+)
+
+SELF_IMPROVE_FOLLOW_UP_PATTERNS: tuple[str, ...] = (
+    r"^\s*(?:do it|go ahead|proceed|yes do it)\s*\.?$",
+)
+
 
 def is_pull_request_request(message: str) -> bool:
     """
@@ -84,6 +100,36 @@ def is_pull_request_request(message: str) -> bool:
     """
     lowered = " ".join(message.lower().split())
     return any(re.search(pattern, lowered) for pattern in PULL_REQUEST_PATTERNS)
+
+
+def is_self_improve_request(message: str) -> bool:
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in SELF_IMPROVE_PATTERNS)
+
+
+def is_self_update_request(message: str) -> bool:
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in SELF_UPDATE_PATTERNS)
+
+
+def is_self_improve_follow_up(message: str) -> bool:
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in SELF_IMPROVE_FOLLOW_UP_PATTERNS)
+
+
+def extract_self_improve_goal(message: str) -> str:
+    stripped = " ".join(message.strip().split())
+    for prefix in (
+        "improve yourself by ",
+        "improve yourself to ",
+        "improve yourself ",
+        "fix yourself ",
+        "update yourself ",
+        "modify yourself ",
+    ):
+        if stripped.lower().startswith(prefix):
+            return stripped[len(prefix) :].strip()
+    return stripped
 
 
 def is_identity_question(message: str) -> bool:
@@ -244,6 +290,10 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_health_check_request(message)
     if tool_name == "create_pull_request":
         return is_pull_request_request(message)
+    if tool_name == "propose_self_changes":
+        return is_self_improve_request(message) or is_self_improve_follow_up(message)
+    if tool_name == "apply_updates_and_restart":
+        return is_self_update_request(message)
     if tool_name == "add_note":
         return is_note_add_request(message)
     if tool_name == "list_notes":

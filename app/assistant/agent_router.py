@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from app.assistant.agent_rules import (
+    extract_self_improve_goal,
     is_capability_question,
     is_health_check_request,
     is_identity_question,
@@ -11,6 +12,9 @@ from app.assistant.agent_rules import (
     is_note_list_request,
     is_note_lookup_request,
     is_pull_request_request,
+    is_self_improve_follow_up,
+    is_self_improve_request,
+    is_self_update_request,
     is_timer_cancel_request,
     is_timer_start_request,
     is_timer_status_request,
@@ -19,6 +23,7 @@ from app.assistant.agent_rules import (
     should_answer_without_tools,
 )
 from app.assistant.pending import pending_interactions
+from app.proactive.store import proactive_store
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +98,23 @@ class AgentRouter:
 
         if is_pull_request_request(message):
             return RouteDecision(mode="tool", tool_name="create_pull_request", tool_args={})
+
+        if is_self_improve_follow_up(message) and proactive_store.get_last_goal():
+            return RouteDecision(
+                mode="tool",
+                tool_name="propose_self_changes",
+                tool_args={"goal": proactive_store.get_last_goal()},
+            )
+
+        if is_self_improve_request(message):
+            return RouteDecision(
+                mode="tool",
+                tool_name="propose_self_changes",
+                tool_args={"goal": extract_self_improve_goal(message)},
+            )
+
+        if is_self_update_request(message):
+            return RouteDecision(mode="interaction", interaction="self_update")
 
         if is_capability_question(message):
             return RouteDecision(mode="capabilities")

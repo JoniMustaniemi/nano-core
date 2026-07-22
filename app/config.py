@@ -36,6 +36,20 @@ class Settings(BaseSettings):
     github_pr_verify_command: str = ""
     github_pr_verify_timeout_seconds: int = Field(default=300, ge=1)
     pr_naming_diff_max_chars: int = Field(default=4000, ge=256)
+    proactive_background_interval_seconds: int = Field(default=300, ge=30)
+    idle_examine_idle_seconds: int = Field(default=300, ge=60)
+    proactive_outreach_idle_seconds: int = Field(default=600, ge=60)
+    idle_examine_enabled: bool = True
+    presence_check_timeout_seconds: int = Field(default=60, ge=10)
+    presence_check_poll_interval_seconds: int = Field(default=10, ge=1)
+    internal_note_retry_interval_seconds: int = Field(default=1800, ge=60)
+    internal_note_retry_max_interval_seconds: int = Field(default=14400, ge=300)
+    internal_note_max_attempts: int = Field(default=5, ge=1)
+    self_improve_allowed_prefix: str = "app/"
+    self_improve_max_files: int = Field(default=5, ge=1)
+    self_improve_max_file_chars: int = Field(default=8000, ge=256)
+    self_update_base_branch: str = ""
+    proactive_conversation_id: str = "agent-default"
 
 
 @lru_cache
