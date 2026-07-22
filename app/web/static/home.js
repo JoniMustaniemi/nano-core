@@ -2,6 +2,7 @@ const stateLine = document.getElementById("state-line");
 const activityStatus = document.getElementById("activity-status");
 const stateSegments = Array.from(document.querySelectorAll("[data-state-segment]"));
 const activityLog = document.getElementById("activity-log");
+const brainsClearButton = document.getElementById("brains-clear");
 const voiceStatus = document.getElementById("voice-status");
 const replyStatus = document.getElementById("reply-status");
 const messageBox = document.getElementById("message");
@@ -47,6 +48,8 @@ let currentActivitySnapshot = {
 };
 const activityStates = ["standby", "working", "error"];
 let toolCommands = [];
+let lastActivityEventId = 0;
+let activityLogHiddenBeforeId = 0;
 
 function groupCommands(commands) {
   const groups = new Map();
@@ -642,15 +645,42 @@ function formatEvent(event) {
   return `[${stamp}] ${source} | ${title}${detailSuffix}`;
 }
 
+function trackActivityEventId(event) {
+  const eventId = Number(event?.id || 0);
+  if (eventId > lastActivityEventId) {
+    lastActivityEventId = eventId;
+  }
+}
+
+function shouldShowActivityEvent(event) {
+  const eventId = Number(event?.id || 0);
+  return eventId > activityLogHiddenBeforeId;
+}
+
+function clearActivityLog() {
+  activityLogHiddenBeforeId = lastActivityEventId;
+  activityLog.value = "";
+}
+
 function refreshEvents(snapshot) {
   const events = Array.isArray(snapshot.events)
-    ? snapshot.events.slice().reverse()
+    ? snapshot.events
+        .slice()
+        .reverse()
+        .filter((event) => {
+          trackActivityEventId(event);
+          return shouldShowActivityEvent(event);
+        })
     : [];
   activityLog.value = events.map((event) => formatEvent(event)).join("\n\n");
   activityLog.scrollTop = activityLog.scrollHeight;
 }
 
 function appendEvent(event) {
+  trackActivityEventId(event);
+  if (!shouldShowActivityEvent(event)) {
+    return;
+  }
   const line = formatEvent(event);
   activityLog.value = activityLog.value ? `${activityLog.value}\n\n${line}` : line;
   activityLog.scrollTop = activityLog.scrollHeight;
@@ -969,6 +999,7 @@ messageBox.addEventListener("keydown", (event) => {
 brainsPanel.addEventListener("toggle", () => {
   brainsStatus.textContent = brainsPanel.open ? "open" : "sealed";
 });
+brainsClearButton.addEventListener("click", clearActivityLog);
 storagePanel.addEventListener("toggle", () => {
   storageStatus.textContent = storagePanel.open ? "open" : "sealed";
 });

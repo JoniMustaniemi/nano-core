@@ -340,6 +340,20 @@ details.storage > summary::-webkit-details-marker {
   padding: 0 18px 18px;
 }
 
+.brains-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.brains-clear {
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .terminal {
   width: 100%;
   min-height: 260px;

@@ -39,8 +39,8 @@ def home() -> str:
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <title>{app_name}</title>
-            <link rel="stylesheet" href="/static/home.css?v=activity-status-1" />
-            <script defer src="/static/home.js?v=activity-status-1"></script>
+            <link rel="stylesheet" href="/static/home.css?v=brains-clear-1" />
+            <script defer src="/static/home.js?v=brains-clear-1"></script>
           </head>
           <body>
             <button
@@ -119,6 +119,11 @@ def home() -> str:
                     <span class="brains-meta" id="brains-status">sealed</span>
                   </summary>
                   <div class="brains-body">
+                    <div class="brains-toolbar">
+                      <button id="brains-clear" class="ghost brains-clear" type="button">
+                        Clear
+                      </button>
+                    </div>
                     <textarea
                       id="activity-log"
                       class="terminal"
