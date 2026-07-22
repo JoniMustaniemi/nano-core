@@ -11,7 +11,12 @@ from app.assistant.response_source import ResponseSource, answer_source, tool_re
 from app.assistant.tool_runner import ToolRunner
 from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
-from app.runtime.status_copy import COULD_NOT_FINISH_TITLE, PLANNING_ACTION_TITLE, ran_tool_title
+from app.runtime.status_copy import (
+    COULD_NOT_FINISH_TITLE,
+    PLANNING_ACTION_DETAIL,
+    PLANNING_ACTION_TITLE,
+    ran_tool_title,
+)
 
 
 class AgentPlanner:
@@ -65,7 +70,7 @@ class AgentPlanner:
         """
         activity.working(
             title=PLANNING_ACTION_TITLE,
-            detail="Using the local model to decide whether to answer or run a tool.",
+            detail=PLANNING_ACTION_DETAIL,
             source="assistant.flows.planner",
         )
 

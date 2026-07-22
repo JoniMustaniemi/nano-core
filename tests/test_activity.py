@@ -90,6 +90,6 @@ def test_health_check_sets_working_activity(monkeypatch) -> None:
     payload = status.json()
     assert payload["state"] == "standby"
     assert any(
-        event["state"] == "working" and event["title"] == "I'm running check_health."
+        event["state"] == "working" and event["title"] == "I'm running a health check."
         for event in payload["events"]
     )

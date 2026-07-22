@@ -263,9 +263,9 @@ def test_chat_mode_rewrites_apology_disclaimer(monkeypatch) -> None:
     assert "missing evidence" in client.messages[1][0]["content"]
 
 
-def test_wake_response_uses_personality_prompt(monkeypatch) -> None:
+def test_wake_response_returns_canned_ack(monkeypatch) -> None:
     """
-    Verify that wake response uses personality prompt.
+    Verify that wake response returns instantly from the canned list.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture.
@@ -276,9 +276,26 @@ def test_wake_response_uses_personality_prompt(monkeypatch) -> None:
     client = _WakeResponseClient()
 
     monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
+    monkeypatch.setattr(
+        "app.assistant.service.choose_wake_ack_response",
+        lambda: "How can I help?",
+    )
 
     response = AssistantService().wake_response()
 
-    assert response.content == "I am listening. Try to make this worth the interruption."
-    assert "wake phrase" in client.messages[0]["content"].lower()
-    assert "one short sentence" in client.messages[0]["content"].lower()
+    assert response.content == "How can I help?"
+    assert client.messages is None
+
+
+def test_wake_ack_responses_include_fifteen_variants() -> None:
+    """
+    Verify that wake acknowledgments draw from a varied canned list.
+
+    Returns:
+        None.
+    """
+    from app.runtime.status_copy import WAKE_ACK_RESPONSES, choose_wake_ack_response
+
+    assert len(WAKE_ACK_RESPONSES) == 15
+    assert "How can I help?" in WAKE_ACK_RESPONSES
+    assert choose_wake_ack_response() in WAKE_ACK_RESPONSES

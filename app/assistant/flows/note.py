@@ -23,8 +23,14 @@ from app.runtime.status_copy import (
     CANCELLED_NOTE_TITLE,
     CHECKED_NOTES_TITLE,
     NEEDS_DETAIL_TITLE,
+    NO_NOTE_SAVED_DETAIL,
+    RETURNED_NOTES_DETAIL,
+    SAVED_NOTE_DETAIL,
     SAVED_NOTE_TITLE,
+    SAVING_NOTE_DETAIL,
     SAVING_NOTE_TITLE,
+    WAITING_NOTE_CONTENT_DETAIL,
+    WAITING_NOTE_NAME_DETAIL,
 )
 
 
@@ -145,7 +151,7 @@ class NoteInteractionHandler:
         )
         activity.standby(
             title=NEEDS_DETAIL_TITLE,
-            detail="Waiting for the note name.",
+            detail=WAITING_NOTE_NAME_DETAIL,
             source="assistant.flows.note",
         )
         return follow_up_source(
@@ -173,7 +179,7 @@ class NoteInteractionHandler:
         )
         activity.standby(
             title=NEEDS_DETAIL_TITLE,
-            detail="Waiting for the note content.",
+            detail=WAITING_NOTE_CONTENT_DETAIL,
             source="assistant.flows.note",
         )
         return follow_up_source(
@@ -219,14 +225,14 @@ class NoteInteractionHandler:
 
         activity.working(
             title=SAVING_NOTE_TITLE,
-            detail="Writing the note into local memory.",
+            detail=SAVING_NOTE_DETAIL,
             source="assistant.flows.note",
         )
         note = repository.add_note(cleaned, name=cleaned_name)
         pending_interactions.clear(conversation_id)
         activity.standby(
             title=SAVED_NOTE_TITLE,
-            detail=f"Stored note #{note.id}.",
+            detail=SAVED_NOTE_DETAIL,
             source="assistant.flows.note",
         )
         return confirmation_source(
@@ -254,7 +260,7 @@ class NoteInteractionHandler:
             facts = f"Here is what I remember:\n{note_lines}"
         activity.standby(
             title=CHECKED_NOTES_TITLE,
-            detail="Returned stored notes.",
+            detail=RETURNED_NOTES_DETAIL,
             source="assistant.flows.note",
         )
         return tool_result_source(
@@ -516,7 +522,7 @@ class NoteInteractionHandler:
         pending_interactions.clear(conversation_id)
         activity.standby(
             title=CANCELLED_NOTE_TITLE,
-            detail="No note was saved.",
+            detail=NO_NOTE_SAVED_DETAIL,
             source="assistant.flows.note",
         )
         return confirmation_source(

@@ -14,8 +14,11 @@ from app.assistant.response_variation import choose_variation_hint
 from app.llm.protocol import LLMClient
 from app.runtime.activity import activity
 from app.runtime.status_copy import (
+    ANSWERING_DETAIL,
     ANSWERING_TITLE,
+    DRAFTING_IDENTITY_DETAIL,
     INTRODUCING_TITLE,
+    REVIEWING_CAPABILITIES_DETAIL,
     REVIEWING_CAPABILITIES_TITLE,
 )
 
@@ -47,7 +50,7 @@ class AnswerExecutor:
         """
         activity.working(
             title=ANSWERING_TITLE,
-            detail="Using plain chat mode with the local model.",
+            detail=ANSWERING_DETAIL,
             source="assistant.answer_executor",
         )
         fallback_messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -82,7 +85,7 @@ class AnswerExecutor:
         """
         activity.working(
             title=REVIEWING_CAPABILITIES_TITLE,
-            detail="Checking registered tools and drafting a capability summary.",
+            detail=REVIEWING_CAPABILITIES_DETAIL,
             source="assistant.answer_executor",
         )
         catalog = format_capability_catalog()
@@ -128,7 +131,7 @@ class AnswerExecutor:
         """
         activity.working(
             title=INTRODUCING_TITLE,
-            detail="Drafting an identity answer with current context.",
+            detail=DRAFTING_IDENTITY_DETAIL,
             source="assistant.answer_executor",
         )
         payload = format_identity_payload(message=message, history=history)
