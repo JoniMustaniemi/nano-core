@@ -6,7 +6,8 @@ from typing import Any, cast
 
 from app.assistant.agent_rules import extract_json
 from app.config import get_settings
-from app.proactive.codebase_examine import walk_app_files
+from app.memory import codebase_index
+from app.proactive.codebase_files import list_all_app_files
 from app.runtime.activity import activity
 from app.tools.files import read_text_file, write_text_file
 from app.tools.pr_service import PullRequestService
@@ -26,6 +27,28 @@ class SelfImproveResult:
     return json.dumps(asdict(self), ensure_ascii=False)
 
 
+def _file_selection_lines(goal: str, *, limit: int = 40) -> list[str]:
+  records = codebase_index.list_records_for_selection(limit=limit)
+  if records:
+    lines = [f"- {record.path}: {record.summary}" for record in records if record.summary]
+    if lines:
+      return lines
+
+  all_paths = list_all_app_files()
+  codebase_index.sync_paths(all_paths)
+  keywords = [word.lower() for word in goal.split() if len(word) > 3]
+  if keywords:
+    matched = [
+      path
+      for path in all_paths
+      if any(keyword in path.lower() for keyword in keywords)
+    ]
+    if matched:
+      return [f"- {path}: (not yet scanned)" for path in matched[:limit]]
+
+  return [f"- {path}: (not yet scanned)" for path in all_paths[:limit]]
+
+
 class SelfImproveService:
   """Orchestrated self-improvement: explore, plan, write, verify, PR."""
 
@@ -39,7 +62,7 @@ class SelfImproveService:
       source="tools.self_improve_service",
     )
 
-    file_index = walk_app_files(max_files=30)
+    selection_lines = _file_selection_lines(goal)
     select_messages = [
       {
         "role": "system",
@@ -50,7 +73,12 @@ class SelfImproveService:
           f"{settings.self_improve_max_files} paths."
         ),
       },
-      {"role": "user", "content": f"Goal: {goal}\n\nFile index:\n" + "\n".join(file_index)},
+      {
+        "role": "user",
+        "content": (
+          f"Goal: {goal}\n\nKnown files:\n" + "\n".join(selection_lines)
+        ),
+      },
     ]
     raw_select = cast(str, client.complete(messages=select_messages)).strip()
     selection = extract_json(raw_select)

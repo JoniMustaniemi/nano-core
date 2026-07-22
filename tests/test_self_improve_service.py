@@ -7,7 +7,7 @@ from app.tools.self_update_service import SelfUpdateService
 class _PlanClient:
     def complete(self, messages) -> str:
         content = messages[-1]["content"]
-        if "File index" in content:
+        if "Known files:" in content:
             return '{"files_to_read": ["app/main.py"]}'
         return (
             '{"changes": [{"path": "app/main.py", "content": "# updated\\n"}]}'
@@ -20,8 +20,8 @@ def test_self_improve_service_applies_and_delegates_pr(monkeypatch, tmp_path) ->
     (tmp_path / "app" / "main.py").write_text("original\n", encoding="utf-8")
 
     monkeypatch.setattr(
-        "app.tools.self_improve_service.walk_app_files",
-        lambda max_files=30: ["app/main.py"],
+        "app.tools.self_improve_service._file_selection_lines",
+        lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
     )
     monkeypatch.setattr(
         "app.tools.self_improve_service.run_pr_verification",

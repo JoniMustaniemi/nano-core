@@ -38,3 +38,14 @@ class InternalNote(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
     last_attempt_at: datetime | None = Field(default=None)
     delivered_at: datetime | None = Field(default=None)
+
+
+class CodebaseFileRecord(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    path: str = Field(index=True, unique=True)
+    package: str = Field(index=True)
+    content_hash: str = Field(default="")
+    summary: str = Field(default="")
+    last_suggestion: str | None = Field(default=None)
+    last_confidence: str | None = Field(default=None)
+    last_scanned_at: datetime | None = Field(default=None, index=True)
