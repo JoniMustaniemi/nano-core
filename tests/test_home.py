@@ -92,7 +92,8 @@ def test_homepage_serves_static_assets() -> None:
     assert "clearActivityLog" in js_response.text
     assert 'getElementById("brains-clear")' in js_response.text
     assert "ANSWER_CLEAR_DELAY_MS = 20000" in js_response.text
-    assert "scheduleAnswerClear" in js_response.text
+    assert "announceBootMessage" in js_response.text
+    assert 'event.source === "system.boot"' in js_response.text
 
 
 def test_tool_commands_endpoint_lists_quick_actions() -> None:
@@ -126,4 +127,6 @@ def test_status_endpoint_starts_in_standby() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["state"] == "standby"
-    assert payload["headline"] == "Nano is in standby."
+    assert payload["headline"] == "Booting complete."
+    assert payload["detail"] == "I'm ready and awake."
+    assert any(event["source"] == "system.boot" for event in payload["events"])

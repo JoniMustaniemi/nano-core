@@ -8,7 +8,15 @@ from helpers.agent_fixtures import (
 
 from app.assistant.agent import AgentService
 from app.assistant.pending import pending_interactions
+from app.assistant.rules.timers import is_timer_cancel_request
 from app.memory import repository
+
+
+def test_timer_cancel_ignores_clear_inside_other_words() -> None:
+    assert not is_timer_cancel_request(
+        "Improve yourself by making timer messages clearer."
+    )
+    assert is_timer_cancel_request("Cancel timers.")
 
 
 def test_agent_handles_explicit_timer_requests_without_model(monkeypatch, tmp_path) -> None:

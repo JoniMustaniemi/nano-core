@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.duration import extract_duration_args
@@ -130,7 +131,9 @@ def _has_timer_cancel_keyword(lowered_message: str) -> bool:
     Returns:
         True when the condition is met; otherwise false.
     """
-    return any(keyword in lowered_message for keyword in TIMER_CANCEL_KEYWORDS)
+    return any(
+        re.search(rf"\b{re.escape(keyword)}\b", lowered_message) for keyword in TIMER_CANCEL_KEYWORDS
+    )
 
 
 def timer_confirmation(args: dict[str, Any]) -> str:
