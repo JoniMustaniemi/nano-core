@@ -5,8 +5,8 @@ import pytest
 
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_source import tool_result_source
-from app.tools.pr_service import PrResult, PullRequestService
 from app.tools.git_github import OpenPullRequest
+from app.tools.pr_service import PrResult, PullRequestService
 
 
 class _SummaryClient:
