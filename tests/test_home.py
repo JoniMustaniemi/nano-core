@@ -94,6 +94,11 @@ def test_homepage_serves_static_assets() -> None:
     assert "ANSWER_CLEAR_DELAY_MS = 20000" in js_response.text
     assert "announceBootMessage" in js_response.text
     assert 'event.source === "system.boot"' in js_response.text
+    assert "formatBusyWakeMessage" in js_response.text
+    assert "acknowledgeBusyWake" in js_response.text
+    assert "isWorkingOnTask" in js_response.text
+    assert "busyWakeAnnouncing" in js_response.text
+    assert "if (isWorkingOnTask())" in js_response.text
 
 
 def test_tool_commands_endpoint_lists_quick_actions() -> None:

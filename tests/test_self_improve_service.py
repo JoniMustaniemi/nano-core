@@ -14,6 +14,34 @@ class _PlanClient:
         )
 
 
+def test_self_improve_service_rejects_invalid_selection_json(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "main.py").write_text("original\n", encoding="utf-8")
+    monkeypatch.setattr(
+        "app.tools.self_improve_service._file_selection_lines",
+        lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
+    )
+    monkeypatch.setattr(
+        "app.config.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_max_files=5,
+            self_improve_max_file_chars=8000,
+        ),
+    )
+
+    class _BadSelectClient:
+        def complete(self, messages) -> str:
+            return "not json"
+
+    result = SelfImproveService().run(client=_BadSelectClient(), goal="update main")
+
+    assert not result.ok
+    assert result.step == "select"
+    assert "parse file selection" in (result.error or "").lower()
+
+
 def test_self_improve_service_applies_and_delegates_pr(monkeypatch, tmp_path) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "app").mkdir()
