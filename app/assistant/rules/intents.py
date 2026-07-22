@@ -96,6 +96,20 @@ SELF_IMPROVE_FOLLOW_UP_PATTERNS: tuple[str, ...] = (
     r"^\s*(?:do it|go ahead|proceed|yes do it)\s*\.?$",
 )
 
+VAGUE_SELF_IMPROVE_GOALS = frozenset({
+    "",
+    "general improvement",
+    "improve yourself",
+    "fix yourself",
+    "update yourself",
+    "modify yourself",
+})
+
+
+def is_vague_self_improve_goal(goal: str) -> bool:
+    normalized = " ".join(goal.strip().split()).lower()
+    return normalized in VAGUE_SELF_IMPROVE_GOALS
+
 
 def _contains_term(lowered_message: str, term: str) -> bool:
     if " " in term:

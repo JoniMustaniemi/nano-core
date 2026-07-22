@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from app.assistant.rules.intents import is_vague_self_improve_goal
 from app.config import get_settings
 from app.memory import internal_notes
 from app.memory.models import InternalNote
@@ -56,6 +57,28 @@ class InternalNoteService:
 
   def offer_from_internal_note(self, note: InternalNote) -> ProactiveOffer:
     return ProactiveOffer.from_json(note.payload_json)
+
+  def top_pending_self_improvement_note(self) -> InternalNote | None:
+    notes = internal_notes.list_pending_self_improvement_notes(limit=1)
+    return notes[0] if notes else None
+
+  def goal_from_internal_note(self, note: InternalNote) -> str:
+    offer = self.offer_from_internal_note(note)
+    goal = str(offer.payload.get("goal", "")).strip()
+    if goal:
+      return goal
+    return offer.summary.strip()
+
+  def resolve_self_improve_goal(self, explicit_goal: str) -> tuple[str, int | None]:
+    cleaned = " ".join(explicit_goal.strip().split())
+    if not is_vague_self_improve_goal(cleaned):
+      return cleaned, None
+
+    note = self.top_pending_self_improvement_note()
+    if note is None or note.id is None:
+      return "general improvement", None
+
+    return self.goal_from_internal_note(note), note.id
 
   def top_priority_due_note(self, *, now: datetime | None = None) -> InternalNote | None:
     due = internal_notes.list_due_internal_notes(now=now, limit=1)

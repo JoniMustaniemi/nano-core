@@ -53,6 +53,18 @@ def list_due_internal_notes(
     return list(session.exec(statement))
 
 
+def list_pending_self_improvement_notes(*, limit: int = 1) -> list[InternalNote]:
+  statement = (
+    select(InternalNote)
+    .where(InternalNote.status == "pending")
+    .where(InternalNote.kind == "self_improvement_suggestion")
+    .order_by(col(InternalNote.next_attempt_at), col(InternalNote.created_at))
+    .limit(limit)
+  )
+  with Session(db.engine) as session:
+    return list(session.exec(statement))
+
+
 def list_internal_notes(*, limit: int = 50) -> list[InternalNote]:
   statement = (
     select(InternalNote)

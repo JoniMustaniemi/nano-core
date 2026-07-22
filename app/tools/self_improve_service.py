@@ -38,6 +38,15 @@ _LLM_UNAVAILABLE_MARKERS = (
 )
 _SELECT_JSON_HINT = '{"files_to_read": ["app/..."]}'
 _PLAN_JSON_HINT = '{"path": "app/...", "content": "..."}'
+_PATCH_JSON_HINT = '{"path": "app/...", "old_text": "...", "new_text": "..."}'
+_GOAL_FILE_HINTS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("timer", "timers"), "app/assistant/flows/timer.py"),
+    (("timer", "timers", "message", "messages", "status", "wording", "clearer", "copy"), "app/runtime/status_copy.py"),
+    (("wake", "greeting", "ack"), "app/runtime/status_copy.py"),
+    (("note", "notes"), "app/assistant/flows/note.py"),
+    (("health",), "app/health/checks.py"),
+    (("pull request", "pr", "github"), "app/tools/pr_service.py"),
+)
 
 
 def _looks_like_llm_unavailable(raw: str) -> bool:
@@ -75,6 +84,46 @@ def _parse_selection(payload: dict[str, Any]) -> list[str]:
     return [str(path) for path in files_to_read if str(path).strip()]
 
 
+def _fallback_files_for_goal(goal: str, *, allowed: str) -> list[str]:
+    lowered = goal.lower()
+    allowed_prefix = allowed.rstrip("/")
+    matched: list[str] = []
+    for keywords, path in _GOAL_FILE_HINTS:
+        if any(keyword in lowered for keyword in keywords):
+            if path.startswith(allowed_prefix) and path not in matched:
+                matched.append(path)
+    return matched
+
+
+def _parse_patch_change(
+    payload: dict[str, Any],
+    *,
+    expected_path: str,
+    allowed: str,
+    original_content: str,
+) -> dict[str, str] | None:
+    parsed = _parse_single_file_change(
+        payload,
+        expected_path=expected_path,
+        allowed=allowed,
+    )
+    if parsed is not None:
+        return parsed
+
+    allowed_prefix = allowed.rstrip("/")
+    path = str(payload.get("path", "")).strip()
+    old_text = str(payload.get("old_text", payload.get("search", "")))
+    new_text = str(payload.get("new_text", payload.get("replace", "")))
+    if not path or path != expected_path or not path.startswith(allowed_prefix):
+        return None
+    if not old_text or old_text not in original_content:
+        return None
+    return {
+        "path": path,
+        "content": original_content.replace(old_text, new_text, 1),
+    }
+
+
 def _parse_single_file_change(
     payload: dict[str, Any],
     *,
@@ -107,7 +156,47 @@ def _plan_single_file_change(
     content: str,
     allowed: str,
 ) -> dict[str, str] | None:
-    messages = [
+    patch_messages = [
+        {
+            "role": "system",
+            "content": (
+                "You edit one Python source file for a self-improvement task. "
+                f"Return JSON only: {_PATCH_JSON_HINT} "
+                "Use old_text copied exactly from the file and new_text as the replacement. "
+                "Keep the JSON small. No markdown fences."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"Goal: {goal}\n\n### {path}\n{content}",
+        },
+    ]
+    patch_correction = (
+        "Your previous response was invalid. Return JSON only with path, old_text, and new_text. "
+        f"Example: {_PATCH_JSON_HINT}"
+    )
+    for _attempt in range(3):
+        raw = cast(str, client.complete(messages=patch_messages)).strip()
+        if _looks_like_llm_unavailable(raw):
+            return None
+        payload = extract_json(raw)
+        if isinstance(payload, dict):
+            parsed = _parse_patch_change(
+                payload,
+                expected_path=path,
+                allowed=allowed,
+                original_content=content,
+            )
+            if parsed is not None:
+                return parsed
+        patch_messages.extend(
+            [
+                {"role": "assistant", "content": raw},
+                {"role": "user", "content": patch_correction},
+            ]
+        )
+
+    full_messages = [
         {
             "role": "system",
             "content": (
@@ -122,12 +211,12 @@ def _plan_single_file_change(
             "content": f"Goal: {goal}\n\n### {path}\n{content}",
         },
     ]
-    correction = (
+    full_correction = (
         "Your previous response was invalid. Return JSON only with keys path and content. "
         f"Example: {_PLAN_JSON_HINT}"
     )
     for _attempt in range(2):
-        raw = cast(str, client.complete(messages=messages)).strip()
+        raw = cast(str, client.complete(messages=full_messages)).strip()
         if _looks_like_llm_unavailable(raw):
             return None
         payload = extract_json(raw)
@@ -139,10 +228,10 @@ def _plan_single_file_change(
             )
             if parsed is not None:
                 return parsed
-        messages.extend(
+        full_messages.extend(
             [
                 {"role": "assistant", "content": raw},
-                {"role": "user", "content": correction},
+                {"role": "user", "content": full_correction},
             ]
         )
     return None
@@ -209,14 +298,16 @@ class SelfImproveService:
         f"Example: {_SELECT_JSON_HINT}"
       ),
     )
-    if selection is None:
+    files_to_read = _parse_selection(selection) if selection is not None else []
+    if not files_to_read:
+      files_to_read = _fallback_files_for_goal(goal, allowed=allowed)
+    if selection is None and not files_to_read:
       return SelfImproveResult(
         ok=False,
         step="select",
         error="Could not parse file selection from the model.",
         goal=goal,
       )
-    files_to_read = _parse_selection(selection)
     if not files_to_read:
       return SelfImproveResult(ok=False, step="select", error="No files selected.", goal=goal)
 
@@ -249,7 +340,7 @@ class SelfImproveService:
         return SelfImproveResult(
           ok=False,
           step="plan",
-          error="Could not parse change plan from the model.",
+          error=f"Could not parse change plan from the model for {path}.",
           goal=goal,
         )
       write_text_file(planned["path"], planned["content"])
