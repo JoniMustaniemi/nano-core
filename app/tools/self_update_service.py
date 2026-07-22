@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from app.config import get_settings
 from app.runtime.activity import activity
 from app.tools.git_github import (
+  checkout_branch,
   format_command_result,
   get_current_branch,
   is_git_repo,
@@ -52,11 +53,18 @@ class SelfUpdateService:
 
     current_branch = get_current_branch()
     if current_branch != base_branch:
-      return SelfUpdateResult(
-        ok=False,
-        step="preflight",
-        error=f"Switch to {base_branch} before pulling updates. Currently on {current_branch}.",
+      activity.working(
+        title="Nano is switching branches.",
+        detail=f"Moving from {current_branch} to {base_branch} before pulling updates.",
+        source="tools.self_update_service",
       )
+      checkout_result = checkout_branch(base_branch)
+      if checkout_result.returncode != 0:
+        return SelfUpdateResult(
+          ok=False,
+          step="checkout",
+          error=format_command_result(checkout_result),
+        )
 
     fetch_result = run_git("fetch", "origin")
     if fetch_result.returncode != 0:

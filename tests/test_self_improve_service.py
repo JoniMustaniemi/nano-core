@@ -58,3 +58,41 @@ def test_self_update_rejects_dirty_tree(monkeypatch) -> None:
     result = SelfUpdateService().run()
     assert not result.ok
     assert result.step == "preflight"
+
+
+def test_self_update_switches_to_main_before_pull(monkeypatch) -> None:
+    checkout_calls: list[str] = []
+
+    def fake_checkout(name: str):
+        checkout_calls.append(name)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    def fake_run_git(*args):
+        if args[:2] == ("fetch", "origin"):
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        if args[:3] == ("pull", "origin", "main"):
+            return SimpleNamespace(returncode=0, stdout="Already up to date.", stderr="")
+        if args[:4] == ("diff", "--name-only", "HEAD@{1}", "HEAD"):
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr("app.tools.self_update_service.is_git_repo", lambda: True)
+    monkeypatch.setattr("app.tools.self_update_service.working_tree_dirty", lambda: False)
+    monkeypatch.setattr(
+        "app.tools.self_update_service.get_current_branch",
+        lambda: "feature/pr_naming",
+    )
+    monkeypatch.setattr("app.tools.self_update_service.checkout_branch", fake_checkout)
+    monkeypatch.setattr("app.tools.self_update_service.run_git", fake_run_git)
+    monkeypatch.setattr(
+        "app.config.get_settings",
+        lambda: SimpleNamespace(
+            self_update_base_branch="",
+            github_default_base_branch="main",
+        ),
+    )
+
+    result = SelfUpdateService().run()
+
+    assert result.ok
+    assert checkout_calls == ["main"]
