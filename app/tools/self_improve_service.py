@@ -9,8 +9,11 @@ from app.config import get_settings
 from app.memory import codebase_index
 from app.proactive.codebase_files import list_all_app_files
 from app.runtime.activity import activity
+from app.runtime.dev import uvicorn_reload_enabled
 from app.runtime.status_copy import (
   PLANNING_SELF_IMPROVE_TITLE,
+  SELF_IMPROVE_FAILED_TITLE,
+  SELF_IMPROVE_RELOAD_BLOCKED_ERROR,
   VERIFYING_SELF_IMPROVE_DETAIL,
   VERIFYING_SELF_IMPROVE_TITLE,
 )
@@ -259,10 +262,38 @@ def _file_selection_lines(goal: str, *, limit: int = 40) -> list[str]:
   return [f"- {path}: (not yet scanned)" for path in all_paths[:limit]]
 
 
+def _fail_self_improve(
+  *,
+  step: str,
+  error: str,
+  goal: str,
+  changed_files: list[str] | None = None,
+) -> SelfImproveResult:
+  activity.error(
+    title=SELF_IMPROVE_FAILED_TITLE,
+    detail=error,
+    source="tools.self_improve_service",
+  )
+  return SelfImproveResult(
+    ok=False,
+    step=step,
+    error=error,
+    goal=goal,
+    changed_files=changed_files,
+  )
+
+
 class SelfImproveService:
   """Orchestrated self-improvement: explore, plan, write, verify, PR."""
 
   def run(self, *, client: Any, goal: str) -> SelfImproveResult:
+    if uvicorn_reload_enabled():
+      return _fail_self_improve(
+        step="preflight",
+        error=SELF_IMPROVE_RELOAD_BLOCKED_ERROR,
+        goal=goal,
+      )
+
     settings = get_settings()
     allowed = settings.self_improve_allowed_prefix
 
@@ -302,14 +333,13 @@ class SelfImproveService:
     if not files_to_read:
       files_to_read = _fallback_files_for_goal(goal, allowed=allowed)
     if selection is None and not files_to_read:
-      return SelfImproveResult(
-        ok=False,
+      return _fail_self_improve(
         step="select",
         error="Could not parse file selection from the model.",
         goal=goal,
       )
     if not files_to_read:
-      return SelfImproveResult(ok=False, step="select", error="No files selected.", goal=goal)
+      return _fail_self_improve(step="select", error="No files selected.", goal=goal)
 
     file_contents: dict[str, str] = {}
     for raw_path in files_to_read[: settings.self_improve_max_files]:
@@ -325,7 +355,11 @@ class SelfImproveService:
       file_contents[path] = text
 
     if not file_contents:
-      return SelfImproveResult(ok=False, step="read", error="Could not read target files.", goal=goal)
+      return _fail_self_improve(
+        step="read",
+        error="Could not read target files.",
+        goal=goal,
+      )
 
     changed_files: list[str] = []
     for path, content in file_contents.items():
@@ -337,8 +371,7 @@ class SelfImproveService:
         allowed=allowed,
       )
       if planned is None:
-        return SelfImproveResult(
-          ok=False,
+        return _fail_self_improve(
           step="plan",
           error=f"Could not parse change plan from the model for {path}.",
           goal=goal,
@@ -347,7 +380,7 @@ class SelfImproveService:
       changed_files.append(planned["path"])
 
     if not changed_files:
-      return SelfImproveResult(ok=False, step="plan", error="No changes planned.", goal=goal)
+      return _fail_self_improve(step="plan", error="No changes planned.", goal=goal)
 
     activity.working(
       title=VERIFYING_SELF_IMPROVE_TITLE,
@@ -356,22 +389,20 @@ class SelfImproveService:
     )
     verify = run_pr_verification()
     if not verify.ok:
-      return SelfImproveResult(
-        ok=False,
+      return _fail_self_improve(
         step="verify",
-        changed_files=changed_files,
         error=verify.error or "Verification failed.",
         goal=goal,
+        changed_files=changed_files,
       )
 
     pr_result = PullRequestService().run(client=client)
     if not pr_result.ok:
-      return SelfImproveResult(
-        ok=False,
+      return _fail_self_improve(
         step=pr_result.step,
-        changed_files=changed_files,
-        error=pr_result.error,
+        error=pr_result.error or "Pull request failed.",
         goal=goal,
+        changed_files=changed_files,
       )
 
     return SelfImproveResult(

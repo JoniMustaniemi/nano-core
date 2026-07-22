@@ -281,3 +281,24 @@ def test_self_update_switches_to_main_before_pull(monkeypatch) -> None:
 
     assert result.ok
     assert checkout_calls == ["main"]
+
+
+def test_self_improve_service_blocks_when_uvicorn_reload_enabled(monkeypatch) -> None:
+    monkeypatch.setenv("NANO_UVICORN_RELOAD", "1")
+    reported: list[dict[str, str]] = []
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.activity.error",
+        lambda **kwargs: reported.append(kwargs),
+    )
+
+    result = SelfImproveService().run(
+        client=SimpleNamespace(),
+        goal="clearer timer messages",
+    )
+
+    assert result.ok is False
+    assert result.step == "preflight"
+    assert result.error is not None
+    assert "--no-reload" in result.error
+    assert reported
+    assert reported[0]["title"] == "I could not improve myself."

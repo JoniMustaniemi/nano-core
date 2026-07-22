@@ -41,7 +41,10 @@ class ResponseComposer:
         if source.kind == "tool_result" and source.tool_name == "create_pull_request":
             return self._compose_pr_result(source.facts)
 
-        if source.kind == "tool_result" and source.tool_name == "propose_self_changes":
+        if source.tool_name == "propose_self_changes" and source.kind in {
+            "tool_result",
+            "tool_error",
+        }:
             return self._compose_self_improve_result(source.facts)
 
         if source.kind == "tool_result" and source.tool_name == "apply_updates_and_restart":
@@ -241,9 +244,27 @@ class ResponseComposer:
                 "An open pull request is already waiting for your review. "
                 "Resolve it on GitHub before I prepare another self-improvement pull request."
             )
+        step_labels = {
+            "plan": "planning changes",
+            "select": "choosing files",
+            "read": "reading files",
+            "preflight": "starting up",
+            "verify": "verification",
+            "complete": "finishing up",
+        }
+        step_label = step_labels.get(step, step.replace("_", " "))
+        plan_prefix = "Could not parse change plan from the model for "
+        if step == "plan" and error.startswith(plan_prefix):
+            path = error[len(plan_prefix) :].rstrip(".")
+            return (
+                f"I could not improve myself. I got stuck at the {step_label} step "
+                f"while editing {path}."
+            )
         if error:
-            return f"I could not complete self-improvement during {step}: {error}"
-        return "I could not complete the self-improvement workflow."
+            return (
+                f"I could not improve myself. I got stuck at the {step_label} step: {error}"
+            )
+        return "I could not improve myself."
 
     def _compose_self_update_result(self, tool_result: str) -> str:
         payload = self._parse_json_dict(tool_result)

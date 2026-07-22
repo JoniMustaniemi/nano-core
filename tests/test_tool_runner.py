@@ -60,3 +60,29 @@ def test_tool_runner_wraps_unexpected_exception(monkeypatch) -> None:
     payload = json.loads(result.content)
     assert result.ok is False
     assert "boom" in payload["error"]
+
+
+def test_tool_runner_treats_structured_ok_false_as_failure(monkeypatch) -> None:
+    runner = ToolRunner()
+    announced: list[str] = []
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.GladosVoiceService.announce",
+        lambda self, text: announced.append(text),
+    )
+    payload = json.dumps(
+        {
+            "ok": False,
+            "step": "plan",
+            "error": "Could not parse change plan from the model for app/config.py.",
+            "goal": "clearer timer messages",
+        }
+    )
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.get_tool",
+        lambda name: SimpleNamespace(name=name, handler=lambda _args: payload),
+    )
+
+    result = runner.execute("propose_self_changes", {})
+
+    assert result.ok is False
+    assert announced == ["I could not complete the self-improvement."]

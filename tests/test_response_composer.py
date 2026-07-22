@@ -4,6 +4,7 @@ from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_source import (
     confirmation_source,
     follow_up_source,
+    tool_error_source,
     tool_result_source,
 )
 
@@ -108,3 +109,52 @@ def test_compose_wipe_confirmation_uses_fallback_for_refusal_draft() -> None:
     assert "reply yes to proceed or no to cancel" in content.lower()
     assert "afraid" not in content.lower()
     assert 'You are asking me to do this: "Wipe your database."' in content
+
+
+def test_compose_self_improve_plan_failure_is_first_person() -> None:
+    composer = ResponseComposer()
+    payload = json.dumps(
+        {
+            "ok": False,
+            "step": "plan",
+            "error": "Could not parse change plan from the model for app/config.py.",
+            "goal": "clearer timer messages",
+        }
+    )
+    source = tool_result_source(
+        user_message="Improve yourself.",
+        facts=payload,
+        tool_name="propose_self_changes",
+        conversation_id="default",
+    )
+
+    content = composer.compose(_StubClient(), source)
+
+    assert content == (
+        "I could not improve myself. I got stuck at the planning changes step "
+        "while editing app/config.py."
+    )
+
+
+def test_compose_self_improve_tool_error_uses_same_failure_copy() -> None:
+    composer = ResponseComposer()
+    payload = json.dumps(
+        {
+            "ok": False,
+            "step": "preflight",
+            "error": "Self-improve cannot run while auto-reload is on. "
+            "Restart with: python -m app.cli dev --no-reload",
+        }
+    )
+    source = tool_error_source(
+        user_message="Improve yourself.",
+        facts=payload,
+        tool_name="propose_self_changes",
+        conversation_id="default",
+    )
+
+    content = composer.compose(_StubClient(), source)
+
+    assert content.startswith("I could not improve myself.")
+    assert "starting up" in content
+    assert "--no-reload" in content
