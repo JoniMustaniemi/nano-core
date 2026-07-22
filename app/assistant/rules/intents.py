@@ -88,6 +88,12 @@ SELF_IMPROVE_FOLLOW_UP_PATTERNS: tuple[str, ...] = (
 )
 
 
+def _contains_term(lowered_message: str, term: str) -> bool:
+    if " " in term:
+        return term in lowered_message
+    return re.search(rf"\b{re.escape(term)}\b", lowered_message) is not None
+
+
 def is_pull_request_request(message: str) -> bool:
     """
     Return whether the message is a pull request creation request.
@@ -251,8 +257,8 @@ def needs_wipe_confirmation(message: str) -> bool:
         True when the condition is met; otherwise false.
     """
     lowered = message.lower()
-    return any(trigger in lowered for trigger in WIPE_REQUEST_TRIGGERS) and any(
-        trigger in lowered for trigger in WIPE_TARGET_TRIGGERS
+    return any(_contains_term(lowered, trigger) for trigger in WIPE_REQUEST_TRIGGERS) and any(
+        _contains_term(lowered, trigger) for trigger in WIPE_TARGET_TRIGGERS
     )
 
 

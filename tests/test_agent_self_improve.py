@@ -14,7 +14,27 @@ class _FakeClient:
 
 def test_self_improve_intent() -> None:
     assert is_self_improve_request("Improve yourself by adding restart support.")
+    assert is_self_improve_request("Improve yourself by making timer messages clearer.")
     assert is_self_update_request("Pull the latest changes and restart.")
+
+
+def test_router_self_improve_routes_before_timer_cancel() -> None:
+    decision = AgentRouter().decide(
+        "Improve yourself by making timer messages clearer.",
+        conversation_id="agent-default",
+        history=[],
+    )
+    assert decision.mode == "tool"
+    assert decision.tool_name == "propose_self_changes"
+
+
+def test_wipe_confirmation_ignores_clear_inside_other_words() -> None:
+    from app.assistant.rules.intents import needs_wipe_confirmation
+
+    assert not needs_wipe_confirmation(
+        "Improve yourself by making timer messages clearer."
+    )
+    assert needs_wipe_confirmation("Clear your memory.")
 
 
 def test_router_self_improve_follow_up() -> None:

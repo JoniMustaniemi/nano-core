@@ -47,11 +47,44 @@ let currentActivitySnapshot = {
   detail: "Awaiting input.",
 };
 const activityStates = ["standby", "working", "error"];
-let toolCommands = [];
+let bootAnnouncementPlayed = false;
 let lastActivityEventId = 0;
 let activityLogHiddenBeforeId = 0;
 let answerClearTimer = null;
 const ANSWER_CLEAR_DELAY_MS = 20000;
+
+function formatBootMessage(snapshot) {
+  const headline = (snapshot.headline || "").trim();
+  const detail = (snapshot.detail || "").trim();
+  if (!headline) {
+    return "";
+  }
+  if (detail && detail !== headline && !headline.includes(detail)) {
+    return `${headline} ${detail}`;
+  }
+  return headline;
+}
+
+function snapshotHasBootEvent(snapshot) {
+  return Array.isArray(snapshot.events) && snapshot.events.some(
+    (event) => event.source === "system.boot"
+  );
+}
+
+async function announceBootMessage(snapshot) {
+  if (bootAnnouncementPlayed || !snapshotHasBootEvent(snapshot)) {
+    return;
+  }
+  const message = formatBootMessage(snapshot);
+  if (!message) {
+    return;
+  }
+  bootAnnouncementPlayed = true;
+  setAnswer(message);
+  if (voiceAvailable) {
+    await playVoice(message);
+  }
+}
 
 function groupCommands(commands) {
   const groups = new Map();
@@ -866,6 +899,7 @@ async function bootstrap() {
         replyStatus.textContent = voice.detail;
       }
     }
+    await announceBootMessage(snapshot);
     const commands = await loadToolCommands();
     renderToolCommands(commands);
     await connectMicrophoneOnStartup();

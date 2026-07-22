@@ -41,15 +41,17 @@ class AgentRouter:
     Priority order:
     1. Timer status/cancel (clears pending timer follow-ups)
     2. Pending interaction resume
-    3. Timer start/duration
-    3. Wipe confirmation
-    4. Note add/list/lookup
-    5. Health check tool
-    6. Pull request tool
-    7. Direct answer without tools
-    8. Capabilities answer from tool catalog
-    9. Identity answer with dynamic context
-    10. Planner fallback
+    3. Self-improvement tool
+    4. Timer start/duration
+    5. Wipe confirmation
+    6. Note add/list/lookup
+    7. Health check tool
+    8. Pull request tool
+    9. Self-update interaction
+    10. Direct answer without tools
+    11. Capabilities answer from tool catalog
+    12. Identity answer with dynamic context
+    13. Planner fallback
     """
 
     def decide(
@@ -82,6 +84,20 @@ class AgentRouter:
         if pending_interactions.get(conversation_id) is not None:
             return RouteDecision(mode="pending")
 
+        if is_self_improve_follow_up(message) and proactive_store.get_last_goal():
+            return RouteDecision(
+                mode="tool",
+                tool_name="propose_self_changes",
+                tool_args={"goal": proactive_store.get_last_goal()},
+            )
+
+        if is_self_improve_request(message):
+            return RouteDecision(
+                mode="tool",
+                tool_name="propose_self_changes",
+                tool_args={"goal": extract_self_improve_goal(message)},
+            )
+
         if needs_timer_duration(message) or is_timer_start_request(message):
             return RouteDecision(mode="interaction", interaction="timer")
 
@@ -98,20 +114,6 @@ class AgentRouter:
 
         if is_pull_request_request(message):
             return RouteDecision(mode="tool", tool_name="create_pull_request", tool_args={})
-
-        if is_self_improve_follow_up(message) and proactive_store.get_last_goal():
-            return RouteDecision(
-                mode="tool",
-                tool_name="propose_self_changes",
-                tool_args={"goal": proactive_store.get_last_goal()},
-            )
-
-        if is_self_improve_request(message):
-            return RouteDecision(
-                mode="tool",
-                tool_name="propose_self_changes",
-                tool_args={"goal": extract_self_improve_goal(message)},
-            )
 
         if is_self_update_request(message):
             return RouteDecision(mode="interaction", interaction="self_update")
