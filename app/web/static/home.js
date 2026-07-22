@@ -39,6 +39,7 @@ let microphoneReady = false;
 let pendingGestureStart = false;
 let lastHeardTranscript = "";
 let wakeAcknowledging = false;
+let busyWakeAnnouncing = false;
 let recognitionPausedForSpeech = false;
 let recognitionStopWaiters = [];
 let currentActivitySnapshot = {
@@ -84,6 +85,19 @@ async function announceBootMessage(snapshot) {
   if (voiceAvailable) {
     await playVoice(message);
   }
+}
+
+function formatBusyWakeMessage(snapshot) {
+  const headline = (snapshot.headline || "I'm working on something.").trim();
+  const detail = (snapshot.detail || "").trim();
+  if (detail && detail !== headline && !headline.includes(detail)) {
+    return `I'm still working. ${headline} — ${detail}`;
+  }
+  return `I'm still working. ${headline}`;
+}
+
+function isWorkingOnTask() {
+  return requestInFlight || currentActivitySnapshot.state === "working";
 }
 
 function groupCommands(commands) {
@@ -366,29 +380,42 @@ function ensureRecognition() {
     }
 
     const transcript = finalTranscript.trim();
-    if (!transcript || isBusy()) {
+    if (!transcript) {
       return;
     }
 
     if (listeningForCommand) {
+      if (isBusy()) {
+        return;
+      }
       resetVoiceListeningMode();
       setVoiceStatus(`Heard command: ${transcript}`);
       await sendRecognizedMessage(transcript);
       return;
     }
 
+    if (wakeAcknowledging || busyWakeAnnouncing) {
+      return;
+    }
+
     const wakeMatch = extractWakeCommand(transcript);
-    if (!wakeMatch.heardWakeWord) {
+    if (wakeMatch.heardWakeWord) {
+      if (isWorkingOnTask()) {
+        await acknowledgeBusyWake();
+        return;
+      }
+      if (wakeMatch.command) {
+        setVoiceStatus(`Wake phrase detected. Heard: ${wakeMatch.command}`);
+        await sendRecognizedMessage(wakeMatch.command);
+        return;
+      }
+      await acknowledgeWakePhrase();
       return;
     }
 
-    if (wakeMatch.command) {
-      setVoiceStatus(`Wake phrase detected. Heard: ${wakeMatch.command}`);
-      await sendRecognizedMessage(wakeMatch.command);
+    if (isBusy()) {
       return;
     }
-
-    await acknowledgeWakePhrase();
   };
 
   recognition.onerror = (event) => {
@@ -574,6 +601,37 @@ async function requestWakeAcknowledgement() {
     throw new Error(data.detail || "Wake acknowledgment failed.");
   }
   return data.content;
+}
+
+async function acknowledgeBusyWake() {
+  if (busyWakeAnnouncing || wakeAcknowledging) {
+    return;
+  }
+  busyWakeAnnouncing = true;
+  try {
+    let snapshot = currentActivitySnapshot;
+    try {
+      const fresh = await loadSnapshot();
+      snapshot = {
+        ...snapshot,
+        state: activityStates.includes(fresh.state) ? fresh.state : snapshot.state,
+        headline: fresh.headline || snapshot.headline,
+        detail: fresh.detail ?? snapshot.detail,
+      };
+    } catch (_error) {
+      // Fall back to the cached activity snapshot.
+    }
+    const message = formatBusyWakeMessage(snapshot);
+    if (!message) {
+      return;
+    }
+    setAnswer(message);
+    replyStatus.textContent = "Still working on the current task.";
+    setVoiceStatus("Wake phrase detected while working.");
+    await playVoice(message, { pauseRecognition: true });
+  } finally {
+    busyWakeAnnouncing = false;
+  }
 }
 
 async function acknowledgeWakePhrase() {

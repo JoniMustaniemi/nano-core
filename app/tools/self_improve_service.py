@@ -83,6 +83,13 @@ class SelfImproveService:
     ]
     raw_select = cast(str, client.complete(messages=select_messages)).strip()
     selection = extract_json(raw_select)
+    if not isinstance(selection, dict):
+      return SelfImproveResult(
+        ok=False,
+        step="select",
+        error="Could not parse file selection from the model.",
+        goal=goal,
+      )
     files_to_read = selection.get("files_to_read", [])
     if not isinstance(files_to_read, list) or not files_to_read:
       return SelfImproveResult(ok=False, step="select", error="No files selected.", goal=goal)
@@ -123,6 +130,13 @@ class SelfImproveService:
     ]
     raw_plan = cast(str, client.complete(messages=plan_messages)).strip()
     plan = extract_json(raw_plan)
+    if not isinstance(plan, dict):
+      return SelfImproveResult(
+        ok=False,
+        step="plan",
+        error="Could not parse change plan from the model.",
+        goal=goal,
+      )
     changes = plan.get("changes", [])
     if not isinstance(changes, list) or not changes:
       return SelfImproveResult(ok=False, step="plan", error="No changes planned.", goal=goal)
