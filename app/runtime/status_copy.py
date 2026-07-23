@@ -63,6 +63,17 @@ RUNNING_TOOL_DETAIL = "Give me a moment."
 SETTING_TIMER_TITLE = "I'm setting a timer."
 SETTING_TIMER_DETAIL = "Scheduling the requested timer."
 WAITING_TIMER_DURATION_DETAIL = "Waiting for the timer duration."
+TIMER_DURATION_PROMPT = (
+    "How long should the timer run? Try 30 seconds or 5 minutes."
+)
+TIMER_DURATION_RETRY_PROMPT = (
+    "I didn't catch a duration. Try 30 seconds or 5 minutes."
+)
+TIMER_START_FAILED_PROMPT = (
+    "I couldn't start the timer. Try again with a duration like 30 seconds or 5 minutes."
+)
+CANCELLED_TIMER_TITLE = "I cancelled the timer."
+TIMER_CANCELLED_PROMPT = "Timer cancelled."
 SAVING_NOTE_TITLE = "I'm saving a note."
 WAITING_NOTE_NAME_DETAIL = "Waiting for the note name."
 WAITING_NOTE_CONTENT_DETAIL = "Waiting for the note content."

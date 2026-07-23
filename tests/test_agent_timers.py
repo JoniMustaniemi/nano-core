@@ -152,7 +152,7 @@ def test_agent_checks_timers_instead_of_completing_pending_timer(monkeypatch, tm
     second = AgentService().respond("Check active timers.")
     reminders = repository.list_reminders()
 
-    assert first == "How long should the timer run?"
+    assert first == "How long should the timer run? Try 30 seconds or 5 minutes."
     assert "Tea has" in second
     assert "remaining" in second
     assert len(reminders) == 1
@@ -182,7 +182,7 @@ def test_agent_cancels_pending_timer_duration_request(monkeypatch, tmp_path) -> 
     first = AgentService().respond("Start a timer.")
     second = AgentService().respond("Cancel timers.")
 
-    assert first == "How long should the timer run?"
+    assert first == "How long should the timer run? Try 30 seconds or 5 minutes."
     assert second == "No active timers to cancel."
     assert pending_interactions.get("default") is None
     assert repository.list_reminders() == []
@@ -204,7 +204,7 @@ def test_agent_asks_for_timer_duration_before_using_model(monkeypatch, tmp_path)
 
     content = AgentService().respond("Start a timer.")
 
-    assert content == "How long should the timer run?"
+    assert content == "How long should the timer run? Try 30 seconds or 5 minutes."
     assert repository.list_reminders() == []
 
 
@@ -231,7 +231,7 @@ def test_agent_starts_timer_after_duration_follow_up(monkeypatch, tmp_path) -> N
     second = AgentService().respond("30 seconds")
     reminders = repository.list_reminders()
 
-    assert first == "How long should the timer run?"
+    assert first == "How long should the timer run? Try 30 seconds or 5 minutes."
     assert second == "The timer is set for 30 seconds."
     assert len(reminders) == 1
     assert reminders[0].content == "[timer] Timer"
@@ -260,14 +260,48 @@ def test_agent_starts_timer_after_spoken_duration_follow_up(monkeypatch, tmp_pat
     second = AgentService().respond("five minutes")
     reminders = repository.list_reminders()
 
-    assert first == "How long should the timer run?"
+    assert first == "How long should the timer run? Try 30 seconds or 5 minutes."
     assert second == "The timer is set for 5 minutes."
     assert len(reminders) == 1
     assert reminders[0].content == "[timer] Timer"
 
 
 
-def test_agent_understands_spoken_timer_duration_in_single_request(monkeypatch, tmp_path) -> None:
+def test_agent_cancels_pending_timer_with_never_mind(monkeypatch, tmp_path) -> None:
+    patch_agent(
+        monkeypatch,
+        client=ShouldNotBeCalledClient(),
+        tmp_path=tmp_path,
+        announce=lambda self, text: None,
+    )
+
+    first = AgentService().respond("Start a timer.")
+    second = AgentService().respond("Never mind.")
+
+    assert first == "How long should the timer run? Try 30 seconds or 5 minutes."
+    assert second == "Timer cancelled."
+    assert pending_interactions.get("default") is None
+    assert repository.list_reminders() == []
+
+
+
+def test_agent_retries_after_invalid_timer_duration_follow_up(monkeypatch, tmp_path) -> None:
+    patch_agent(
+        monkeypatch,
+        client=ShouldNotBeCalledClient(),
+        tmp_path=tmp_path,
+        announce=lambda self, text: None,
+    )
+
+    first = AgentService().respond("Start a timer.")
+    second = AgentService().respond("soon")
+
+    assert first == "How long should the timer run? Try 30 seconds or 5 minutes."
+    assert second == "I didn't catch a duration. Try 30 seconds or 5 minutes."
+    assert pending_interactions.get("default") is not None
+    assert repository.list_reminders() == []
+
+
     """
     Verify that agent understands spoken timer duration in single request.
 

@@ -5,6 +5,7 @@ from typing import Any
 
 from app.assistant.agent_rules import (
     duration_args_from_message,
+    is_rejection_message,
     needs_timer_duration,
     timer_confirmation,
 )
@@ -18,9 +19,14 @@ from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
 from app.runtime.activity import activity
 from app.runtime.status_copy import (
+    CANCELLED_TIMER_TITLE,
     NEEDS_DETAIL_TITLE,
     SETTING_TIMER_DETAIL,
     SETTING_TIMER_TITLE,
+    TIMER_CANCELLED_PROMPT,
+    TIMER_DURATION_PROMPT,
+    TIMER_DURATION_RETRY_PROMPT,
+    TIMER_START_FAILED_PROMPT,
     WAITING_TIMER_DURATION_DETAIL,
     ran_tool_title,
 )
@@ -107,11 +113,17 @@ class TimerInteractionHandler:
         if pending.kind != "timer_duration":
             return None
 
+        if is_rejection_message(message):
+            return self._cancel_pending_timer(
+                conversation_id=conversation_id,
+                user_message=user_message,
+            )
+
         duration_args = duration_args_from_message(message)
         if duration_args is None:
             return follow_up_source(
                 user_message=user_message,
-                facts="Specify the timer duration in seconds or minutes.",
+                facts=TIMER_DURATION_RETRY_PROMPT,
                 conversation_id=conversation_id,
             )
 
@@ -150,7 +162,25 @@ class TimerInteractionHandler:
         )
         return follow_up_source(
             user_message=user_message,
-            facts="How long should the timer run?",
+            facts=TIMER_DURATION_PROMPT,
+            conversation_id=conversation_id,
+        )
+
+    def _cancel_pending_timer(
+        self,
+        *,
+        conversation_id: str,
+        user_message: str,
+    ) -> ResponseSource:
+        pending_interactions.clear(conversation_id)
+        activity.standby(
+            title=CANCELLED_TIMER_TITLE,
+            detail=TIMER_CANCELLED_PROMPT,
+            source="assistant.flows.timer",
+        )
+        return confirmation_source(
+            user_message=user_message,
+            facts=TIMER_CANCELLED_PROMPT,
             conversation_id=conversation_id,
         )
 
@@ -177,12 +207,26 @@ class TimerInteractionHandler:
             detail=SETTING_TIMER_DETAIL,
             source="assistant.flows.timer",
         )
+        result = self.tool_runner.execute("start_timer", args)
+        if not result.ok:
+            pending_interactions.clear(conversation_id)
+            activity.standby(
+                title=CANCELLED_TIMER_TITLE,
+                detail=TIMER_START_FAILED_PROMPT,
+                source="assistant.flows.timer",
+            )
+            return confirmation_source(
+                user_message=user_message,
+                facts=TIMER_START_FAILED_PROMPT,
+                conversation_id=conversation_id,
+            )
+
         activity.log(
             title=ran_tool_title("start_timer"),
             detail=json.dumps(args, ensure_ascii=False),
             source="assistant.flows.timer",
         )
-        self.tool_runner.execute("start_timer", args)
+        pending_interactions.clear(conversation_id)
         return confirmation_source(
             user_message=user_message,
             facts=timer_confirmation(args),

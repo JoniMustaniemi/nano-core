@@ -68,6 +68,19 @@ function isWorkingOnTask() {
   return requestInFlight || currentActivitySnapshot.state === "working";
 }
 
+const LAST_COMMAND_CATEGORIES = ["System", "Git", "GitHub"];
+
+function commandCategorySortKey(category) {
+  const normalized = category.toLowerCase();
+  const lastIndex = LAST_COMMAND_CATEGORIES.findIndex(
+    (name) => name.toLowerCase() === normalized
+  );
+  if (lastIndex >= 0) {
+    return [1, lastIndex, normalized];
+  }
+  return [0, normalized];
+}
+
 function groupCommands(commands) {
   const groups = new Map();
   for (const command of commands) {
@@ -77,7 +90,19 @@ function groupCommands(commands) {
     }
     groups.get(category).push(command);
   }
-  return Array.from(groups.entries());
+  return Array.from(groups.entries()).sort(([left], [right]) => {
+    const leftKey = commandCategorySortKey(left);
+    const rightKey = commandCategorySortKey(right);
+    for (let index = 0; index < leftKey.length; index += 1) {
+      if (leftKey[index] < rightKey[index]) {
+        return -1;
+      }
+      if (leftKey[index] > rightKey[index]) {
+        return 1;
+      }
+    }
+    return 0;
+  });
 }
 
 function renderToolCommands(commands) {
@@ -165,10 +190,17 @@ function updateInputLock() {
   document.body.classList.toggle("inputs-locked", locked);
 }
 
+function closeCommandDropdowns() {
+  for (const dropdown of commandsList.querySelectorAll(".commands-dropdown")) {
+    dropdown.removeAttribute("open");
+  }
+}
+
 function openCommandsDrawer() {
   if (isBusy()) {
     return;
   }
+  closeCommandDropdowns();
   commandsDrawer.classList.add("open");
   commandsDrawer.setAttribute("aria-hidden", "false");
   commandsToggle.setAttribute("aria-expanded", "true");

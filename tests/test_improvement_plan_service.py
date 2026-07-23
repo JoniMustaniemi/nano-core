@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from app.memory import improvement_plans
 from app.memory.db import create_db_and_tables
-from app.tools.improvement_plan_service import ImprovementPlanService
+from app.tools.improvement_plan_service import ImprovementPlanService, _plan_title
 from app.tools.self_improve_planning import fallback_files_for_goal
 
 
@@ -19,6 +19,14 @@ def _settings(**overrides):
     }
     values.update(overrides)
     return SimpleNamespace(**values)
+
+
+def test_plan_title_strips_draft_plan_meta_phrasing() -> None:
+    title = _plan_title(
+        goal="Draft an improvement plan for clearer timer messages.",
+        files=["app/assistant/rules/messages.py"],
+    )
+    assert title == "clearer timer messages"
 
 
 def test_has_unprocessed_plan_blocks_second_draft(monkeypatch, tmp_path) -> None:

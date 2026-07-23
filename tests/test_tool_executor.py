@@ -31,7 +31,7 @@ def test_tool_executor_logs_success_only_when_tool_succeeds(monkeypatch) -> None
         tool_name="draft_improvement_plan",
     )
 
-    assert source.speak is False
+    assert source.speak is True
     assert logged == [(ran_tool_title("draft_improvement_plan"), "Done.")]
 
 

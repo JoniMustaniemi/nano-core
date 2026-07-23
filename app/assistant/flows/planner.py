@@ -209,7 +209,6 @@ class AgentPlanner:
                     facts=latest.content,
                     tool_name=latest.tool,
                     conversation_id=conversation_id,
-                    speak=False,
                 )
 
         content = decision.get("content")

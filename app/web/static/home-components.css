@@ -749,16 +749,28 @@ body.inputs-locked #keyboard-toggle:disabled {
 }
 
 #nano-panel-plans {
-  position: relative;
   overflow: hidden;
 }
 
-.nano-panel-plans.reading .nano-panel-toolbar {
-  display: none;
+.nano-panel-plans.reading {
+  gap: 0;
+  padding-top: 8px;
+}
+
+.nano-panel-plans.reading .nano-panel-toolbar,
+.nano-panel-plans.reading .plans-list {
+  display: none !important;
 }
 
 .nano-panel-plans.reading .plan-reader {
-  inset: 0;
+  position: static;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 4px 0 0;
+  background: transparent;
 }
 
 .plans-list {
@@ -861,46 +873,52 @@ body.inputs-locked #keyboard-toggle:disabled {
   z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   min-height: 0;
-  padding: 10px 16px 14px;
-  background: linear-gradient(180deg, rgba(2, 6, 4, 0.98), rgba(2, 6, 4, 0.94));
+  padding: 0;
+  background: transparent;
 }
 
 .plan-reader-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  max-height: 4.5rem;
-  overflow: hidden;
+  min-height: 0;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.1);
 }
 
 .plan-reader-header h3 {
   margin: 0;
   flex: 1;
   min-width: 0;
-  font: 700 0.88rem/1.35 "Cascadia Mono", "Consolas", monospace;
+  font: 700 0.84rem/1.35 "Cascadia Mono", "Consolas", monospace;
   color: var(--accent-strong);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .plan-reader-body {
   flex: 1 1 auto;
   min-height: 0;
   margin: 0;
-  padding: 16px 18px;
+  padding: 18px 20px;
   overflow: auto;
-  border: 1px solid rgba(57, 255, 20, 0.12);
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(57, 255, 20, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.62);
   color: var(--text-primary);
-  font: 500 0.9rem/1.6 "Cascadia Mono", "Consolas", monospace;
+  font: 500 0.92rem/1.65 "Cascadia Mono", "Consolas", monospace;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.nano-panel-plans.reading .plan-reader-body {
+  flex: unset;
+  height: 100%;
+  min-height: 0;
 }
 
 .plan-process-button {

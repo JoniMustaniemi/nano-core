@@ -52,14 +52,25 @@ function formatProgressAnnouncement(event) {
   return detail;
 }
 
+function formatImprovementPlanCompletedMessage(event) {
+  const detail = (event.detail || "").trim();
+  const themeMatch = detail.match(/^Theme:\s*(.+?)\.\s*Open the Plans tab/i);
+  if (themeMatch && themeMatch[1]) {
+    return `I finished a new improvement plan about ${themeMatch[1]}. Open the Plans tab to read it.`;
+  }
+  return "I finished a new improvement plan. Open the Plans tab to read it.";
+}
+
 function applyActivityEvent(event) {
   if (
     event.kind === "state" &&
     event.source === "tools.improvement_plan_service.completed"
   ) {
-    setAnswer("I finished a new improvement plan. Open the Plans tab to read it.", {
-      animate: false,
-    });
+    const message = formatImprovementPlanCompletedMessage(event);
+    setAnswer(message, { animate: false });
+    if (voiceAvailable && !requestInFlight) {
+      void playVoice(message, { resumeListening: false });
+    }
     void loadPlans();
     return;
   }

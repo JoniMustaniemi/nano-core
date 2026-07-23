@@ -11,6 +11,7 @@ from app.assistant.prompts import (
 )
 from app.assistant.response_guard import looks_like_refusal
 from app.assistant.response_source import ResponseSource
+from app.intents.self_improve import normalize_self_improve_goal
 from app.llm.protocol import LLMClient
 
 
@@ -262,7 +263,7 @@ class ResponseComposer:
 
     def _brief_plan_theme(self, payload: dict[str, Any]) -> str:
         for key in ("title", "goal"):
-            cleaned = " ".join(str(payload.get(key, "")).strip().split())
+            cleaned = normalize_self_improve_goal(str(payload.get(key, "")))
             if cleaned and cleaned.lower() not in {"improvement plan", "code update"}:
                 if len(cleaned) <= 60:
                     return cleaned

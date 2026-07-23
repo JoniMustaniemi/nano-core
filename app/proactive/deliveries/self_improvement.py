@@ -23,7 +23,6 @@ class SelfImprovementSuggestionHandler:
       user_message="proactive self-improvement",
       facts="I finished a new improvement plan. Open the Plans tab to read it.",
       conversation_id=conversation_id,
-      speak=False,
     )
 
 
