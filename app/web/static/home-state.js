@@ -1,0 +1,81 @@
+const stateLine = document.getElementById("state-line");
+const activityStatus = document.getElementById("activity-status");
+const activityStatusText = activityStatus.querySelector(".activity-status-text");
+const activityLog = document.getElementById("activity-log");
+const brainsClearButton = document.getElementById("brains-clear");
+const voiceStatus = document.getElementById("voice-status");
+const replyStatus = document.getElementById("reply-status");
+const messageBox = document.getElementById("message");
+const sendButton = document.getElementById("send");
+const audioToggle = document.getElementById("audio-toggle");
+const answerOutput = document.getElementById("answer-output");
+const voiceAudio = document.getElementById("voice-audio");
+const storageLog = document.getElementById("storage-log");
+const commandsToggle = document.getElementById("commands-toggle");
+const commandsDrawer = document.getElementById("commands-drawer");
+const commandsBackdrop = document.getElementById("commands-backdrop");
+const commandsClose = document.getElementById("commands-close");
+const commandsPanel = document.getElementById("commands-panel");
+const commandsList = document.getElementById("commands-list");
+const voiceVolumeInput = document.getElementById("voice-volume");
+const voiceVolumeValue = document.getElementById("voice-volume-value");
+const keyboardToggle = document.getElementById("keyboard-toggle");
+const keyboardPanel = document.getElementById("keyboard-panel");
+const nanoSheet = document.getElementById("nano-sheet");
+const nanoSheetBackdrop = document.getElementById("nano-sheet-backdrop");
+const nanoSheetClose = document.getElementById("nano-sheet-close");
+const nanoControlsToggle = document.getElementById("nano-controls-toggle");
+const nanoTabBrains = document.getElementById("nano-tab-brains");
+const nanoTabStorage = document.getElementById("nano-tab-storage");
+const nanoPanelBrains = document.getElementById("nano-panel-brains");
+const nanoPanelStorage = document.getElementById("nano-panel-storage");
+const globeCanvas = document.getElementById("globe-canvas");
+const globeMiniCanvas = document.getElementById("globe-mini-canvas");
+
+let currentVoiceUrl = null;
+let voicePlaybackQueue = Promise.resolve();
+let voiceAvailable = false;
+const SpeechRecognitionCtor =
+  window.SpeechRecognition || window.webkitSpeechRecognition || null;
+let recognition = null;
+let listeningEnabled = false;
+let listeningForCommand = false;
+let recognitionStarting = false;
+let recognitionRunning = false;
+let requestInFlight = false;
+let microphoneStream = null;
+let microphoneReady = false;
+let pendingGestureStart = false;
+let lastHeardTranscript = "";
+let wakeAcknowledging = false;
+let busyWakeAnnouncing = false;
+let recognitionPausedForSpeech = false;
+let recognitionStopWaiters = [];
+let currentActivitySnapshot = {
+  state: "standby",
+  headline: "I'm in standby.",
+  detail: "Awaiting your input.",
+};
+const activityStates = ["standby", "working", "error"];
+const STANDBY_HEADLINE = "I'm in standby.";
+const STANDBY_DETAIL_DEFAULT = "Awaiting your input.";
+const LISTENING_HEADLINE_DEFAULT = "I'm listening.";
+const WORKING_DETAIL_DEFAULT = "Give me a moment.";
+const RECEIVED_DETAIL = "Give me a moment.";
+let bootAnnouncementPlayed = false;
+let lastActivityEventId = 0;
+let activityLogHiddenBeforeId = 0;
+let answerClearTimer = null;
+let answerRevealTimer = null;
+const ANSWER_CLEAR_DELAY_MS = 20000;
+const IDLE_RESPONSE = "What can I do for you today?";
+const VOICE_VOLUME_STORAGE_KEY = "nano.voiceVolume";
+const DEFAULT_VOICE_VOLUME = 0.8;
+let keyboardOpen = false;
+let nanoSheetOpen = false;
+let activeNanoTab = "brains";
+let speakingActive = false;
+
+let mainGlobe = null;
+let miniGlobe = null;
+let toolCommands = [];

@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from app.assistant.llm_factory import get_llm_client
 from app.assistant.pending import pending_interactions
 from app.assistant.response_source import ResponseSource, answer_source
 from app.config import get_settings
+from app.llm.factory import get_llm_client
 from app.memory.internal_note_service import internal_note_service
 from app.proactive.registry import delivery_registry
 from app.proactive.store import proactive_store

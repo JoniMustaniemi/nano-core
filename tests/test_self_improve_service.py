@@ -1,10 +1,7 @@
 from types import SimpleNamespace
 
-from app.tools.self_improve_service import (
-    SelfImproveService,
-    _fallback_files_for_goal,
-    _plan_max_tokens,
-)
+from app.tools.self_improve_planning import fallback_files_for_goal, plan_max_tokens
+from app.tools.self_improve_service import SelfImproveService
 
 
 def _self_improve_settings(**overrides):
@@ -60,7 +57,7 @@ def test_self_improve_service_rejects_invalid_selection_json(monkeypatch, tmp_pa
     (tmp_path / "app").mkdir()
     (tmp_path / "app" / "main.py").write_text("original\n", encoding="utf-8")
     monkeypatch.setattr(
-        "app.tools.self_improve_service._file_selection_lines",
+        "app.tools.self_improve_planning.file_selection_lines",
         lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
     )
     monkeypatch.setattr(
@@ -85,7 +82,7 @@ def test_self_improve_service_applies_and_delegates_pr(monkeypatch, tmp_path) ->
     (tmp_path / "app" / "main.py").write_text("original\n", encoding="utf-8")
 
     monkeypatch.setattr(
-        "app.tools.self_improve_service._file_selection_lines",
+        "app.tools.self_improve_planning.file_selection_lines",
         lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
     )
     monkeypatch.setattr(
@@ -115,7 +112,7 @@ def test_self_improve_service_retries_invalid_plan_json(monkeypatch, tmp_path) -
     (tmp_path / "app").mkdir()
     (tmp_path / "app" / "main.py").write_text("original\n", encoding="utf-8")
     monkeypatch.setattr(
-        "app.tools.self_improve_service._file_selection_lines",
+        "app.tools.self_improve_planning.file_selection_lines",
         lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
     )
     monkeypatch.setattr(
@@ -144,7 +141,7 @@ def test_self_improve_service_retries_invalid_plan_json(monkeypatch, tmp_path) -
 
 
 def test_fallback_files_for_timer_message_goal() -> None:
-    files = _fallback_files_for_goal(
+    files = fallback_files_for_goal(
         "making timer messages clearer",
         allowed="app/",
     )
@@ -162,7 +159,7 @@ def test_self_improve_service_applies_patch_plan(monkeypatch, tmp_path) -> None:
     (tmp_path / "app" / "runtime" / "status_copy.py").write_text(status_copy, encoding="utf-8")
 
     monkeypatch.setattr(
-        "app.tools.self_improve_service._file_selection_lines",
+        "app.tools.self_improve_planning.file_selection_lines",
         lambda goal, limit=40: ["- app/runtime/status_copy.py: Status strings."],
     )
     monkeypatch.setattr(
@@ -202,7 +199,7 @@ def test_self_improve_service_uses_goal_fallback_when_selection_invalid(monkeypa
     )
 
     monkeypatch.setattr(
-        "app.tools.self_improve_service._file_selection_lines",
+        "app.tools.self_improve_planning.file_selection_lines",
         lambda goal, limit=40: ["- app/runtime/status_copy.py: Status strings."],
     )
     monkeypatch.setattr(
@@ -278,7 +275,7 @@ def test_self_improve_service_uses_worktree_when_reload_enabled(monkeypatch, tmp
         fake_try_setup,
     )
     monkeypatch.setattr(
-        "app.tools.self_improve_service._file_selection_lines",
+        "app.tools.self_improve_planning.file_selection_lines",
         lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
     )
     monkeypatch.setattr(
@@ -328,8 +325,8 @@ def test_self_improve_service_worktree_setup_failure(monkeypatch) -> None:
 
 def test_plan_max_tokens_scales_with_file_size() -> None:
     settings = _self_improve_settings()
-    small = _plan_max_tokens("x" * 100, settings=settings)
-    large = _plan_max_tokens("x" * 4200, settings=settings)
+    small = plan_max_tokens("x" * 100, settings=settings)
+    large = plan_max_tokens("x" * 4200, settings=settings)
     assert small == 562
     assert large == 2612
 
@@ -363,7 +360,7 @@ def test_plan_uses_elevated_max_tokens_for_large_file(monkeypatch, tmp_path) -> 
             return f'{{"path": "{path}", "content": "# updated\\n"}}'
 
     monkeypatch.setattr(
-        "app.tools.self_improve_service._file_selection_lines",
+        "app.tools.self_improve_planning.file_selection_lines",
         lambda goal, limit=40: [f"- {path}: Message helpers."],
     )
     monkeypatch.setattr(
@@ -416,7 +413,7 @@ def test_patch_retry_gets_old_text_not_found_hint(monkeypatch, tmp_path) -> None
             )
 
     monkeypatch.setattr(
-        "app.tools.self_improve_service._file_selection_lines",
+        "app.tools.self_improve_planning.file_selection_lines",
         lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
     )
     monkeypatch.setattr(
@@ -467,7 +464,7 @@ def test_full_file_plan_succeeds_for_messages_sized_content(monkeypatch, tmp_pat
             return json.dumps({"path": path, "content": updated})
 
     monkeypatch.setattr(
-        "app.tools.self_improve_service._file_selection_lines",
+        "app.tools.self_improve_planning.file_selection_lines",
         lambda goal, limit=40: [f"- {path}: Message helpers."],
     )
     monkeypatch.setattr(

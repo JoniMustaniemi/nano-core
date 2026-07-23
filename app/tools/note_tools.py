@@ -47,6 +47,12 @@ register_tool(
             "content": "The note text to store.",
         },
         handler=_add_note,
+        announcement="Saving that to memory.",
+        keywords=("note", "remember", "write down", "save this"),
+        ui_label="Add note",
+        ui_message="Add a note.",
+        ui_category="Notes",
+        ui_description="Save a new note.",
     )
 )
 
@@ -56,5 +62,11 @@ register_tool(
         description="list recent notes.",
         args_schema={},
         handler=_list_notes,
+        announcement="Checking memory.",
+        keywords=("notes", "note", "remembered"),
+        ui_label="List notes",
+        ui_message="List my notes.",
+        ui_category="Notes",
+        ui_description="Show saved notes.",
     )
 )

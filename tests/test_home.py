@@ -2,6 +2,32 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
+HOME_JS_MODULES = (
+    "home-state.js",
+    "home-ui.js",
+    "home-voice.js",
+    "home-activity.js",
+    "home-chat.js",
+    "home.js",
+)
+
+
+def _load_home_js(client: TestClient) -> str:
+    parts: list[str] = []
+    for module in HOME_JS_MODULES:
+        response = client.get(f"/static/{module}")
+        assert response.status_code == 200
+        parts.append(response.text)
+    return "\n".join(parts)
+
+
+def _load_home_css(client: TestClient) -> str:
+    layout = client.get("/static/home-layout.css")
+    components = client.get("/static/home-components.css")
+    assert layout.status_code == 200
+    assert components.status_code == 200
+    return layout.text + components.text
+
 
 def test_homepage_shows_standby_ui() -> None:
 
@@ -75,7 +101,8 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/globe_visualizer.js?v=procedural-orb-15"' in response.text
-    assert 'src="/static/home.js?v=procedural-orb-17"' in response.text
+    assert 'src="/static/home-state.js?v=procedural-orb-18"' in response.text
+    assert 'src="/static/home.js?v=procedural-orb-18"' in response.text
 
     assert "Enter to send" in response.text
 
@@ -101,159 +128,151 @@ def test_homepage_serves_static_assets() -> None:
     """
 
     with TestClient(app) as client:
-
-        css_response = client.get("/static/home.css")
-
-        js_response = client.get("/static/home.js")
+        css_text = _load_home_css(client)
+        js_text = _load_home_js(client)
         globe_js_response = client.get("/static/globe_visualizer.js")
 
+    assert ".nano-sheet" in css_text
 
+    assert ".bottom-bar" in css_text
 
-    assert css_response.status_code == 200
+    assert ".footer-cluster" in css_text
 
-    assert js_response.status_code == 200
+    assert ".globe-zone" in css_text
 
-    assert ".nano-sheet" in css_response.text
+    assert "@keyframes blink" in css_text
 
-    assert ".bottom-bar" in css_response.text
+    assert 'join("\\n\\n")' in js_text
 
-    assert ".footer-cluster" in css_response.text
+    assert 'mode: "agent"' in js_text
 
-    assert ".globe-zone" in css_response.text
+    assert 'fetch("/api/storage")' in js_text
 
-    assert "@keyframes blink" in css_response.text
+    assert 'Waiting for wake phrase: "hey nano".' in js_text
 
-    assert 'join("\\n\\n")' in js_response.text
+    assert "Hearing:" in js_text
 
-    assert 'mode: "agent"' in js_response.text
+    assert "SpeechRecognition" in js_text
 
-    assert 'fetch("/api/storage")' in js_response.text
+    assert "getUserMedia" in js_text
 
-    assert 'Waiting for wake phrase: "hey nano".' in js_response.text
+    assert "Microphone connected." in js_text
 
-    assert "Hearing:" in js_response.text
+    assert "Press Start Listening to arm wake phrase detection." in js_text
 
-    assert "SpeechRecognition" in js_response.text
+    assert "answerNeedsVoiceFollowUp" in js_text
 
-    assert "getUserMedia" in js_response.text
+    assert "how long should the timer run" in js_text
 
-    assert "Microphone connected." in js_response.text
+    assert "Listening for your answer." in js_text
 
-    assert "Press Start Listening to arm wake phrase detection." in js_response.text
+    assert "await playVoice(answerText, { pauseRecognition: true });" in js_text
 
-    assert "answerNeedsVoiceFollowUp" in js_response.text
+    assert "voicePlaybackQueue" in js_text
 
-    assert "how long should the timer run" in js_response.text
+    assert "playVoiceNow" in js_text
 
-    assert "Listening for your answer." in js_response.text
+    assert "initVoiceVolumeControl" in js_text
 
-    assert "await playVoice(answerText, { pauseRecognition: true });" in js_response.text
+    assert "VOICE_VOLUME_STORAGE_KEY" in js_text
 
-    assert "voicePlaybackQueue" in js_response.text
+    assert "applyVoiceVolume" in js_text
+    assert 'fetch("/api/voice/volume"' in js_text
+    assert "revealAnswerRolling" in js_text
+    assert "computeResponseFontSize" in js_text
 
-    assert "playVoiceNow" in js_response.text
+    assert "recognitionPausedForSpeech" in js_text
 
-    assert "initVoiceVolumeControl" in js_response.text
+    assert "recognitionRunning" in js_text
 
-    assert "VOICE_VOLUME_STORAGE_KEY" in js_response.text
+    assert "waitForRecognitionToStop" in js_text
 
-    assert "applyVoiceVolume" in js_response.text
-    assert 'fetch("/api/voice/volume"' in js_response.text
-    assert "revealAnswerRolling" in js_response.text
-    assert "computeResponseFontSize" in js_response.text
+    assert "pauseRecognitionForSpeech" in js_text
 
-    assert "recognitionPausedForSpeech" in js_response.text
+    assert "returnToWakeDetection" in js_text
 
-    assert "recognitionRunning" in js_response.text
+    assert ".activity-status" in css_text
 
-    assert "waitForRecognitionToStop" in js_response.text
+    assert "renderActivityStatus" in js_text
 
-    assert "pauseRecognitionForSpeech" in js_response.text
+    assert "resolveActivityHeadline" in js_text
 
-    assert "returnToWakeDetection" in js_response.text
+    assert "WORKING_DETAIL_DEFAULT" in js_text
 
-    assert ".activity-status" in css_response.text
+    assert "STANDBY_DETAIL_DEFAULT" in js_text
 
-    assert "renderActivityStatus" in js_response.text
+    assert "resetStandbySnapshot" in js_text
 
-    assert "resolveActivityHeadline" in js_response.text
+    assert "useServerCopy" in js_text
 
-    assert "WORKING_DETAIL_DEFAULT" in js_response.text
-
-    assert "STANDBY_DETAIL_DEFAULT" in js_response.text
-
-    assert "resetStandbySnapshot" in js_response.text
-
-    assert "useServerCopy" in js_response.text
-
-    submit_block = js_response.text.split("async function submitMessage(message, source)")[1]
+    submit_block = js_text.split("async function submitMessage(message, source)")[1]
 
     submit_block = submit_block.split("renderState();")[0]
 
     assert 'state: "working"' not in submit_block
 
-    assert 'headline === STANDBY_HEADLINE' in js_response.text
+    assert 'headline === STANDBY_HEADLINE' in js_text
 
-    assert "commands-drawer" in css_response.text
+    assert "commands-drawer" in css_text
 
-    assert ".voice-volume" in css_response.text
+    assert ".voice-volume" in css_text
 
-    assert 'fetch("/api/tool-commands")' in js_response.text
+    assert 'fetch("/api/tool-commands")' in js_text
 
-    assert "runToolCommand" in js_response.text
+    assert "runToolCommand" in js_text
 
-    assert "applyActivityEvent" in js_response.text
+    assert "applyActivityEvent" in js_text
 
-    assert "applyStatusSnapshot" in js_response.text
+    assert "applyStatusSnapshot" in js_text
 
-    assert 'event.kind !== "state"' in js_response.text
+    assert 'event.kind !== "state"' in js_text
 
-    assert "syncRuntimeStatus" in js_response.text
+    assert "syncRuntimeStatus" in js_text
 
-    assert "inputs-locked" in css_response.text
+    assert "inputs-locked" in css_text
 
-    assert "isBusy()" in js_response.text
+    assert "isBusy()" in js_text
 
-    assert "requestInFlight = false;" in js_response.text
+    assert "requestInFlight = false;" in js_text
 
-    assert '"hey", "hi"' in js_response.text
+    assert '"hey", "hi"' in js_text
 
-    assert '"nana"' in js_response.text
+    assert '"nana"' in js_text
 
-    assert '"i know"' in js_response.text
+    assert '"i know"' in js_text
 
-    assert "clearActivityLog" in js_response.text
+    assert "clearActivityLog" in js_text
 
-    assert 'getElementById("brains-clear")' in js_response.text
+    assert 'getElementById("brains-clear")' in js_text
 
-    assert "ANSWER_CLEAR_DELAY_MS = 20000" in js_response.text
+    assert "ANSWER_CLEAR_DELAY_MS = 20000" in js_text
 
-    assert "announceBootMessage" in js_response.text
+    assert "announceBootMessage" in js_text
 
-    assert 'event.source === "system.boot"' in js_response.text
+    assert 'event.source === "system.boot"' in js_text
 
-    assert "formatBusyWakeMessage" in js_response.text
+    assert "formatBusyWakeMessage" in js_text
 
-    assert "acknowledgeBusyWake" in js_response.text
+    assert "acknowledgeBusyWake" in js_text
 
-    assert "isWorkingOnTask" in js_response.text
+    assert "isWorkingOnTask" in js_text
 
-    assert "busyWakeAnnouncing" in js_response.text
+    assert "busyWakeAnnouncing" in js_text
 
-    assert "if (isWorkingOnTask())" in js_response.text
+    assert "if (isWorkingOnTask())" in js_text
 
     assert "GlobeVisualizer" in globe_js_response.text
 
     assert "GLOBE_STATES" in globe_js_response.text
 
     assert "orbitingRings3D" in globe_js_response.text
-    assert "measureVoiceLevel" in js_response.text
+    assert "measureVoiceLevel" in js_text
 
-    assert "toggleKeyboardPanel" in js_response.text
+    assert "toggleKeyboardPanel" in js_text
 
-    assert "openNanoSheet" in js_response.text
+    assert "openNanoSheet" in js_text
 
-    assert 'getElementById("audio-toggle")' in js_response.text
+    assert 'getElementById("audio-toggle")' in js_text
 
 
 

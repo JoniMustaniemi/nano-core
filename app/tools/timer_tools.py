@@ -279,6 +279,12 @@ register_tool(
             "label": "Optional short timer label.",
         },
         handler=_start_timer,
+        announcement="Starting a timer.",
+        keywords=("timer", "countdown"),
+        ui_label="Start 5 min timer",
+        ui_message="Start a 5 minute timer.",
+        ui_category="Timers",
+        ui_description="Set a five-minute countdown.",
     )
 )
 
@@ -288,6 +294,12 @@ register_tool(
         description="list timers that have been created through the timer tool.",
         args_schema={},
         handler=_list_timers,
+        announcement="Checking timers.",
+        keywords=("timer", "timers"),
+        ui_label="Active timers",
+        ui_message="Check active timers.",
+        ui_category="Timers",
+        ui_description="Show running timers.",
     )
 )
 
@@ -300,5 +312,11 @@ register_tool(
             "label": "Optional timer label to cancel. If omitted, cancel all active timers.",
         },
         handler=_cancel_timers,
+        announcement="Cancelling timers.",
+        keywords=("timer", "timers", "countdown"),
+        ui_label="Cancel timers",
+        ui_message="Cancel timers.",
+        ui_category="Timers",
+        ui_description="Stop active timers.",
     )
 )

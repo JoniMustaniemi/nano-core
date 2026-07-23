@@ -12,7 +12,6 @@ from app.assistant.rules.intents import (
     is_pull_request_request,
     is_self_improve_follow_up,
     is_self_improve_request,
-    is_vague_self_improve_goal,
     needs_wipe_confirmation,
     should_answer_without_tools,
     tool_matches_request,
@@ -36,11 +35,19 @@ from app.assistant.rules.timers import (
     needs_timer_duration,
     timer_confirmation,
 )
-from app.assistant.rules.tools import TOOL_RULES, ToolIntentRule, tool_announcement, tool_signature
+from app.assistant.rules.tools import (
+    ToolIntentRule,
+    build_tool_rules,
+    get_tool_rule,
+    tool_announcement,
+    tool_signature,
+)
+from app.intents.self_improve import is_vague_self_improve_goal
 
 __all__ = [
-    "TOOL_RULES",
     "ToolIntentRule",
+    "build_tool_rules",
+    "get_tool_rule",
     "duration_args_from_message",
     "extract_json",
     "is_confirmation_message",

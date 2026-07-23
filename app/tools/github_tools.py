@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.assistant.llm_factory import get_llm_client
+from app.llm.factory import get_llm_client
 from app.tools.base import ToolSpec
 from app.tools.pr_service import PullRequestService
 from app.tools.registry import register_tool
@@ -33,5 +33,11 @@ register_tool(
         ),
         args_schema={},
         handler=_create_pull_request,
+        announcement="Opening a pull request.",
+        keywords=("pull request", "open pr", "create pr", "github pr"),
+        ui_label="Create pull request",
+        ui_message="Create a pull request.",
+        ui_category="GitHub",
+        ui_description="Open a PR for current changes.",
     )
 )

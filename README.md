@@ -10,6 +10,6 @@ on private, local usage and an assistant experience that feels capable,
 responsive, and useful in day-to-day workflows. It is also being built with a
 long-term goal of running as an installable assistant on Raspberry Pi hardware.
 
-For technical details, see [docs/README.md](docs/README.md).
+For a high-level technical overview, see [docs/README.md](docs/README.md).
 
 

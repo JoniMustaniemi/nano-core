@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, cast
 
-from app.assistant.agent_rules import extract_json
+from app.assistant.rules.parsing import extract_json
 from app.config import get_settings
 from app.memory import codebase_index
 from app.proactive.codebase_files import file_content_hash, list_all_app_files

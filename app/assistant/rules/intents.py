@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 
+from app.intents.self_improve import is_vague_self_improve_goal  # noqa: F401
+
 DIRECT_ANSWER_TRIGGERS: tuple[str, ...] = (
     "help",
 )
@@ -89,21 +91,6 @@ SELF_IMPROVE_PATTERNS: tuple[str, ...] = (
 SELF_IMPROVE_FOLLOW_UP_PATTERNS: tuple[str, ...] = (
     r"^\s*(?:do it|go ahead|proceed|yes do it)\s*\.?$",
 )
-
-VAGUE_SELF_IMPROVE_GOALS = frozenset({
-    "",
-    "general improvement",
-    "improve yourself",
-    "fix yourself",
-    "update yourself",
-    "modify yourself",
-})
-
-
-def is_vague_self_improve_goal(goal: str) -> bool:
-    normalized = " ".join(goal.strip().split()).lower()
-    return normalized in VAGUE_SELF_IMPROVE_GOALS
-
 
 def _contains_term(lowered_message: str, term: str) -> bool:
     if " " in term:
@@ -304,10 +291,10 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         is_timer_start_request,
         is_timer_status_request,
     )
-    from app.assistant.rules.tools import TOOL_RULES
+    from app.assistant.rules.tools import get_tool_rule
 
     lowered = message.lower()
-    rule = TOOL_RULES.get(tool_name)
+    rule = get_tool_rule(tool_name)
     if rule is None:
         return True
     if tool_name == "run_python" and re.search(r"\d+\s*[\+\-\*/]\s*\d+", lowered):

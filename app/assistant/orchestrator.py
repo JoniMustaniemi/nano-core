@@ -10,7 +10,6 @@ from app.assistant.flows.planner import AgentPlanner
 from app.assistant.flows.presence_gate import PresenceGateHandler, presence_gate
 from app.assistant.flows.timer import TimerInteractionHandler
 from app.assistant.flows.wipe import WipeInteractionHandler
-from app.assistant.llm_factory import get_llm_client
 from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_pipeline import finalize_response
@@ -18,6 +17,7 @@ from app.assistant.response_source import ResponseSource
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
 from app.config import get_settings
+from app.llm.factory import get_llm_client
 from app.llm.protocol import LLMClient
 from app.memory import repository
 from app.runtime import activity
