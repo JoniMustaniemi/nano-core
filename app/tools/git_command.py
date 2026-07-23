@@ -37,8 +37,9 @@ def resolve_executable(name: str) -> str | None:
     """
     settings = get_settings()
     configured = settings.git_executable if name == "git" else settings.github_cli_path
-    if configured.strip():
-        configured_path = Path(configured.strip())
+    configured_text = str(configured or "").strip()
+    if configured_text:
+        configured_path = Path(configured_text)
         if configured_path.exists():
             return str(configured_path)
 
@@ -150,12 +151,18 @@ def _run_command(executable_name: str, args: list[str]) -> GitCommandResult:
             cwd=effective_workspace_root(),
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
     except FileNotFoundError as exc:
         return GitCommandResult(returncode=127, stdout="", stderr=str(exc))
 
     return GitCommandResult(
         returncode=process.returncode,
-        stdout=process.stdout,
-        stderr=process.stderr,
+        stdout=_normalize_output(process.stdout),
+        stderr=_normalize_output(process.stderr),
     )
+
+
+def _normalize_output(value: str | None) -> str:
+    return value if isinstance(value, str) else ""

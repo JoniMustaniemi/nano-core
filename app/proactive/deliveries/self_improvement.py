@@ -16,7 +16,7 @@ class SelfImprovementSuggestionHandler:
   ) -> ResponseSource:
     _ = client
     goal = str(offer.payload.get("goal", "")).strip()
-    follow_up = " Say 'do it' if you want me to prepare a pull request."
+    follow_up = " Open the Plans tab when you want to read it."
     summary = offer.summary.strip()
     if goal and goal not in summary:
       summary = f"{summary} ({goal})"

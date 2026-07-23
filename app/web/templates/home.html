@@ -10,16 +10,17 @@
 
 <title>{app_name}</title>
 
-<link rel="stylesheet" href="/static/home.css?v=procedural-orb-10" />
+<link rel="stylesheet" href="/static/home.css?v=procedural-orb-20" />
 
 <script defer src="/static/three.min.js?v=0.160.1"></script>
 <script defer src="/static/globe_visualizer.js?v=procedural-orb-15"></script>
-<script defer src="/static/home-state.js?v=procedural-orb-18"></script>
-<script defer src="/static/home-ui.js?v=procedural-orb-18"></script>
-<script defer src="/static/home-voice.js?v=procedural-orb-18"></script>
-<script defer src="/static/home-activity.js?v=procedural-orb-18"></script>
-<script defer src="/static/home-chat.js?v=procedural-orb-18"></script>
-<script defer src="/static/home.js?v=procedural-orb-18"></script>
+<script defer src="/static/home-state.js?v=procedural-orb-19"></script>
+<script defer src="/static/home-plans.js?v=procedural-orb-19"></script>
+<script defer src="/static/home-ui.js?v=procedural-orb-19"></script>
+<script defer src="/static/home-voice.js?v=procedural-orb-19"></script>
+<script defer src="/static/home-activity.js?v=procedural-orb-19"></script>
+<script defer src="/static/home-chat.js?v=procedural-orb-19"></script>
+<script defer src="/static/home.js?v=procedural-orb-19"></script>
 
 </head>
 
@@ -113,27 +114,9 @@ aria-label="Nano controls"
 
 >
 
-<header class="nano-sheet-header">
+<header class="nano-sheet-chrome">
 
-<button
-
-id="nano-sheet-close"
-
-class="ghost nano-sheet-close"
-
-type="button"
-
-aria-label="Close"
-
->
-
-Close
-
-</button>
-
-</header>
-
-<div class="nano-tabs" role="tablist" aria-label="Nano data views">
+<nav class="nano-tabs" role="tablist" aria-label="Nano data views">
 
 <button
 
@@ -157,6 +140,26 @@ Brains
 
 <button
 
+id="nano-tab-plans"
+
+class="nano-tab"
+
+type="button"
+
+role="tab"
+
+aria-selected="false"
+
+aria-controls="nano-panel-plans"
+
+>
+
+Plans
+
+</button>
+
+<button
+
 id="nano-tab-storage"
 
 class="nano-tab"
@@ -171,11 +174,31 @@ aria-controls="nano-panel-storage"
 
 >
 
-Stored Data
+<span class="nano-tab-text-full">Stored Data</span>
+
+<span class="nano-tab-text-short" aria-hidden="true">Data</span>
 
 </button>
 
-</div>
+</nav>
+
+<button
+
+id="nano-sheet-close"
+
+class="ghost nano-sheet-close"
+
+type="button"
+
+aria-label="Close"
+
+>
+
+Close
+
+</button>
+
+</header>
 
 <div class="nano-panels">
 
@@ -193,7 +216,9 @@ aria-labelledby="nano-tab-brains"
 
 <div class="nano-panel-toolbar">
 
-<button id="brains-clear" class="ghost brains-clear" type="button">
+<span class="nano-panel-label">Activity log</span>
+
+<button id="brains-clear" class="ghost panel-action" type="button">
 
 Clear
 
@@ -219,6 +244,48 @@ placeholder="No internal activity yet."
 
 <div
 
+id="nano-panel-plans"
+
+class="nano-panel"
+
+role="tabpanel"
+
+aria-labelledby="nano-tab-plans"
+
+hidden
+
+>
+
+<div class="nano-panel-toolbar">
+
+<span class="nano-panel-label">Improvement plans</span>
+
+</div>
+
+<div id="plans-list" class="plans-list" role="list"></div>
+
+<div id="plan-reader" class="plan-reader" hidden>
+
+<header class="plan-reader-header">
+
+<h3 id="plan-reader-title"></h3>
+
+</header>
+
+<pre id="plan-reader-body" class="plan-reader-body"></pre>
+
+<button id="plan-process-button" class="plan-process-button" type="button">
+
+Mark as processed
+
+</button>
+
+</div>
+
+</div>
+
+<div
+
 id="nano-panel-storage"
 
 class="nano-panel"
@@ -231,7 +298,11 @@ hidden
 
 >
 
-<div class="nano-panel-toolbar" aria-hidden="true"></div>
+<div class="nano-panel-toolbar">
+
+<span class="nano-panel-label">Storage snapshot</span>
+
+</div>
 
 <textarea
 

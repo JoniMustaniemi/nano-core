@@ -77,8 +77,8 @@ def test_tool_runner_treats_structured_ok_false_as_failure(monkeypatch) -> None:
     payload = json.dumps(
         {
             "ok": False,
-            "step": "plan",
-            "error": "Could not parse change plan from the model for app/config.py.",
+            "step": "draft",
+            "error": "Could not draft an improvement plan.",
             "goal": "clearer timer messages",
         }
     )
@@ -87,9 +87,9 @@ def test_tool_runner_treats_structured_ok_false_as_failure(monkeypatch) -> None:
         lambda name: SimpleNamespace(name=name, handler=lambda _args: payload),
     )
 
-    result = runner.execute("propose_self_changes", {})
+    result = runner.execute("draft_improvement_plan", {})
 
     assert result.ok is False
-    assert announced == ["I could not complete the self-improvement."]
+    assert announced == ["I could not draft the improvement plan."]
     assert reported
-    assert reported[0]["title"] == "I could not improve myself."
+    assert reported[0]["title"] == "I could not draft an improvement plan."

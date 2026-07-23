@@ -39,7 +39,7 @@ def test_presence_gate_yes_delivers(tmp_path, monkeypatch) -> None:
         client=_FakeClient(),
     )
     assert source is not None
-    assert "pull request" in source.facts.lower()
+    assert "plans tab" in source.facts.lower()
     assert pending_interactions.get("agent-default") is None
 
 

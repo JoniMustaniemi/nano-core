@@ -172,3 +172,23 @@ def test_pr_naming_service_retries_invalid_json(monkeypatch: pytest.MonkeyPatch)
 
     assert naming.slug == "add_github_pr"
     assert client.calls == 2
+
+
+class _NoneResponseClient:
+    def complete(self, messages) -> None:
+        return None
+
+
+def test_pr_naming_service_falls_back_when_client_returns_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.tools.pr_naming.ensure_unique_branch_slug", lambda slug: slug)
+    service = PrNamingService()
+
+    naming = service.generate(
+        client=_NoneResponseClient(),
+        context={"changed_files": ["app/main.py"], "diff_stat": "", "diff_patch": ""},
+    )
+
+    assert naming.slug == "main"
+    assert naming.branch == "feature/main"

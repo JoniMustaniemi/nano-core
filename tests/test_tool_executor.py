@@ -2,7 +2,7 @@ import json
 from types import SimpleNamespace
 
 from app.assistant.tool_executor import ToolExecutor
-from app.runtime.status_copy import SELF_IMPROVE_FAILED_TITLE, failed_tool_title, ran_tool_title
+from app.runtime.status_copy import IMPROVEMENT_PLAN_FAILED_TITLE, failed_tool_title, ran_tool_title
 
 
 def test_tool_executor_logs_success_only_when_tool_succeeds(monkeypatch) -> None:
@@ -28,10 +28,10 @@ def test_tool_executor_logs_success_only_when_tool_succeeds(monkeypatch) -> None
     executor.run(
         user_message="Improve yourself.",
         conversation_id="default",
-        tool_name="propose_self_changes",
+        tool_name="draft_improvement_plan",
     )
 
-    assert logged == [(ran_tool_title("propose_self_changes"), "Done.")]
+    assert logged == [(ran_tool_title("draft_improvement_plan"), "Done.")]
 
 
 def test_tool_executor_logs_failure_title_when_tool_fails(monkeypatch) -> None:
@@ -63,13 +63,13 @@ def test_tool_executor_logs_failure_title_when_tool_fails(monkeypatch) -> None:
     executor.run(
         user_message="Improve yourself.",
         conversation_id="default",
-        tool_name="propose_self_changes",
+        tool_name="draft_improvement_plan",
     )
 
     assert logged == [
         (
-            failed_tool_title("propose_self_changes"),
+            failed_tool_title("draft_improvement_plan"),
             "Workspace is not a git repository.",
         )
     ]
-    assert logged[0][0] == SELF_IMPROVE_FAILED_TITLE
+    assert logged[0][0] == IMPROVEMENT_PLAN_FAILED_TITLE

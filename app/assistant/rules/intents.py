@@ -309,8 +309,8 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_health_check_request(message)
     if tool_name == "create_pull_request":
         return is_pull_request_request(message)
-    if tool_name == "propose_self_changes":
-        return is_self_improve_request(message) or is_self_improve_follow_up(message)
+    if tool_name == "draft_improvement_plan":
+        return is_self_improve_request(message)
     if tool_name == "add_note":
         return is_note_add_request(message)
     if tool_name == "list_notes":

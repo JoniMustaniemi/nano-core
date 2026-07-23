@@ -21,3 +21,7 @@ def test_extract_json_strips_markdown_fence() -> None:
 
 def test_extract_json_returns_none_for_invalid_json() -> None:
     assert extract_json("not json at all") is None
+
+
+def test_extract_json_returns_none_for_non_string_input() -> None:
+    assert extract_json(None) is None

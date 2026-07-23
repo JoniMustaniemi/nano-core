@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.chat import router as chat_router
 from app.api.health import router as health_router
+from app.api.improvement_plans import router as improvement_plans_router
 from app.api.memory import router as memory_router
 from app.api.proactive import router as proactive_router
 from app.api.runtime import router as runtime_router
@@ -45,6 +46,7 @@ app.mount(
 app.include_router(home_router)
 app.include_router(health_router)
 app.include_router(memory_router)
+app.include_router(improvement_plans_router)
 app.include_router(runtime_router)
 app.include_router(proactive_router)
 app.include_router(voice_router)

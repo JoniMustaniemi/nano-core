@@ -354,15 +354,27 @@ function toggleKeyboardPanel() {
 
 function setNanoTab(tab) {
   activeNanoTab = tab;
-  const isBrains = tab === "brains";
-  nanoTabBrains.classList.toggle("active", isBrains);
-  nanoTabStorage.classList.toggle("active", !isBrains);
-  nanoTabBrains.setAttribute("aria-selected", isBrains ? "true" : "false");
-  nanoTabStorage.setAttribute("aria-selected", isBrains ? "false" : "true");
-  nanoPanelBrains.classList.toggle("active", isBrains);
-  nanoPanelStorage.classList.toggle("active", !isBrains);
-  nanoPanelBrains.hidden = !isBrains;
-  nanoPanelStorage.hidden = isBrains;
+  const tabs = {
+    brains: nanoTabBrains,
+    plans: nanoTabPlans,
+    storage: nanoTabStorage,
+  };
+  const panels = {
+    brains: nanoPanelBrains,
+    plans: nanoPanelPlans,
+    storage: nanoPanelStorage,
+  };
+  for (const [name, button] of Object.entries(tabs)) {
+    const isActive = name === tab;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+    panels[name].classList.toggle("active", isActive);
+    panels[name].hidden = !isActive;
+  }
+  if (tab === "plans") {
+    closePlanReader();
+    void loadPlans();
+  }
 }
 
 function openNanoSheet(tab = "brains") {

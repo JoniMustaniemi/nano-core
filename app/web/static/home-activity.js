@@ -214,6 +214,7 @@ async function bootstrap() {
     await announceBootMessage(snapshot);
     const commands = await loadToolCommands();
     renderToolCommands(commands);
+    await loadPlans();
     await connectMicrophoneOnStartup();
     const lastEventId = Array.isArray(snapshot.events)
       ? snapshot.events.reduce((maxId, event) => {
@@ -243,6 +244,7 @@ function listen(lastEventId = 0) {
     applyActivityEvent(payload);
     appendEvent(payload);
     refreshStorage();
+    void loadPlans();
   });
   source.onerror = () => {
     stateLine.textContent = "reconnecting";
