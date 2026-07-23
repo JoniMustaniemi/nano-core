@@ -182,7 +182,6 @@ class TimerInteractionHandler:
             detail=json.dumps(args, ensure_ascii=False),
             source="assistant.flows.timer",
         )
-        self.tool_runner.announce_call("start_timer")
         self.tool_runner.execute("start_timer", args)
         return confirmation_source(
             user_message=user_message,

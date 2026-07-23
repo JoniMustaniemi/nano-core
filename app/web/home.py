@@ -10,176 +10,501 @@ from app.web.tool_commands import list_tool_commands
 router = APIRouter(tags=["web"])
 
 
+
+
+
 @router.get("/api/tool-commands")
+
 def tool_commands() -> list[dict[str, str]]:
+
     """
+
     Return quick-command buttons for the web UI.
 
+
+
     Returns:
+
         Tool command definitions.
+
     """
+
     return list_tool_commands()
 
 
+
+
+
 @router.get("/", response_class=HTMLResponse)
+
 def home() -> str:
+
     """
+
     Render the home page.
 
-    Returns:
-        Generated or formatted string value.
-    """
-    settings = get_settings()
-    app_name = escape(settings.app_name)
-    return dedent(
-        f"""
-        <!doctype html>
-        <html lang="en">
-          <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
-            <title>{app_name}</title>
-            <link rel="stylesheet" href="/static/home.css?v=standby-sync-1" />
-            <script defer src="/static/home.js?v=standby-sync-1"></script>
-          </head>
-          <body>
-            <button
-              id="commands-toggle"
-              class="ghost commands-toggle"
-              type="button"
-              aria-expanded="false"
-              aria-controls="commands-panel"
-            >
-              Commands
-            </button>
-            <main class="shell">
-              <section class="masthead">
-                <h1 class="title"><span>Nano</span></h1>
-                <section class="state-strip" aria-label="Nano state">
-                  <div class="state-segment active" data-state-segment="standby">
-                    <span class="state-led" aria-hidden="true"></span>
-                    <span class="state-label">Standby</span>
-                  </div>
-                  <div class="state-segment" data-state-segment="working">
-                    <span class="state-led" aria-hidden="true"></span>
-                    <span class="state-label">Working</span>
-                  </div>
-                  <div class="state-segment" data-state-segment="listening">
-                    <span class="state-led" aria-hidden="true"></span>
-                    <span class="state-label">Listening</span>
-                  </div>
-                </section>
-                <p id="activity-status" class="activity-status" aria-live="polite">
-                  I'm in standby. Awaiting your input.
-                </p>
-                <div class="sr-only" id="state-line">standby</div>
-              </section>
 
-              <section class="core">
-                <div class="input-shell">
-                  <div class="prompt">Transmit to Nano</div>
-                  <label class="sr-only" for="message">Message for Nano</label>
-                  <textarea id="message" placeholder="Type to Nano... (Enter to send)"></textarea>
-                  <div class="actions">
-                    <button id="send" type="button">Send</button>
-                    <button id="voice-listen" class="ghost" type="button">Start Listening</button>
-                  </div>
-                  <div class="reply-status" id="voice-status">Voice on standby.</div>
-                  <div class="reply-status" id="reply-status"></div>
+
+    Returns:
+
+        Generated or formatted string value.
+
+    """
+
+    settings = get_settings()
+
+    app_name = escape(settings.app_name)
+
+    return dedent(
+
+        f"""
+
+        <!doctype html>
+
+        <html lang="en">
+
+          <head>
+
+            <meta charset="utf-8" />
+
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+            <title>{app_name}</title>
+
+            <link rel="stylesheet" href="/static/home.css?v=procedural-orb-7" />
+
+            <script defer src="/static/three.min.js?v=0.160.1"></script>
+            <script defer src="/static/globe_visualizer.js?v=procedural-orb-15"></script>
+            <script defer src="/static/home.js?v=procedural-orb-15"></script>
+
+          </head>
+
+          <body>
+
+            <main class="shell">
+
+              <header class="top-zone">
+
+                <p id="activity-status" class="activity-status" aria-live="polite">
+
+                  <span class="activity-status-text">I'm in standby. Awaiting your input.</span>
+
+                  <span class="activity-cursor" aria-hidden="true">|</span>
+
+                </p>
+
+                <div class="response-zone">
+                  <h1 id="answer-output" class="response-headline empty">
+
+                    What can I do for you today?
+
+                  </h1>
                 </div>
 
-                <section class="answer">
-                  <button
-                    id="copy-answer"
-                    class="answer-copy"
-                    type="button"
-                    aria-label="Copy answer"
-                    title="Copy answer"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <rect x="8" y="8" width="12" height="12" rx="2"></rect>
-                      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
-                    </svg>
-                  </button>
-                  <pre id="answer-output" class="answer-output empty">Awaiting signal.</pre>
-                  <audio id="voice-audio" hidden preload="none"></audio>
-                </section>
+                <div class="sr-only" id="state-line">standby</div>
 
-                <details class="brains">
-                  <summary>
-                    <span>Nano's brains</span>
-                    <span class="brains-meta" id="brains-status">sealed</span>
-                  </summary>
-                  <div class="brains-body">
-                    <div class="brains-toolbar">
-                      <button id="brains-clear" class="ghost brains-clear" type="button">
-                        Clear
-                      </button>
-                    </div>
-                    <textarea
-                      id="activity-log"
-                      class="terminal"
-                      readonly
-                      spellcheck="false"
-                      placeholder="No internal activity yet."
-                    ></textarea>
-                  </div>
-                </details>
+              </header>
 
-                <details class="storage">
-                  <summary>
-                    <span>Stored data</span>
-                    <span class="brains-meta" id="storage-status">sealed</span>
-                  </summary>
-                  <div class="storage-body">
-                    <textarea
-                      id="storage-log"
-                      class="terminal"
-                      readonly
-                      spellcheck="false"
-                      placeholder="No storage snapshot loaded yet."
-                    ></textarea>
-                  </div>
-                </details>
+
+
+              <section class="globe-zone" aria-hidden="true">
+
+                <div class="globe-canvas-wrap">
+
+                  <canvas id="globe-canvas"></canvas>
+
+                </div>
+
               </section>
+
+
+
+              <section id="keyboard-panel" class="keyboard-panel" hidden>
+
+                <label class="sr-only" for="message">Message for Nano</label>
+
+                <textarea
+
+                  id="message"
+
+                  placeholder="Type to Nano... (Enter to send)"
+
+                  rows="3"
+
+                ></textarea>
+
+                <div class="keyboard-actions">
+
+                  <button id="send" type="button">Send</button>
+
+                </div>
+
+                <p id="reply-status" class="reply-status"></p>
+
+              </section>
+
+
+
+              <div id="nano-sheet" class="nano-sheet" aria-hidden="true">
+
+                <button
+
+                  id="nano-sheet-backdrop"
+
+                  class="nano-sheet-backdrop"
+
+                  type="button"
+
+                  aria-label="Close Nano controls"
+
+                  tabindex="-1"
+
+                ></button>
+
+                <div
+
+                  id="nano-sheet-panel"
+
+                  class="nano-sheet-panel"
+
+                  role="dialog"
+
+                  aria-modal="true"
+
+                  aria-labelledby="nano-sheet-title"
+
+                >
+
+                  <header class="nano-sheet-header">
+
+                    <h2 id="nano-sheet-title">Nano Controls</h2>
+
+                    <button
+
+                      id="nano-sheet-close"
+
+                      class="ghost nano-sheet-close"
+
+                      type="button"
+
+                      aria-label="Close"
+
+                    >
+
+                      Close
+
+                    </button>
+
+                  </header>
+
+                  <div class="nano-tabs" role="tablist" aria-label="Nano data views">
+
+                    <button
+
+                      id="nano-tab-brains"
+
+                      class="nano-tab active"
+
+                      type="button"
+
+                      role="tab"
+
+                      aria-selected="true"
+
+                      aria-controls="nano-panel-brains"
+
+                    >
+
+                      Brains
+
+                    </button>
+
+                    <button
+
+                      id="nano-tab-storage"
+
+                      class="nano-tab"
+
+                      type="button"
+
+                      role="tab"
+
+                      aria-selected="false"
+
+                      aria-controls="nano-panel-storage"
+
+                    >
+
+                      Stored Data
+
+                    </button>
+
+                  </div>
+
+                  <div class="nano-panels">
+
+                  <div
+
+                    id="nano-panel-brains"
+
+                    class="nano-panel active"
+
+                    role="tabpanel"
+
+                    aria-labelledby="nano-tab-brains"
+
+                  >
+
+                    <div class="nano-panel-toolbar">
+
+                      <button id="brains-clear" class="ghost brains-clear" type="button">
+
+                        Clear
+
+                      </button>
+
+                    </div>
+
+                    <textarea
+
+                      id="activity-log"
+
+                      class="terminal"
+
+                      readonly
+
+                      spellcheck="false"
+
+                      placeholder="No internal activity yet."
+
+                    ></textarea>
+
+                  </div>
+
+                  <div
+
+                    id="nano-panel-storage"
+
+                    class="nano-panel"
+
+                    role="tabpanel"
+
+                    aria-labelledby="nano-tab-storage"
+
+                    hidden
+
+                  >
+
+                    <div class="nano-panel-toolbar" aria-hidden="true"></div>
+
+                    <textarea
+
+                      id="storage-log"
+
+                      class="terminal"
+
+                      readonly
+
+                      spellcheck="false"
+
+                      placeholder="No storage snapshot loaded yet."
+
+                    ></textarea>
+
+                  </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+
+              <footer class="footer-cluster">
+
+                <button id="keyboard-toggle" class="keyboard-toggle" type="button">
+
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+
+                    <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+
+                    <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"></path>
+
+                  </svg>
+
+                  <span>Use Keyboard</span>
+
+                </button>
+
+
+
+                <nav class="bottom-bar" aria-label="Nano controls">
+
+                <button
+
+                  id="nano-controls-toggle"
+
+                  class="bottom-bar-btn"
+
+                  type="button"
+
+                  aria-expanded="false"
+
+                  aria-controls="nano-sheet-panel"
+
+                >
+
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+
+                    <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+
+                    <path d="M8 10h8M8 14h5"></path>
+
+                  </svg>
+
+                  <span class="sr-only">Nano controls</span>
+
+                </button>
+
+                <button
+
+                  id="audio-toggle"
+
+                  class="bottom-bar-btn bottom-bar-btn-center"
+
+                  type="button"
+
+                  aria-pressed="false"
+
+                >
+
+                  <canvas id="globe-mini-canvas" aria-hidden="true"></canvas>
+
+                  <span class="sr-only">Audio mode</span>
+
+                </button>
+
+                <button
+
+                  id="commands-toggle"
+
+                  class="bottom-bar-btn"
+
+                  type="button"
+
+                  aria-expanded="false"
+
+                  aria-controls="commands-panel"
+
+                >
+
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+
+                    <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"></path>
+
+                    <circle cx="4" cy="14" r="2"></circle>
+
+                    <circle cx="12" cy="12" r="2"></circle>
+
+                    <circle cx="20" cy="16" r="2"></circle>
+
+                  </svg>
+
+                  <span class="sr-only">Commands</span>
+
+                </button>
+
+              </nav>
+
+              </footer>
+
             </main>
 
+
+
+            <p id="voice-status" class="sr-only">Voice on standby.</p>
+
+            <audio id="voice-audio" hidden preload="none"></audio>
+
+
+
             <div id="commands-drawer" class="commands-drawer" aria-hidden="true">
+
               <button
+
                 id="commands-backdrop"
+
                 class="commands-backdrop"
+
                 type="button"
+
                 aria-label="Close commands drawer"
+
                 tabindex="-1"
+
               ></button>
+
               <aside
+
                 id="commands-panel"
+
                 class="commands-panel"
+
                 role="dialog"
+
                 aria-modal="true"
+
                 aria-labelledby="commands-title"
+
               >
+
                 <header class="commands-header">
+
                   <div>
+
                     <h2 id="commands-title">Commands</h2>
+
                     <p class="commands-subtitle">Run a tool without typing.</p>
+
                   </div>
+
                   <button id="commands-close" class="ghost commands-close" type="button" aria-label="Close commands">
+
                     Close
+
                   </button>
+
                 </header>
+
+                <section class="commands-voice-settings" aria-label="Voice settings">
+                  <div class="commands-voice-header">
+                    <h3 class="commands-group-title">Voice</h3>
+                    <span id="voice-volume-value" class="voice-volume-value">80%</span>
+                  </div>
+                  <label class="voice-volume-label" for="voice-volume">Volume</label>
+                  <input
+                    id="voice-volume"
+                    class="voice-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value="80"
+                  />
+                </section>
+
                 <div id="commands-list" class="commands-list"></div>
+
               </aside>
+
             </div>
+
           </body>
+
         </html>
+
         """
+
     ).strip()
+

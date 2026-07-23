@@ -43,6 +43,10 @@ PRESENCE_FOLLOW_UP_DETAIL = "Following up on a saved topic."
 
 THINKING_TITLE = "I'm thinking."
 ANSWERING_TITLE = "I'm answering."
+RECEIVED_TITLE = "On it."
+RECEIVED_DETAIL = "Give me a moment."
+COMPOSING_TITLE = "Pulling it together."
+COMPOSING_DETAIL = "Almost there."
 REVIEWING_CAPABILITIES_TITLE = "I'm reviewing my capabilities."
 INTRODUCING_TITLE = "I'm introducing myself."
 PLANNING_ACTION_TITLE = "I'm planning an action."
@@ -51,11 +55,11 @@ COULD_NOT_FINISH_TITLE = "I could not finish the task."
 NEEDS_DETAIL_TITLE = "I need one detail."
 NEEDS_CONFIRMATION_TITLE = "I need confirmation."
 PREPARING_CONFIRMATION_TITLE = "I'm preparing confirmation."
-THINKING_DETAIL = "Gathering context and forming a reply."
+THINKING_DETAIL = "Gathering what I need."
 ANSWERING_DETAIL = "Working out what to say."
 REVIEWING_CAPABILITIES_DETAIL = "Reviewing what I can actually do."
 DRAFTING_IDENTITY_DETAIL = "Putting together an introduction."
-RUNNING_TOOL_DETAIL = "On it."
+RUNNING_TOOL_DETAIL = "Give me a moment."
 SETTING_TIMER_TITLE = "I'm setting a timer."
 SETTING_TIMER_DETAIL = "Scheduling the requested timer."
 WAITING_TIMER_DURATION_DETAIL = "Waiting for the timer duration."
@@ -74,8 +78,12 @@ WIPED_MEMORY_TITLE = "I wiped my memory."
 PREPARING_WIPE_DETAIL = "Preparing confirmation for the destructive request."
 WAITING_WIPE_CONFIRMATION_DETAIL = "Waiting for your confirmation before I forget everything."
 WIPE_CANCELLED_DETAIL = "Nothing was deleted."
-WIPING_MEMORY_DETAIL = "Clearing notes, reminders, and our conversation."
-WIPED_MEMORY_DETAIL = "Notes, reminders, and conversation history are gone."
+WIPING_MEMORY_DETAIL = (
+    "Clearing notes, reminders, conversation, internal notes, and codebase memory."
+)
+WIPED_MEMORY_DETAIL = (
+    "Notes, reminders, conversation history, internal notes, and codebase memory are gone."
+)
 CANCELLED_WIPE_TITLE = "I cancelled the wipe."
 CANCELLED_UPDATE_TITLE = "I cancelled the update."
 PREPARING_UPDATE_DETAIL = "Preparing confirmation for pulling latest changes."
@@ -95,6 +103,7 @@ VERIFYING_SELF_IMPROVE_TITLE = "I'm verifying self-improvement."
 VERIFYING_SELF_IMPROVE_DETAIL = "Making sure nothing broke before I ask for a review."
 PREPARING_PR_TITLE = "I'm preparing a pull request."
 PREPARING_PR_PREFLIGHT_DETAIL = "Running preflight checks."
+PREPARING_PR_LINT_DETAIL = "Running lint checks before any git writes."
 PREPARING_PR_VERIFY_DETAIL = "Running tests before any git writes."
 COLLECTED_CHANGE_CONTEXT_TITLE = "I collected change context."
 VERIFYING_PROJECT_TITLE = "I'm verifying the project."
@@ -107,6 +116,9 @@ OPENING_PR_TITLE = "I'm opening the pull request."
 PR_CREATED_TITLE = "I created the pull request."
 PR_WORKFLOW_FAILED_TITLE = "I could not complete the pull request."
 PR_NAMING_FAILED_TITLE = "I could not name the pull request."
+LINT_AUTO_FIXED_TITLE = "I auto-fixed lint issues."
+LINT_CHECKS_FAILED_TITLE = "Lint checks failed."
+LINT_CHECKS_PASSED_TITLE = "Lint checks passed."
 VERIFICATION_FAILED_TITLE = "I could not verify the project."
 VERIFICATION_PASSED_TITLE = "Verification passed."
 SCANNED_SOURCE_FILE_TITLE = "I scanned a source file."
@@ -171,3 +183,41 @@ def could_not_call_tool_title(tool_name: str) -> str:
 def tool_error_title(tool_name: str) -> str:
     del tool_name
     return "Something went wrong."
+
+
+def route_acknowledgment(
+    *,
+    mode: str,
+    tool_name: str | None = None,
+    interaction: str | None = None,
+) -> tuple[str, str]:
+    """
+    Return a personality-driven acknowledgement for a routed request.
+
+    Args:
+        mode: Router mode.
+        tool_name: Tool name when mode is ``tool``.
+        interaction: Interaction name when mode is ``interaction``.
+
+    Returns:
+        Title and detail strings for activity status.
+    """
+    if mode == "tool":
+        return running_tool_title(tool_name or ""), RUNNING_TOOL_DETAIL
+    if mode == "planner":
+        return PLANNING_ACTION_TITLE, PLANNING_ACTION_DETAIL
+    if mode == "answer":
+        return ANSWERING_TITLE, ANSWERING_DETAIL
+    if mode == "capabilities":
+        return REVIEWING_CAPABILITIES_TITLE, REVIEWING_CAPABILITIES_DETAIL
+    if mode == "identity":
+        return INTRODUCING_TITLE, DRAFTING_IDENTITY_DETAIL
+    if mode == "interaction":
+        interaction_titles = {
+            "wipe": (WIPING_MEMORY_TITLE, PREPARING_WIPE_DETAIL),
+            "timer": (SETTING_TIMER_TITLE, SETTING_TIMER_DETAIL),
+            "note": (SAVING_NOTE_TITLE, SAVING_NOTE_DETAIL),
+            "self_update": (PULLING_CHANGES_TITLE, PREPARING_UPDATE_DETAIL),
+        }
+        return interaction_titles.get(interaction or "", (RECEIVED_TITLE, RECEIVED_DETAIL))
+    return RECEIVED_TITLE, RECEIVED_DETAIL

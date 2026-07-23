@@ -5,10 +5,16 @@ from helpers.agent_fixtures import (
     WipeConfirmationClient,
     patch_agent,
 )
+from sqlmodel import Session, select
 
+import app.memory.db as db
 from app.assistant.agent import AgentService
-from app.memory import repository
-from app.memory.repository import list_recent_chat_messages
+from app.memory import internal_notes, repository
+from app.memory.codebase_index import sync_paths
+from app.memory.internal_note_service import InternalNoteService
+from app.memory.models import CodebaseFileRecord
+from app.memory.repository import list_recent_chat_messages, wipe_database
+from app.proactive.types import ProactiveOffer
 
 
 def test_agent_requires_confirmation_before_wiping_database(monkeypatch, tmp_path) -> None:
@@ -91,6 +97,15 @@ def test_agent_wipes_database_after_confirmation(monkeypatch, tmp_path) -> None:
     patch_agent(monkeypatch, client=WipeConfirmationClient(), tmp_path=tmp_path)
     repository.add_note("delete me")
     repository.add_reminder("stretch", datetime.now(UTC) + timedelta(minutes=5))
+    offer = ProactiveOffer(
+        kind="self_improvement_suggestion",
+        title="Improve timers",
+        summary="Make timer errors clearer.",
+        payload={"goal": "clearer timer errors"},
+        created_at=datetime.now(UTC),
+    )
+    InternalNoteService().record_from_offer(offer, next_attempt_at=datetime.now(UTC))
+    sync_paths(["app/main.py"])
 
     first = AgentService().respond("Wipe your database.")
     second = AgentService().respond("yes")
@@ -100,6 +115,9 @@ def test_agent_wipes_database_after_confirmation(monkeypatch, tmp_path) -> None:
     assert repository.list_notes() == []
     assert repository.list_reminders(include_sent=True) == []
     assert list_recent_chat_messages() == []
+    assert internal_notes.list_internal_notes() == []
+    with Session(db.engine) as session:
+        assert list(session.exec(select(CodebaseFileRecord)).all()) == []
 
 
 
@@ -123,4 +141,26 @@ def test_agent_cancels_database_wipe_on_no(monkeypatch, tmp_path) -> None:
     assert content == "Database wipe cancelled."
     assert repository.list_notes()[0].content == "do not delete me"
 
+
+def test_wipe_database_clears_all_tables() -> None:
+    repository.add_note("delete me")
+    repository.add_reminder("stretch", datetime.now(UTC) + timedelta(minutes=5))
+    offer = ProactiveOffer(
+        kind="self_improvement_suggestion",
+        title="Improve timers",
+        summary="Make timer errors clearer.",
+        payload={"goal": "clearer timer errors"},
+        created_at=datetime.now(UTC),
+    )
+    InternalNoteService().record_from_offer(offer, next_attempt_at=datetime.now(UTC))
+    sync_paths(["app/main.py"])
+
+    wipe_database()
+
+    assert repository.list_notes() == []
+    assert repository.list_reminders(include_sent=True) == []
+    assert list_recent_chat_messages() == []
+    assert internal_notes.list_internal_notes() == []
+    with Session(db.engine) as session:
+        assert list(session.exec(select(CodebaseFileRecord)).all()) == []
 

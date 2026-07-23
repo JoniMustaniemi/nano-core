@@ -3,10 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.assistant.agent_rules import tool_announcement
 from app.assistant.agent_types import ToolResult
 from app.runtime.activity import activity
-from app.runtime.status_copy import could_not_call_tool_title, tool_error_title
+from app.runtime.status_copy import could_not_call_tool_title, running_tool_title, tool_error_title
 from app.tools import get_tool, list_tools
 from app.tools.errors import ToolError
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
@@ -106,7 +105,21 @@ class ToolRunner:
         Returns:
             None.
         """
-        self._announce(tool_announcement(tool_name))
+        self.announce_message(running_tool_title(tool_name))
+
+    def announce_message(self, message: str) -> None:
+        """
+        Announce a user-facing status message.
+
+        Args:
+            message: Message suitable for voice announcement.
+
+        Returns:
+            None.
+        """
+        spoken = message.strip().rstrip(".")
+        if spoken:
+            self._announce(spoken)
 
     def report_error(self, *, title: str, detail: str, spoken_message: str) -> None:
         """

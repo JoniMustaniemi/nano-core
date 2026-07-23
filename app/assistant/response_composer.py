@@ -211,6 +211,10 @@ class ResponseComposer:
 
         step = str(payload.get("step", "unknown")).strip()
         error = str(payload.get("error", "")).strip()
+        if step == "lint":
+            return (
+                "Lint checks failed, so I declined to commit anything or open a pull request."
+            )
         if step == "verify":
             return "Your tests failed, so I declined to commit anything or open a pull request."
         if step == "preflight" and "nothing" in error.lower():
@@ -249,6 +253,7 @@ class ResponseComposer:
             "select": "choosing files",
             "read": "reading files",
             "preflight": "starting up",
+            "lint": "lint checks",
             "verify": "verification",
             "complete": "finishing up",
         }

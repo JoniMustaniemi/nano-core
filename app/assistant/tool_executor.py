@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from app.assistant.response_source import ResponseSource, tool_error_source, tool_result_source
@@ -49,16 +48,10 @@ class ToolExecutor:
             detail=RUNNING_TOOL_DETAIL,
             source="assistant.tool_executor",
         )
-        activity.log(
-            title=ran_tool_title(tool_name),
-            detail=json.dumps(tool_args, ensure_ascii=False),
-            source="assistant.tool_executor",
-        )
-        self.tool_runner.announce_call(tool_name)
         result = self.tool_runner.execute(tool_name, tool_args)
         activity.log(
-            title=f"Tool {tool_name} returned.",
-            detail=result.content,
+            title=ran_tool_title(tool_name),
+            detail="Done.",
             source="assistant.tool_executor",
         )
         if result.ok:

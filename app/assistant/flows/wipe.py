@@ -15,6 +15,7 @@ from app.assistant.response_source import (
     follow_up_source,
 )
 from app.memory import repository
+from app.proactive.store import proactive_store
 from app.runtime.activity import activity
 from app.runtime.status_copy import (
     CANCELLED_WIPE_TITLE,
@@ -125,7 +126,8 @@ class WipeInteractionHandler:
             source="assistant.flows.wipe",
         )
         repository.wipe_database()
-        pending_interactions.clear(conversation_id)
+        proactive_store.reset()
+        pending_interactions.reset()
         activity.standby(
             title=WIPED_MEMORY_TITLE,
             detail=WIPED_MEMORY_DETAIL,

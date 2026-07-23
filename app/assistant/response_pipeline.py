@@ -7,7 +7,12 @@ from app.assistant.response_source import ResponseSource
 from app.llm.protocol import LLMClient
 from app.memory import repository
 from app.runtime.activity import activity
-from app.runtime.status_copy import STANDBY_DETAIL_WAITING, STANDBY_TITLE
+from app.runtime.status_copy import (
+    COMPOSING_DETAIL,
+    COMPOSING_TITLE,
+    STANDBY_DETAIL_WAITING,
+    STANDBY_TITLE,
+)
 
 
 def finalize_response(
@@ -32,6 +37,11 @@ def finalize_response(
         Final user-facing assistant text.
     """
     try:
+        activity.working(
+            title=COMPOSING_TITLE,
+            detail=COMPOSING_DETAIL,
+            source=standby_source,
+        )
         content = composer.compose(client, source)
         content = enforce_user_facing_answer(client, source, content)
         content = polish_user_facing_answer(client, source, content)

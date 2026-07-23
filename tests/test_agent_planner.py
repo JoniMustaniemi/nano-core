@@ -56,7 +56,7 @@ def test_agent_announces_tool_calls(monkeypatch, tmp_path) -> None:
 
     AgentService().respond("What is 2 + 2?")
 
-    assert announcements == ["Running a local procedure."]
+    assert announcements == ["I'm running code"]
 
 
 

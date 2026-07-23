@@ -3,7 +3,13 @@ from datetime import UTC, datetime
 from sqlmodel import Session, col, desc, select
 
 import app.memory.db as db
-from app.memory.models import ChatMessage, Note, Reminder
+from app.memory.models import (
+    ChatMessage,
+    CodebaseFileRecord,
+    InternalNote,
+    Note,
+    Reminder,
+)
 from app.runtime.activity import activity
 from app.runtime.status_copy import SAVED_NOTE_TITLE, SCHEDULED_REMINDER_TITLE
 
@@ -230,7 +236,13 @@ def wipe_database() -> None:
         None.
     """
     with Session(db.engine) as session:
-        for model in (ChatMessage, Note, Reminder):
+        for model in (
+            ChatMessage,
+            Note,
+            Reminder,
+            InternalNote,
+            CodebaseFileRecord,
+        ):
             rows = list(session.exec(select(model)))
             for row in rows:
                 session.delete(row)
