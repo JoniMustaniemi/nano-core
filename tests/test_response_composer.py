@@ -72,13 +72,13 @@ def test_compose_confirmation_uses_follow_up_text() -> None:
     composer = ResponseComposer()
     source = follow_up_source(
         user_message="Start a timer.",
-        facts="How long should the timer run?",
+        facts="How long should the timer run? Try 30 seconds or 5 minutes.",
         conversation_id="default",
     )
 
     content = composer.compose(_StubClient(), source)
 
-    assert content == "How long should the timer run?"
+    assert content == "How long should the timer run? Try 30 seconds or 5 minutes."
 
 
 def test_compose_wipe_confirmation_includes_yes_no_prompt() -> None:
@@ -109,6 +109,30 @@ def test_compose_wipe_confirmation_uses_fallback_for_refusal_draft() -> None:
     assert "reply yes to proceed or no to cancel" in content.lower()
     assert "afraid" not in content.lower()
     assert 'You are asking me to do this: "Wipe your database."' in content
+
+
+def test_compose_improvement_plan_success_strips_meta_goal_phrasing() -> None:
+    composer = ResponseComposer()
+    payload = json.dumps(
+        {
+            "ok": True,
+            "title": "Draft an improvement plan for clearer timer messages.",
+            "goal": "Draft an improvement plan for clearer timer messages.",
+        }
+    )
+    source = tool_result_source(
+        user_message="Draft an improvement plan for clearer timer messages.",
+        facts=payload,
+        tool_name="draft_improvement_plan",
+        conversation_id="default",
+    )
+
+    content = composer.compose(_StubClient(), source)
+
+    assert content == (
+        "I finished a new improvement plan about clearer timer messages. "
+        "Open the Plans tab to read it."
+    )
 
 
 def test_compose_improvement_plan_success_points_to_plans_tab() -> None:

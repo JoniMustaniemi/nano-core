@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import re
 
-from app.intents.self_improve import is_vague_self_improve_goal  # noqa: F401
+from app.intents.self_improve import (  # noqa: F401
+    is_vague_self_improve_goal,
+    normalize_self_improve_goal,
+)
 
 DIRECT_ANSWER_TRIGGERS: tuple[str, ...] = (
     "help",
@@ -124,18 +127,7 @@ def is_self_improve_follow_up(message: str) -> bool:
 
 
 def extract_self_improve_goal(message: str) -> str:
-    stripped = " ".join(message.strip().split())
-    for prefix in (
-        "improve yourself by ",
-        "improve yourself to ",
-        "improve yourself ",
-        "fix yourself ",
-        "update yourself ",
-        "modify yourself ",
-    ):
-        if stripped.lower().startswith(prefix):
-            return stripped[len(prefix) :].strip()
-    return stripped
+    return normalize_self_improve_goal(message)
 
 
 def is_identity_question(message: str) -> bool:

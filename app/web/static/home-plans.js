@@ -9,6 +9,10 @@ function formatPlanDate(value) {
   return date.toLocaleString();
 }
 
+function isPlanReaderOpen() {
+  return activePlanId !== null && planReader && !planReader.hidden;
+}
+
 function closePlanReader() {
   activePlanId = null;
   planReader.hidden = true;
@@ -65,9 +69,11 @@ function renderPlans(plans) {
   if (!plansList) {
     return;
   }
-  plansList.hidden = false;
   plansList.replaceChildren();
   if (!Array.isArray(plans) || plans.length === 0) {
+    if (!isPlanReaderOpen()) {
+      plansList.hidden = false;
+    }
     const empty = document.createElement("p");
     empty.className = "plans-empty";
     empty.textContent = "No improvement plans yet. Nano will draft one when idle.";
@@ -100,6 +106,7 @@ function renderPlans(plans) {
     });
     plansList.appendChild(button);
   }
+  plansList.hidden = isPlanReaderOpen();
 }
 
 async function loadPlans() {

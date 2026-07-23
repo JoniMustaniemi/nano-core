@@ -567,7 +567,7 @@ function answerNeedsVoiceFollowUp(text) {
   const lowered = text.toLowerCase();
   return (
     lowered.includes("how long should the timer run") ||
-    lowered.includes("specify the timer duration") ||
+    lowered.includes("didn't catch a duration") ||
     lowered.includes("reply yes to proceed or no to cancel")
   );
 }

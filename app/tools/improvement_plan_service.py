@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from app.config import get_settings
+from app.intents.self_improve import normalize_self_improve_goal
 from app.memory import improvement_plans
 from app.memory.internal_note_service import internal_note_service
 from app.memory.models import InternalNote
@@ -143,15 +144,15 @@ def _build_plan_prompt(*, goal: str, file_contents: dict[str, str]) -> list[dict
 
 
 def _brief_theme(*, goal: str, title: str) -> str:
-    for candidate in (goal, title):
-        cleaned = " ".join(str(candidate).strip().split())
+    for candidate in (title, goal):
+        cleaned = normalize_self_improve_goal(str(candidate))
         if cleaned and cleaned.lower() not in {"improvement plan", "code update"}:
             return cleaned[:80]
     return "a codebase improvement"
 
 
 def _plan_title(*, goal: str, files: list[str]) -> str:
-    cleaned_goal = " ".join(goal.strip().split())
+    cleaned_goal = normalize_self_improve_goal(goal)
     if cleaned_goal:
         return cleaned_goal[:96]
     if files:

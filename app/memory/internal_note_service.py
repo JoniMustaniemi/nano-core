@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from app.config import get_settings
-from app.intents.self_improve import is_vague_self_improve_goal
+from app.intents.self_improve import is_vague_self_improve_goal, normalize_self_improve_goal
 from app.memory import internal_notes
 from app.memory.models import InternalNote
 from app.proactive.types import ProactiveOffer
@@ -82,7 +82,7 @@ class InternalNoteService:
         return files
 
     def resolve_self_improve_goal(self, explicit_goal: str) -> tuple[str, int | None, list[str]]:
-        cleaned = " ".join(explicit_goal.strip().split())
+        cleaned = normalize_self_improve_goal(explicit_goal)
         if not is_vague_self_improve_goal(cleaned):
             return cleaned, None, []
 

@@ -20,17 +20,6 @@ installable assistant hardware like Raspberry Pi longer term.
   improvement plans; read them in the **Plans** tab and mark them processed when done
 - **Voice** — optional spoken replies and wake-phrase listening with `"hey nano"` in the web UI
 
-## Web interface
-
-Open the home screen in your browser after starting Nano. The UI includes:
-
-- A main response area and optional voice controls
-- Quick commands drawer for common actions
-- **Nano sheet** in the bottom-left corner with three views:
-  - **Brains** — internal activity log
-  - **Plans** — improvement plans Nano has drafted; click to read, then mark as processed
-  - **Stored Data** — snapshot of notes, reminders, chat, and internal notes
-
 ## Documentation
 
 For a technical overview — architecture, components, privacy, and capabilities in more
