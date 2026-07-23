@@ -15,13 +15,13 @@ from app.tools import get_tool, list_tools
 from app.tools.errors import ToolError
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
-_STRUCTURED_RESULT_TOOLS = frozenset({"propose_self_changes", "create_pull_request"})
+_STRUCTURED_RESULT_TOOLS = frozenset({"draft_improvement_plan", "create_pull_request"})
 _STRUCTURED_FAILURE_TITLES: dict[str, str] = {
-    "propose_self_changes": failed_tool_title("propose_self_changes"),
+    "draft_improvement_plan": failed_tool_title("draft_improvement_plan"),
     "create_pull_request": failed_tool_title("create_pull_request"),
 }
 _STRUCTURED_FAILURE_SPOKEN: dict[str, str] = {
-    "propose_self_changes": "I could not complete the self-improvement.",
+    "draft_improvement_plan": "I could not draft the improvement plan.",
     "create_pull_request": "I could not complete the pull request.",
 }
 

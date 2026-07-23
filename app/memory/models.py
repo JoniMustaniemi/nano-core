@@ -40,6 +40,18 @@ class InternalNote(SQLModel, table=True):
     delivered_at: datetime | None = Field(default=None)
 
 
+class ImprovementPlan(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    title: str
+    goal: str
+    body: str
+    files_json: str = Field(default="[]")
+    status: str = Field(default="pending", index=True)
+    source_note_id: int | None = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
+    processed_at: datetime | None = Field(default=None)
+
+
 class CodebaseFileRecord(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     path: str = Field(index=True, unique=True)

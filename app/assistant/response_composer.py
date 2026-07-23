@@ -41,7 +41,7 @@ class ResponseComposer:
         if source.kind == "tool_result" and source.tool_name == "create_pull_request":
             return self._compose_pr_result(source.facts)
 
-        if source.tool_name == "propose_self_changes" and source.kind in {
+        if source.tool_name == "draft_improvement_plan" and source.kind in {
             "tool_result",
             "tool_error",
         }:
@@ -234,47 +234,31 @@ class ResponseComposer:
     def _compose_self_improve_result(self, tool_result: str) -> str:
         payload = self._parse_json_dict(tool_result)
         if payload.get("ok"):
-            return (
-                "I prepared a self-improvement pull request. "
-                "Review it on GitHub when you are ready."
-            )
+            title = str(payload.get("title", "")).strip()
+            if title:
+                return (
+                    f"I drafted an improvement plan: {title}. "
+                    "Open the Plans tab to read it."
+                )
+            return "I drafted an improvement plan. Open the Plans tab to read it."
         error = str(payload.get("error", "")).strip()
         step = str(payload.get("step", "unknown")).strip()
-        if step == "preflight" and "already open" in error.lower():
+        if step == "gate":
             return (
-                "An open pull request is already waiting for your review. "
-                "Resolve it on GitHub before I prepare another self-improvement pull request."
+                "I already have an improvement plan waiting for review. "
+                "Open the Plans tab, read it, and mark it processed before I draft another."
             )
         step_labels = {
-            "plan": "planning changes",
+            "draft": "drafting the plan",
             "select": "choosing files",
             "read": "reading files",
-            "preflight": "starting up",
-            "lint": "lint checks",
-            "verify": "verification",
-            "complete": "finishing up",
         }
         step_label = step_labels.get(step, step.replace("_", " "))
-        reason = str(payload.get("reason", "")).strip()
-        plan_prefix = "Could not parse change plan from the model for "
-        old_text_prefix = "The model could not match the exact text to replace in "
-        if step == "plan" and reason == "old_text_not_found" and error.startswith(old_text_prefix):
-            path = error[len(old_text_prefix) :].rstrip(".")
-            return (
-                f"I could not improve myself. I got stuck at the {step_label} step "
-                f"because I could not match the exact text to replace in {path}."
-            )
-        if step == "plan" and error.startswith(plan_prefix):
-            path = error[len(plan_prefix) :].rstrip(".")
-            return (
-                f"I could not improve myself. I got stuck at the {step_label} step "
-                f"while editing {path}."
-            )
         if error:
             return (
-                f"I could not improve myself. I got stuck at the {step_label} step: {error}"
+                f"I could not draft an improvement plan. I got stuck at the {step_label} step: {error}"
             )
-        return "I could not improve myself."
+        return "I could not draft an improvement plan."
 
     def _parse_json_dict(self, value: str) -> dict[str, Any]:
         try:

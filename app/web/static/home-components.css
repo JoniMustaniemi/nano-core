@@ -648,3 +648,108 @@ body.inputs-locked #keyboard-toggle:disabled {
     height: 50px;
   }
 }
+
+.plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 20px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.plans-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font: 500 0.92rem/1.5 "Cascadia Mono", "Consolas", monospace;
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(120, 200, 150, 0.18);
+  border-radius: 8px;
+  background: rgba(8, 18, 12, 0.72);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-card:hover {
+  border-color: rgba(120, 200, 150, 0.35);
+  background: rgba(12, 24, 16, 0.88);
+}
+
+.plan-card-title {
+  font: 700 0.95rem/1.35 "Cascadia Mono", "Consolas", monospace;
+  color: var(--accent-strong);
+}
+
+.plan-card-meta {
+  font: 500 0.78rem/1.4 "Cascadia Mono", "Consolas", monospace;
+  color: var(--text-muted);
+}
+
+.plan-badge {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #7fd9a8;
+  vertical-align: middle;
+}
+
+.plan-reader {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 20px 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+.plan-reader-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.plan-reader-header h3 {
+  margin: 0;
+  font: 700 0.98rem/1.35 "Cascadia Mono", "Consolas", monospace;
+  color: var(--accent-strong);
+}
+
+.plan-reader-body {
+  flex: 1;
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid rgba(120, 200, 150, 0.16);
+  border-radius: 8px;
+  background: rgba(4, 10, 6, 0.9);
+  color: var(--text-primary);
+  font: 500 0.86rem/1.55 "Cascadia Mono", "Consolas", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.plan-process-button {
+  align-self: flex-start;
+  padding: 10px 16px;
+  border: 1px solid rgba(120, 200, 150, 0.35);
+  border-radius: 8px;
+  background: rgba(24, 56, 36, 0.9);
+  color: var(--accent-strong);
+  font: 700 0.84rem/1.2 "Cascadia Mono", "Consolas", monospace;
+  cursor: pointer;
+}
+
+.plan-process-button:hover {
+  background: rgba(32, 72, 46, 0.95);
+}

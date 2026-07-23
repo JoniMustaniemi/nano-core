@@ -4,6 +4,7 @@ from app.main import app
 
 HOME_JS_MODULES = (
     "home-state.js",
+    "home-plans.js",
     "home-ui.js",
     "home-voice.js",
     "home-activity.js",
@@ -80,6 +81,10 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Nano's brains" not in response.text
 
     assert "Brains" in response.text
+    assert "Plans" in response.text
+    assert 'id="nano-tab-plans"' in response.text
+    assert 'id="plans-list"' in response.text
+    assert 'id="plan-reader"' in response.text
 
     assert 'id="brains-clear"' in response.text
 
@@ -101,8 +106,9 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/globe_visualizer.js?v=procedural-orb-15"' in response.text
-    assert 'src="/static/home-state.js?v=procedural-orb-18"' in response.text
-    assert 'src="/static/home.js?v=procedural-orb-18"' in response.text
+    assert 'src="/static/home-state.js?v=procedural-orb-19"' in response.text
+    assert 'src="/static/home-plans.js?v=procedural-orb-19"' in response.text
+    assert 'src="/static/home.js?v=procedural-orb-19"' in response.text
 
     assert "Enter to send" in response.text
 
@@ -146,7 +152,8 @@ def test_homepage_serves_static_assets() -> None:
 
     assert 'mode: "agent"' in js_text
 
-    assert 'fetch("/api/storage")' in js_text
+    assert ".plan-card" in css_text
+    assert 'fetch("/api/improvement-plans")' in js_text
 
     assert 'Waiting for wake phrase: "hey nano".' in js_text
 

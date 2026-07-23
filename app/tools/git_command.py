@@ -156,6 +156,10 @@ def _run_command(executable_name: str, args: list[str]) -> GitCommandResult:
 
     return GitCommandResult(
         returncode=process.returncode,
-        stdout=process.stdout,
-        stderr=process.stderr,
+        stdout=_normalize_output(process.stdout),
+        stderr=_normalize_output(process.stderr),
     )
+
+
+def _normalize_output(value: str | None) -> str:
+    return value if isinstance(value, str) else ""

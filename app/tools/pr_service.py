@@ -297,6 +297,8 @@ class PullRequestService:
                 qualify_head_branch(current_branch),
             )
         if pr_result.returncode != 0:
+            stdout = pr_result.stdout.strip()
+            stderr = pr_result.stderr.strip()
             return PrResult(
                 ok=False,
                 step="pr_create",
@@ -305,10 +307,12 @@ class PullRequestService:
                 base=base_branch,
                 verified_with=command_display(verify.command),
                 error=format_command_result(pr_result),
-                output=pr_result.stdout.strip() or pr_result.stderr.strip(),
+                output=stdout or stderr,
             )
 
         url = pr_result.stdout.strip()
+        if not url:
+            return self._fail("pr_create", "GitHub CLI did not return a pull request URL.")
         activity.standby(
             title=PR_CREATED_TITLE,
             detail=url,

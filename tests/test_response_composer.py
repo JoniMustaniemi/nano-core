@@ -111,75 +111,70 @@ def test_compose_wipe_confirmation_uses_fallback_for_refusal_draft() -> None:
     assert 'You are asking me to do this: "Wipe your database."' in content
 
 
-def test_compose_self_improve_plan_failure_is_first_person() -> None:
+def test_compose_improvement_plan_success_points_to_plans_tab() -> None:
     composer = ResponseComposer()
     payload = json.dumps(
         {
-            "ok": False,
-            "step": "plan",
-            "error": "Could not parse change plan from the model for app/config.py.",
+            "ok": True,
+            "title": "Clearer timer messages",
             "goal": "clearer timer messages",
         }
     )
     source = tool_result_source(
         user_message="Improve yourself.",
         facts=payload,
-        tool_name="propose_self_changes",
+        tool_name="draft_improvement_plan",
         conversation_id="default",
     )
 
     content = composer.compose(_StubClient(), source)
 
     assert content == (
-        "I could not improve myself. I got stuck at the planning changes step "
-        "while editing app/config.py."
+        "I drafted an improvement plan: Clearer timer messages. "
+        "Open the Plans tab to read it."
     )
 
 
-def test_compose_self_improve_old_text_not_found_is_first_person() -> None:
+def test_compose_improvement_plan_gate_is_first_person() -> None:
     composer = ResponseComposer()
     payload = json.dumps(
         {
             "ok": False,
-            "step": "plan",
-            "reason": "old_text_not_found",
-            "error": "The model could not match the exact text to replace in app/config.py.",
+            "step": "gate",
+            "error": "A plan is already waiting for review.",
             "goal": "clearer timer messages",
         }
     )
     source = tool_result_source(
         user_message="Improve yourself.",
         facts=payload,
-        tool_name="propose_self_changes",
+        tool_name="draft_improvement_plan",
         conversation_id="default",
     )
 
     content = composer.compose(_StubClient(), source)
 
-    assert content == (
-        "I could not improve myself. I got stuck at the planning changes step "
-        "because I could not match the exact text to replace in app/config.py."
-    )
+    assert "Plans tab" in content
+    assert "mark it processed" in content
 
 
-def test_compose_self_improve_tool_error_uses_same_failure_copy() -> None:
+def test_compose_improvement_plan_tool_error_uses_failure_copy() -> None:
     composer = ResponseComposer()
     payload = json.dumps(
         {
             "ok": False,
-            "step": "preflight",
-            "error": "Could not create an isolated git worktree for self-improvement.",
+            "step": "draft",
+            "error": "Could not draft an improvement plan.",
         }
     )
     source = tool_error_source(
         user_message="Improve yourself.",
         facts=payload,
-        tool_name="propose_self_changes",
+        tool_name="draft_improvement_plan",
         conversation_id="default",
     )
 
     content = composer.compose(_StubClient(), source)
 
-    assert content.startswith("I could not improve myself.")
-    assert "starting up" in content
-    assert "worktree" in content
+    assert content.startswith("I could not draft an improvement plan.")
+    assert "drafting the plan" in content

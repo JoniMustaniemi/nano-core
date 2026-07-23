@@ -1,7 +1,6 @@
 
 from app.assistant.agent_router import AgentRouter
 from app.assistant.rules.intents import is_self_improve_request
-from app.proactive.store import proactive_store
 
 
 class _FakeClient:
@@ -21,7 +20,7 @@ def test_router_self_improve_routes_before_timer_cancel() -> None:
         history=[],
     )
     assert decision.mode == "tool"
-    assert decision.tool_name == "propose_self_changes"
+    assert decision.tool_name == "draft_improvement_plan"
 
 
 def test_wipe_confirmation_ignores_clear_inside_other_words() -> None:
@@ -31,13 +30,3 @@ def test_wipe_confirmation_ignores_clear_inside_other_words() -> None:
         "Improve yourself by making timer messages clearer."
     )
     assert needs_wipe_confirmation("Clear your memory.")
-
-
-def test_router_self_improve_follow_up() -> None:
-    proactive_store.reset()
-    proactive_store.set_last_goal("clearer timer errors")
-    decision = AgentRouter().decide("do it", conversation_id="agent-default", history=[])
-    assert decision.mode == "tool"
-    assert decision.tool_name == "propose_self_changes"
-    assert decision.tool_args == {"goal": "clearer timer errors"}
-    proactive_store.reset()
