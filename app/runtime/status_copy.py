@@ -94,10 +94,7 @@ PULLING_CHANGES_DETAIL = "Updating from the latest source."
 SWITCHING_BRANCH_TITLE = "I'm switching branches."
 SWITCHING_BRANCH_DETAIL = "Moving to the right branch before pulling updates."
 SELF_IMPROVE_FAILED_TITLE = "I could not improve myself."
-SELF_IMPROVE_RELOAD_BLOCKED_ERROR = (
-    "Self-improve cannot run while auto-reload is on. "
-    "Restart with: python -m app.cli dev --no-reload"
-)
+SELF_IMPROVE_WORKTREE_DETAIL = "Using isolated worktree so dev reload stays stable."
 PLANNING_SELF_IMPROVE_TITLE = "I'm planning self-improvement."
 VERIFYING_SELF_IMPROVE_TITLE = "I'm verifying self-improvement."
 VERIFYING_SELF_IMPROVE_DETAIL = "Making sure nothing broke before I ask for a review."
@@ -167,12 +164,22 @@ _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
 }
 
 
+_TOOL_ACTIVITY_FAILED_TITLES: dict[str, str] = {
+    "propose_self_changes": SELF_IMPROVE_FAILED_TITLE,
+    "create_pull_request": PR_WORKFLOW_FAILED_TITLE,
+}
+
+
 def running_tool_title(tool_name: str) -> str:
     return _TOOL_ACTIVITY_TITLES.get(tool_name, "I'm working on something.")
 
 
 def ran_tool_title(tool_name: str) -> str:
     return _TOOL_ACTIVITY_COMPLETED_TITLES.get(tool_name, "I finished that.")
+
+
+def failed_tool_title(tool_name: str) -> str:
+    return _TOOL_ACTIVITY_FAILED_TITLES.get(tool_name, COULD_NOT_FINISH_TITLE)
 
 
 def could_not_call_tool_title(tool_name: str) -> str:

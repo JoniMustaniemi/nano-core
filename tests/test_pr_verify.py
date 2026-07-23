@@ -15,7 +15,7 @@ def test_resolve_verify_command_detects_pytest(tmp_path: Path, monkeypatch: pyte
             {"github_pr_verify_command": ""},
         )(),
     )
-    monkeypatch.setattr("app.tools.pr_verify.workspace_root", lambda: tmp_path)
+    monkeypatch.setattr("app.tools.pr_verify.effective_workspace_root", lambda: tmp_path)
     (tmp_path / "pyproject.toml").write_text(
         "[tool.pytest.ini_options]\ntestpaths = ['tests']\n",
         encoding="utf-8",
@@ -38,7 +38,7 @@ def test_resolve_verify_command_uses_config_override(
             {"github_pr_verify_command": "python -m pytest -q tests/test_health.py"},
         )(),
     )
-    monkeypatch.setattr("app.tools.pr_verify.workspace_root", lambda: tmp_path)
+    monkeypatch.setattr("app.tools.pr_verify.effective_workspace_root", lambda: tmp_path)
 
     command = pr_verify.resolve_verify_command()
 
@@ -57,13 +57,13 @@ def test_resolve_verify_command_returns_none_without_match(
             {"github_pr_verify_command": ""},
         )(),
     )
-    monkeypatch.setattr("app.tools.pr_verify.workspace_root", lambda: tmp_path)
+    monkeypatch.setattr("app.tools.pr_verify.effective_workspace_root", lambda: tmp_path)
 
     assert pr_verify.resolve_verify_command() is None
 
 
 def test_resolve_lint_command_detects_ruff(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.tools.pr_verify.workspace_root", lambda: tmp_path)
+    monkeypatch.setattr("app.tools.pr_verify.effective_workspace_root", lambda: tmp_path)
     (tmp_path / "pyproject.toml").write_text(
         "[tool.ruff]\nline-length = 100\n",
         encoding="utf-8",
@@ -78,7 +78,7 @@ def test_resolve_lint_command_returns_none_without_ruff(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("app.tools.pr_verify.workspace_root", lambda: tmp_path)
+    monkeypatch.setattr("app.tools.pr_verify.effective_workspace_root", lambda: tmp_path)
 
     assert pr_verify.resolve_lint_command() is None
 

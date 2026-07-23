@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from app.assistant.response_source import ResponseSource, tool_error_source, tool_result_source
 from app.assistant.tool_runner import ToolRunner
 from app.runtime.activity import activity
-from app.runtime.status_copy import RUNNING_TOOL_DETAIL, ran_tool_title, running_tool_title
+from app.runtime.status_copy import (
+    RUNNING_TOOL_DETAIL,
+    failed_tool_title,
+    ran_tool_title,
+    running_tool_title,
+)
 
 
 class ToolExecutor:
@@ -49,11 +55,18 @@ class ToolExecutor:
             source="assistant.tool_executor",
         )
         result = self.tool_runner.execute(tool_name, tool_args)
-        activity.log(
-            title=ran_tool_title(tool_name),
-            detail="Done.",
-            source="assistant.tool_executor",
-        )
+        if result.ok:
+            activity.log(
+                title=ran_tool_title(tool_name),
+                detail="Done.",
+                source="assistant.tool_executor",
+            )
+        else:
+            activity.log(
+                title=failed_tool_title(tool_name),
+                detail=_tool_failure_detail(result),
+                source="assistant.tool_executor",
+            )
         if result.ok:
             return tool_result_source(
                 user_message=user_message,
@@ -67,3 +80,16 @@ class ToolExecutor:
             tool_name=tool_name,
             conversation_id=conversation_id,
         )
+
+
+def _tool_failure_detail(result: Any) -> str:
+    if isinstance(result.content, str) and result.content.strip().startswith("{"):
+        try:
+            payload = json.loads(result.content)
+        except json.JSONDecodeError:
+            return "The tool reported a failure."
+        if isinstance(payload, dict):
+            error = str(payload.get("error", "")).strip()
+            if error:
+                return error
+    return "The tool reported a failure."

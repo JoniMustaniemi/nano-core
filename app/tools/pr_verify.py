@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 
 from app.config import get_settings
-from app.tools.files import workspace_root
+from app.tools.workspace_context import effective_workspace_root
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +26,7 @@ def resolve_lint_command() -> list[str] | None:
     Returns:
         Command argv list, or None when no lint command can be resolved.
     """
-    root = workspace_root()
+    root = effective_workspace_root()
     pyproject = root / "pyproject.toml"
     if pyproject.exists() and _pyproject_has_ruff(pyproject.read_text(encoding="utf-8")):
         return [sys.executable, "-m", "ruff", "check", "app", "tests"]
@@ -44,7 +44,7 @@ def resolve_verify_command() -> list[str] | None:
     if settings.github_pr_verify_command.strip():
         return _split_command(settings.github_pr_verify_command.strip())
 
-    root = workspace_root()
+    root = effective_workspace_root()
     pyproject = root / "pyproject.toml"
     if pyproject.exists() and _pyproject_has_pytest(pyproject.read_text(encoding="utf-8")):
         return [sys.executable, "-m", "pytest", "-q"]
@@ -145,7 +145,7 @@ def _run_command(command: list[str], *, failure_message: str) -> VerifyResult:
     try:
         process = subprocess.run(
             command,
-            cwd=workspace_root(),
+            cwd=effective_workspace_root(),
             capture_output=True,
             text=True,
             timeout=settings.github_pr_verify_timeout_seconds,

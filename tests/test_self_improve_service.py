@@ -299,12 +299,83 @@ def test_self_update_switches_to_main_before_pull(monkeypatch) -> None:
     assert checkout_calls == ["main"]
 
 
-def test_self_improve_service_blocks_when_uvicorn_reload_enabled(monkeypatch) -> None:
+def test_self_improve_service_uses_worktree_when_reload_enabled(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("NANO_UVICORN_RELOAD", "1")
-    reported: list[dict[str, str]] = []
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "main.py").write_text("original\n", encoding="utf-8")
+
+    worktree_path = tmp_path / "worktree"
+    worktree_path.mkdir()
+    (worktree_path / "app").mkdir()
+    (worktree_path / "app" / "main.py").write_text("original\n", encoding="utf-8")
+
+    from contextlib import contextmanager
+
+    from app.tools.self_improve_worktree import SelfImproveWorktree, WorktreeSetup
+
+    class _FakeWorktree(SelfImproveWorktree):
+        def __init__(self) -> None:
+            super().__init__(path=worktree_path, branch="nano/self-improve-test")
+
+        @contextmanager
+        def activate(self):
+            from app.tools.workspace_context import workspace_override
+
+            with workspace_override(worktree_path):
+                yield worktree_path
+
+    setup_calls: list[str] = []
+
+    def fake_try_setup(*, goal: str) -> WorktreeSetup:
+        setup_calls.append(goal)
+        return WorktreeSetup(worktree=_FakeWorktree())
+
     monkeypatch.setattr(
-        "app.tools.self_improve_service.activity.error",
-        lambda **kwargs: reported.append(kwargs),
+        "app.tools.self_improve_service.SelfImproveWorktree.try_setup",
+        fake_try_setup,
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service._file_selection_lines",
+        lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_lint",
+        lambda: SimpleNamespace(ok=True, error=None),
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_verification",
+        lambda: SimpleNamespace(ok=True, error=None),
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.PullRequestService.run",
+        lambda self, client: SimpleNamespace(ok=True, url="https://example/pr", step="complete"),
+    )
+    monkeypatch.setattr(
+        "app.config.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_max_files=5,
+            self_improve_max_file_chars=8000,
+        ),
+    )
+
+    result = SelfImproveService().run(client=_PlanClient(), goal="update main")
+
+    assert setup_calls == ["update main"]
+    assert result.ok
+    assert result.changed_files == ["app/main.py"]
+    assert (tmp_path / "app" / "main.py").read_text(encoding="utf-8") == "original\n"
+    assert (worktree_path / "app" / "main.py").read_text(encoding="utf-8") == "# updated\n"
+
+
+def test_self_improve_service_worktree_setup_failure(monkeypatch) -> None:
+    monkeypatch.setenv("NANO_UVICORN_RELOAD", "1")
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.SelfImproveWorktree.try_setup",
+        lambda goal: __import__(
+            "app.tools.self_improve_worktree", fromlist=["WorktreeSetup"]
+        ).WorktreeSetup(worktree=None, error="Workspace is not a git repository."),
     )
 
     result = SelfImproveService().run(
@@ -314,7 +385,4 @@ def test_self_improve_service_blocks_when_uvicorn_reload_enabled(monkeypatch) ->
 
     assert result.ok is False
     assert result.step == "preflight"
-    assert result.error is not None
-    assert "--no-reload" in result.error
-    assert reported
-    assert reported[0]["title"] == "I could not improve myself."
+    assert result.error == "Workspace is not a git repository."

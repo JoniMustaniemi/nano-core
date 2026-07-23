@@ -142,8 +142,7 @@ def test_compose_self_improve_tool_error_uses_same_failure_copy() -> None:
         {
             "ok": False,
             "step": "preflight",
-            "error": "Self-improve cannot run while auto-reload is on. "
-            "Restart with: python -m app.cli dev --no-reload",
+            "error": "Could not create an isolated git worktree for self-improvement.",
         }
     )
     source = tool_error_source(
@@ -157,4 +156,4 @@ def test_compose_self_improve_tool_error_uses_same_failure_copy() -> None:
 
     assert content.startswith("I could not improve myself.")
     assert "starting up" in content
-    assert "--no-reload" in content
+    assert "worktree" in content
