@@ -516,6 +516,7 @@ async function playVoiceNow(text, options = {}) {
     speakingActive = false;
     updateGlobeState();
     clearVoiceSource();
+    resumeAnswerClearAfterSpeech();
     if (shouldResumeRecognition && microphoneReady) {
       listeningForCommand = preserveCommandMode;
       recognitionPausedForSpeech = false;

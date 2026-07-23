@@ -6,6 +6,7 @@ import app.memory.db as db
 from app.memory.models import (
     ChatMessage,
     CodebaseFileRecord,
+    ImprovementPlan,
     InternalNote,
     Note,
     Reminder,
@@ -241,6 +242,7 @@ def wipe_database() -> None:
             Note,
             Reminder,
             InternalNote,
+            ImprovementPlan,
             CodebaseFileRecord,
         ):
             rows = list(session.exec(select(model)))

@@ -130,9 +130,26 @@ def test_compose_improvement_plan_success_points_to_plans_tab() -> None:
     content = composer.compose(_StubClient(), source)
 
     assert content == (
-        "I drafted an improvement plan: Clearer timer messages. "
+        "I finished a new improvement plan about Clearer timer messages. "
         "Open the Plans tab to read it."
     )
+
+
+def test_compose_improvement_plan_success_truncates_long_theme() -> None:
+    composer = ResponseComposer()
+    long_title = "Improve timer copy so every failure path explains what went wrong and what to do next"
+    payload = json.dumps({"ok": True, "title": long_title, "goal": long_title})
+    source = tool_result_source(
+        user_message="Improve yourself.",
+        facts=payload,
+        tool_name="draft_improvement_plan",
+        conversation_id="default",
+    )
+
+    content = composer.compose(_StubClient(), source)
+
+    assert "Improve timer copy so every failure path explains what we..." in content
+    assert "Open the Plans tab to read it." in content
 
 
 def test_compose_improvement_plan_gate_is_first_person() -> None:

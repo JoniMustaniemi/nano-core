@@ -458,16 +458,36 @@ function clearAnswerClearTimer() {
 
 function scheduleAnswerClear() {
   clearAnswerClearTimer();
+  answerClearPending = false;
   answerClearTimer = window.setTimeout(() => {
     answerClearTimer = null;
-    setAnswer("", { animate: false });
+    if (speakingActive) {
+      answerClearPending = true;
+      return;
+    }
+    setAnswer("", { animate: false, bypassSpeechGuard: true });
   }, ANSWER_CLEAR_DELAY_MS);
+}
+
+function resumeAnswerClearAfterSpeech() {
+  if (!answerClearPending) {
+    return;
+  }
+  scheduleAnswerClear();
 }
 
 function setAnswer(text, options = {}) {
   const content = text.trim();
   const animate = options.animate !== false;
+  const bypassSpeechGuard = options.bypassSpeechGuard === true;
+
+  if (!content && speakingActive && !bypassSpeechGuard) {
+    answerClearPending = true;
+    return;
+  }
+
   clearAnswerClearTimer();
+  answerClearPending = false;
   cancelAnswerReveal();
   if (!content) {
     answerOutput.textContent = IDLE_RESPONSE;

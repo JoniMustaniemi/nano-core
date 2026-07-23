@@ -35,6 +35,7 @@ async function submitMessage(message, source) {
   await acknowledgeRequest(source);
   replyStatus.textContent = source === "voice" ? "Sending voice command..." : "Sending...";
   let answerText = "";
+  let shouldSpeak = true;
   let requestFailed = false;
   try {
     const response = await fetch("/chat", {
@@ -52,8 +53,9 @@ async function submitMessage(message, source) {
       throw new Error(data.detail || "Chat request failed.");
     }
     answerText = data.content;
+    shouldSpeak = data.speak !== false;
     setAnswer(answerText);
-    replyStatus.textContent = "Answer ready.";
+    replyStatus.textContent = "";
     await refreshStorage();
   } catch (error) {
     requestFailed = true;
@@ -65,6 +67,11 @@ async function submitMessage(message, source) {
   }
 
   if (requestFailed || !answerText) {
+    return;
+  }
+
+  if (!shouldSpeak) {
+    returnToWakeDetection();
     return;
   }
 

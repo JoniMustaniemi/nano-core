@@ -117,3 +117,40 @@ def test_draft_service_uses_preferred_files_without_selection_llm(monkeypatch, t
 def test_fallback_files_for_goal_matches_keywords() -> None:
     files = fallback_files_for_goal("improve message helpers", allowed="app/")
     assert "app/assistant/rules/messages.py" in files
+
+
+def test_draft_service_announces_brief_completion_without_progress_reporter(
+    monkeypatch, tmp_path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'complete.sqlite3'}")
+    create_db_and_tables()
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "main.py").write_text("value = 1\n", encoding="utf-8")
+
+    standby_calls: list[dict[str, str]] = []
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            user_content = messages[-1]["content"]
+            if "Known files:" in user_content:
+                return '{"files_to_read": ["app/main.py"]}'
+            return "Summary\nOne focused change."
+
+    monkeypatch.setattr(
+        "app.tools.self_improve_planning.file_selection_lines",
+        lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
+    )
+    monkeypatch.setattr("app.config.get_settings", lambda: _settings())
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_service.activity.standby",
+        lambda **kwargs: standby_calls.append(kwargs) or None,
+    )
+
+    result = ImprovementPlanService().draft(client=_Client(), goal="clearer startup logs")
+
+    assert result.ok is True
+    assert len(standby_calls) == 1
+    assert standby_calls[0]["source"] == "tools.improvement_plan_service.completed"
+    assert "Theme:" in standby_calls[0]["detail"]
+    assert "Plans tab" in standby_calls[0]["detail"]

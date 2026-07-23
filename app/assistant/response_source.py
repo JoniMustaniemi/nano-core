@@ -25,6 +25,7 @@ class ResponseSource:
     tool_name: str | None = None
     conversation_id: str = "default"
     persist: bool = True
+    speak: bool = True
 
 
 def answer_source(
@@ -33,6 +34,7 @@ def answer_source(
     facts: str,
     conversation_id: str = "default",
     persist: bool = True,
+    speak: bool = True,
 ) -> ResponseSource:
     """
     Build an answer response source from a factual draft.
@@ -51,6 +53,7 @@ def answer_source(
         facts=facts,
         conversation_id=conversation_id,
         persist=persist,
+        speak=speak,
     )
 
 
@@ -110,6 +113,7 @@ def tool_result_source(
     facts: str,
     tool_name: str,
     conversation_id: str = "default",
+    speak: bool = True,
 ) -> ResponseSource:
     """
     Build a tool result response source.
@@ -129,6 +133,7 @@ def tool_result_source(
         facts=facts,
         tool_name=tool_name,
         conversation_id=conversation_id,
+        speak=speak,
     )
 
 
@@ -138,6 +143,7 @@ def tool_error_source(
     facts: str,
     tool_name: str,
     conversation_id: str = "default",
+    speak: bool = True,
 ) -> ResponseSource:
     """
     Build a tool error response source.
@@ -157,4 +163,5 @@ def tool_error_source(
         facts=facts,
         tool_name=tool_name,
         conversation_id=conversation_id,
+        speak=speak,
     )

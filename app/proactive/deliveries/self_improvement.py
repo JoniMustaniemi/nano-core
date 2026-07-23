@@ -16,14 +16,14 @@ class SelfImprovementSuggestionHandler:
   ) -> ResponseSource:
     _ = client
     goal = str(offer.payload.get("goal", "")).strip()
-    follow_up = " Open the Plans tab when you want to read it."
     summary = offer.summary.strip()
     if goal and goal not in summary:
       summary = f"{summary} ({goal})"
     return answer_source(
       user_message="proactive self-improvement",
-      facts=f"{summary}{follow_up}",
+      facts="I finished a new improvement plan. Open the Plans tab to read it.",
       conversation_id=conversation_id,
+      speak=False,
     )
 
 

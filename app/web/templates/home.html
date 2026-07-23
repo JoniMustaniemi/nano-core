@@ -10,16 +10,16 @@
 
 <title>{app_name}</title>
 
-<link rel="stylesheet" href="/static/home.css?v=procedural-orb-20" />
+<link rel="stylesheet" href="/static/home.css?v=procedural-orb-24" />
 
 <script defer src="/static/three.min.js?v=0.160.1"></script>
 <script defer src="/static/globe_visualizer.js?v=procedural-orb-15"></script>
-<script defer src="/static/home-state.js?v=procedural-orb-19"></script>
-<script defer src="/static/home-plans.js?v=procedural-orb-19"></script>
+<script defer src="/static/home-state.js?v=procedural-orb-24"></script>
+<script defer src="/static/home-plans.js?v=procedural-orb-24"></script>
 <script defer src="/static/home-ui.js?v=procedural-orb-19"></script>
 <script defer src="/static/home-voice.js?v=procedural-orb-19"></script>
-<script defer src="/static/home-activity.js?v=procedural-orb-19"></script>
-<script defer src="/static/home-chat.js?v=procedural-orb-19"></script>
+<script defer src="/static/home-activity.js?v=procedural-orb-24"></script>
+<script defer src="/static/home-chat.js?v=procedural-orb-24"></script>
 <script defer src="/static/home.js?v=procedural-orb-19"></script>
 
 </head>
@@ -154,7 +154,13 @@ aria-controls="nano-panel-plans"
 
 >
 
+<span class="nano-tab-label">
+
 Plans
+
+<span id="plans-tab-count" class="plans-tab-count" hidden aria-label="Pending plans">0</span>
+
+</span>
 
 </button>
 

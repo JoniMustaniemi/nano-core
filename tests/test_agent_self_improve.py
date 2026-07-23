@@ -11,6 +11,17 @@ class _FakeClient:
 def test_self_improve_intent() -> None:
     assert is_self_improve_request("Improve yourself by adding restart support.")
     assert is_self_improve_request("Improve yourself by making timer messages clearer.")
+    assert is_self_improve_request("Draft an improvement plan for clearer timer messages.")
+
+
+def test_router_draft_improvement_plan_command_routes_to_tool() -> None:
+    decision = AgentRouter().decide(
+        "Draft an improvement plan for clearer timer messages.",
+        conversation_id="agent-default",
+        history=[],
+    )
+    assert decision.mode == "tool"
+    assert decision.tool_name == "draft_improvement_plan"
 
 
 def test_router_self_improve_routes_before_timer_cancel() -> None:

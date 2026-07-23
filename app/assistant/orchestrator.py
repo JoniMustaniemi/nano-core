@@ -79,7 +79,7 @@ class AgentOrchestrator:
             answer_executor=self.answer_executor,
         )
 
-    def respond(self, message: str, conversation_id: str = "default") -> str:
+    def respond(self, message: str, conversation_id: str = "default") -> tuple[str, bool]:
         """
         Respond to a user message through the unified pipeline.
 
@@ -88,7 +88,7 @@ class AgentOrchestrator:
             conversation_id: Conversation identifier.
 
         Returns:
-            Composed assistant response.
+            Composed assistant response and whether it should be spoken aloud.
         """
         settings = get_settings()
         user_activity.touch()
@@ -106,7 +106,7 @@ class AgentOrchestrator:
         )
         return self._finalize(client=client, source=source)
 
-    def compose_and_persist(self, *, client: LLMClient, source: ResponseSource) -> str:
+    def compose_and_persist(self, *, client: LLMClient, source: ResponseSource) -> tuple[str, bool]:
         """
         Compose a response source and persist it.
 
@@ -143,7 +143,8 @@ class AgentOrchestrator:
             source="assistant.orchestrator.route",
         )
         if decision.mode != "planner" and ack_title != RECEIVED_TITLE:
-            self.tool_runner.announce_message(ack_title)
+            if not (decision.mode == "tool" and decision.tool_name == "draft_improvement_plan"):
+                self.tool_runner.announce_message(ack_title)
         return self._dispatch(
             decision=decision,
             client=client,
@@ -307,7 +308,7 @@ class AgentOrchestrator:
         pending_interactions.clear(conversation_id)
         return None
 
-    def _finalize(self, *, client: LLMClient, source: ResponseSource) -> str:
+    def _finalize(self, *, client: LLMClient, source: ResponseSource) -> tuple[str, bool]:
         return finalize_response(
             client,
             source,

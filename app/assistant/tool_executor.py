@@ -68,17 +68,20 @@ class ToolExecutor:
                 source="assistant.tool_executor",
             )
         if result.ok:
+            speak = tool_name != "draft_improvement_plan"
             return tool_result_source(
                 user_message=user_message,
                 facts=result.content,
                 tool_name=tool_name,
                 conversation_id=conversation_id,
+                speak=speak,
             )
         return tool_error_source(
             user_message=user_message,
             facts=result.content,
             tool_name=tool_name,
             conversation_id=conversation_id,
+            speak=tool_name != "draft_improvement_plan",
         )
 
 

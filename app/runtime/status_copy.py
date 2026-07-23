@@ -45,7 +45,7 @@ THINKING_TITLE = "I'm thinking."
 ANSWERING_TITLE = "I'm answering."
 RECEIVED_TITLE = "On it."
 RECEIVED_DETAIL = "Give me a moment."
-COMPOSING_TITLE = "Pulling it together."
+COMPOSING_TITLE = "Finishing up."
 COMPOSING_DETAIL = "Almost there."
 REVIEWING_CAPABILITIES_TITLE = "I'm reviewing my capabilities."
 INTRODUCING_TITLE = "I'm introducing myself."
@@ -79,10 +79,10 @@ PREPARING_WIPE_DETAIL = "Preparing confirmation for the destructive request."
 WAITING_WIPE_CONFIRMATION_DETAIL = "Waiting for your confirmation before I forget everything."
 WIPE_CANCELLED_DETAIL = "Nothing was deleted."
 WIPING_MEMORY_DETAIL = (
-    "Clearing notes, reminders, conversation, internal notes, and codebase memory."
+    "Clearing notes, reminders, conversation, internal notes, improvement plans, and codebase memory."
 )
 WIPED_MEMORY_DETAIL = (
-    "Notes, reminders, conversation history, internal notes, and codebase memory are gone."
+    "Notes, reminders, conversation history, internal notes, improvement plans, and codebase memory are gone."
 )
 CANCELLED_WIPE_TITLE = "I cancelled the wipe."
 DRAFTING_IMPROVEMENT_PLAN_TITLE = "I'm drafting an improvement plan."

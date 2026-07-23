@@ -234,13 +234,13 @@ class ResponseComposer:
     def _compose_self_improve_result(self, tool_result: str) -> str:
         payload = self._parse_json_dict(tool_result)
         if payload.get("ok"):
-            title = str(payload.get("title", "")).strip()
-            if title:
+            theme = self._brief_plan_theme(payload)
+            if theme:
                 return (
-                    f"I drafted an improvement plan: {title}. "
+                    f"I finished a new improvement plan about {theme}. "
                     "Open the Plans tab to read it."
                 )
-            return "I drafted an improvement plan. Open the Plans tab to read it."
+            return "I finished a new improvement plan. Open the Plans tab to read it."
         error = str(payload.get("error", "")).strip()
         step = str(payload.get("step", "unknown")).strip()
         if step == "gate":
@@ -259,6 +259,15 @@ class ResponseComposer:
                 f"I could not draft an improvement plan. I got stuck at the {step_label} step: {error}"
             )
         return "I could not draft an improvement plan."
+
+    def _brief_plan_theme(self, payload: dict[str, Any]) -> str:
+        for key in ("title", "goal"):
+            cleaned = " ".join(str(payload.get(key, "")).strip().split())
+            if cleaned and cleaned.lower() not in {"improvement plan", "code update"}:
+                if len(cleaned) <= 60:
+                    return cleaned
+                return f"{cleaned[:57]}..."
+        return ""
 
     def _parse_json_dict(self, value: str) -> dict[str, Any]:
         try:

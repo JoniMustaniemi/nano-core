@@ -10,3 +10,4 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     content: str
+    speak: bool = True

@@ -84,6 +84,7 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Plans" in response.text
     assert 'id="nano-tab-plans"' in response.text
     assert 'id="plans-list"' in response.text
+    assert 'id="plans-tab-count"' in response.text
     assert 'id="plan-reader"' in response.text
 
     assert 'id="brains-clear"' in response.text
@@ -102,12 +103,12 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=procedural-orb-20"' in response.text
+    assert 'href="/static/home.css?v=procedural-orb-24"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/globe_visualizer.js?v=procedural-orb-15"' in response.text
-    assert 'src="/static/home-state.js?v=procedural-orb-19"' in response.text
-    assert 'src="/static/home-plans.js?v=procedural-orb-19"' in response.text
+    assert 'src="/static/home-state.js?v=procedural-orb-24"' in response.text
+    assert 'src="/static/home-plans.js?v=procedural-orb-24"' in response.text
     assert 'src="/static/home.js?v=procedural-orb-19"' in response.text
 
     assert "Enter to send" in response.text
@@ -232,6 +233,10 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "runtime.long_task_progress" in js_text
 
+    assert "--text-primary" in css_text
+    assert "plans-tab-count" in css_text
+    assert "updatePlansTabCount" in js_text
+
     assert "formatProgressAnnouncement" in js_text
 
     assert 'playVoice(message, { resumeListening: false })' in js_text
@@ -259,6 +264,10 @@ def test_homepage_serves_static_assets() -> None:
     assert 'getElementById("brains-clear")' in js_text
 
     assert "ANSWER_CLEAR_DELAY_MS = 20000" in js_text
+
+    assert "resumeAnswerClearAfterSpeech" in js_text
+
+    assert "bypassSpeechGuard" in js_text
 
     assert "announceBootMessage" in js_text
 

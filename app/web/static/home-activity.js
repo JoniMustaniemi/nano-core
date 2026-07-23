@@ -53,9 +53,20 @@ function formatProgressAnnouncement(event) {
 }
 
 function applyActivityEvent(event) {
+  if (
+    event.kind === "state" &&
+    event.source === "tools.improvement_plan_service.completed"
+  ) {
+    setAnswer("I finished a new improvement plan. Open the Plans tab to read it.", {
+      animate: false,
+    });
+    void loadPlans();
+    return;
+  }
+
   if (event.kind === "log" && event.source === "runtime.long_task_progress") {
     const message = formatProgressAnnouncement(event);
-    if (message) {
+    if (message && !speakingActive) {
       setAnswer(message, { animate: false });
       if (voiceAvailable) {
         void playVoice(message, { resumeListening: false });

@@ -86,6 +86,7 @@ SELF_IMPROVE_PATTERNS: tuple[str, ...] = (
     r"\b(?:improve|fix|change|update|modify)\b.*\b(?:your(?:self)?|your code|nano)\b",
     r"\badd\b.*\b(?:to yourself|to nano)\b",
     r"\bpropose\s+self[\s-]?changes?\b",
+    r"\bdraft(?:ing)?\s+(?:an?\s+)?improvement\s+plan\b",
 )
 
 SELF_IMPROVE_FOLLOW_UP_PATTERNS: tuple[str, ...] = (
