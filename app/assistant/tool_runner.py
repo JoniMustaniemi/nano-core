@@ -5,7 +5,12 @@ from typing import Any
 
 from app.assistant.agent_types import ToolResult
 from app.runtime.activity import activity
-from app.runtime.status_copy import could_not_call_tool_title, running_tool_title, tool_error_title
+from app.runtime.status_copy import (
+    could_not_call_tool_title,
+    failed_tool_title,
+    running_tool_title,
+    tool_error_title,
+)
 from app.tools import get_tool, list_tools
 from app.tools.errors import ToolError
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
@@ -13,6 +18,10 @@ from app.voice.service import GladosVoiceService, VoiceUnavailableError
 _STRUCTURED_RESULT_TOOLS = frozenset(
     {"propose_self_changes", "create_pull_request", "apply_updates_and_restart"}
 )
+_STRUCTURED_FAILURE_TITLES: dict[str, str] = {
+    "propose_self_changes": failed_tool_title("propose_self_changes"),
+    "create_pull_request": failed_tool_title("create_pull_request"),
+}
 _STRUCTURED_FAILURE_SPOKEN: dict[str, str] = {
     "propose_self_changes": "I could not complete the self-improvement.",
     "create_pull_request": "I could not complete the pull request.",
@@ -57,7 +66,10 @@ class ToolRunner:
             ):
                 error_message = str(structured.get("error", "")).strip()
                 self.report_error(
-                    title=tool_error_title(tool_name),
+                    title=_STRUCTURED_FAILURE_TITLES.get(
+                        tool_name,
+                        tool_error_title(tool_name),
+                    ),
                     detail=error_message or "The tool reported a failure.",
                     spoken_message=_STRUCTURED_FAILURE_SPOKEN.get(
                         tool_name,

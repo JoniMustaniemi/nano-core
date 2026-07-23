@@ -1,16 +1,15 @@
 from pathlib import Path
 
-from app.config import get_settings
+from app.tools.workspace_context import effective_workspace_root, workspace_root
 
-
-def workspace_root() -> Path:
-    """
-    Return the workspace root path.
-
-    Returns:
-        Path result.
-    """
-    return Path(get_settings().workspace_root).resolve()
+__all__ = [
+    "effective_workspace_root",
+    "list_files",
+    "read_text_file",
+    "resolve_workspace_path",
+    "workspace_root",
+    "write_text_file",
+]
 
 
 def resolve_workspace_path(raw_path: str) -> Path:
@@ -26,7 +25,7 @@ def resolve_workspace_path(raw_path: str) -> Path:
     Raises:
         ValueError: If the operation cannot be completed.
     """
-    root = workspace_root()
+    root = effective_workspace_root()
     path = (root / raw_path).resolve()
     if root not in path.parents and path != root:
         raise ValueError("Path must stay within the workspace root.")

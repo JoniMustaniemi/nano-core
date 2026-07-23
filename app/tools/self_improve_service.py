@@ -12,14 +12,14 @@ from app.runtime.activity import activity
 from app.runtime.dev import uvicorn_reload_enabled
 from app.runtime.status_copy import (
   PLANNING_SELF_IMPROVE_TITLE,
-  SELF_IMPROVE_FAILED_TITLE,
-  SELF_IMPROVE_RELOAD_BLOCKED_ERROR,
+  SELF_IMPROVE_WORKTREE_DETAIL,
   VERIFYING_SELF_IMPROVE_DETAIL,
   VERIFYING_SELF_IMPROVE_TITLE,
 )
 from app.tools.files import read_text_file, write_text_file
 from app.tools.pr_service import PullRequestService
 from app.tools.pr_verify import run_pr_lint, run_pr_verification
+from app.tools.self_improve_worktree import SelfImproveWorktree
 
 
 @dataclass(frozen=True, slots=True)
@@ -269,11 +269,6 @@ def _fail_self_improve(
   goal: str,
   changed_files: list[str] | None = None,
 ) -> SelfImproveResult:
-  activity.error(
-    title=SELF_IMPROVE_FAILED_TITLE,
-    detail=error,
-    source="tools.self_improve_service",
-  )
   return SelfImproveResult(
     ok=False,
     step=step,
@@ -288,12 +283,24 @@ class SelfImproveService:
 
   def run(self, *, client: Any, goal: str) -> SelfImproveResult:
     if uvicorn_reload_enabled():
-      return _fail_self_improve(
-        step="preflight",
-        error=SELF_IMPROVE_RELOAD_BLOCKED_ERROR,
-        goal=goal,
+      setup = SelfImproveWorktree.try_setup(goal=goal)
+      if setup.error or setup.worktree is None:
+        return _fail_self_improve(
+          step="preflight",
+          error=setup.error or "Could not create a self-improvement worktree.",
+          goal=goal,
+        )
+      activity.log(
+        title=PLANNING_SELF_IMPROVE_TITLE,
+        detail=SELF_IMPROVE_WORKTREE_DETAIL,
+        source="tools.self_improve_service",
       )
+      with setup.worktree.activate():
+        return self._run_impl(client=client, goal=goal)
 
+    return self._run_impl(client=client, goal=goal)
+
+  def _run_impl(self, *, client: Any, goal: str) -> SelfImproveResult:
     settings = get_settings()
     allowed = settings.self_improve_allowed_prefix
 

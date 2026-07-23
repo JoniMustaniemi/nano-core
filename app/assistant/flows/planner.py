@@ -15,6 +15,7 @@ from app.runtime.status_copy import (
     PLANNING_ACTION_DETAIL,
     PLANNING_ACTION_TITLE,
     RUNNING_TOOL_DETAIL,
+    failed_tool_title,
     ran_tool_title,
     running_tool_title,
 )
@@ -147,11 +148,18 @@ class AgentPlanner:
             self.tool_runner.announce_call(tool_name)
             result = self.tool_runner.execute(tool_name, args)
             executed_tools[signature] = result
-            activity.log(
-                title=ran_tool_title(tool_name),
-                detail="Done.",
-                source="assistant.flows.planner",
-            )
+            if result.ok:
+                activity.log(
+                    title=ran_tool_title(tool_name),
+                    detail="Done.",
+                    source="assistant.flows.planner",
+                )
+            else:
+                activity.log(
+                    title=failed_tool_title(tool_name),
+                    detail="The tool reported a failure.",
+                    source="assistant.flows.planner",
+                )
             self._append_model_result(messages=messages, raw=raw, result=result)
 
         fallback = "I tried to complete the task, but I hit the step limit."

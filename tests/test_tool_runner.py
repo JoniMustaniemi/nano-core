@@ -65,9 +65,14 @@ def test_tool_runner_wraps_unexpected_exception(monkeypatch) -> None:
 def test_tool_runner_treats_structured_ok_false_as_failure(monkeypatch) -> None:
     runner = ToolRunner()
     announced: list[str] = []
+    reported: list[dict[str, str]] = []
     monkeypatch.setattr(
         "app.assistant.tool_runner.GladosVoiceService.announce",
         lambda self, text: announced.append(text),
+    )
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.activity.error",
+        lambda **kwargs: reported.append(kwargs),
     )
     payload = json.dumps(
         {
@@ -86,3 +91,5 @@ def test_tool_runner_treats_structured_ok_false_as_failure(monkeypatch) -> None:
 
     assert result.ok is False
     assert announced == ["I could not complete the self-improvement."]
+    assert reported
+    assert reported[0]["title"] == "I could not improve myself."

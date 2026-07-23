@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import get_settings
-from app.tools.files import workspace_root
+from app.tools.workspace_context import effective_workspace_root
 
 
 @dataclass(frozen=True, slots=True)
@@ -448,7 +448,7 @@ def _run_command(executable_name: str, args: list[str]) -> GitCommandResult:
     try:
         process = subprocess.run(
             [resolved, *args],
-            cwd=workspace_root(),
+            cwd=effective_workspace_root(),
             capture_output=True,
             text=True,
         )
