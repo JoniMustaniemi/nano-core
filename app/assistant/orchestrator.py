@@ -8,7 +8,6 @@ from app.assistant.flows.chat import AgentChatFlow
 from app.assistant.flows.note import NoteInteractionHandler
 from app.assistant.flows.planner import AgentPlanner
 from app.assistant.flows.presence_gate import PresenceGateHandler, presence_gate
-from app.assistant.flows.self_update import SelfUpdateInteractionHandler
 from app.assistant.flows.timer import TimerInteractionHandler
 from app.assistant.flows.wipe import WipeInteractionHandler
 from app.assistant.llm_factory import get_llm_client
@@ -44,7 +43,6 @@ class AgentOrchestrator:
         timer_handler: TimerInteractionHandler | None = None,
         wipe_handler: WipeInteractionHandler | None = None,
         presence_handler: PresenceGateHandler | None = None,
-        self_update_handler: SelfUpdateInteractionHandler | None = None,
         planner: AgentPlanner | None = None,
     ) -> None:
         """
@@ -75,7 +73,6 @@ class AgentOrchestrator:
         )
         self.wipe_handler = wipe_handler or WipeInteractionHandler()
         self.presence_handler = presence_handler or presence_gate
-        self.self_update_handler = self_update_handler or SelfUpdateInteractionHandler()
         self.planner = planner or AgentPlanner(
             tool_runner=self.tool_runner,
             chat_flow=self.chat_flow,
@@ -244,12 +241,6 @@ class AgentOrchestrator:
                 message=message,
             )
 
-        if decision.interaction == "self_update":
-            return self.self_update_handler.start(
-                conversation_id=conversation_id,
-                message=message,
-            )
-
         if decision.interaction == "timer":
             timer_source = self.timer_handler.handle_direct_request(
                 message=message,
@@ -299,7 +290,6 @@ class AgentOrchestrator:
                 return response
 
         handlers = (
-            self.self_update_handler,
             self.timer_handler,
             self.note_handler,
             self.wipe_handler,

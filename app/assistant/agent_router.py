@@ -15,7 +15,6 @@ from app.assistant.agent_rules import (
     is_pull_request_request,
     is_self_improve_follow_up,
     is_self_improve_request,
-    is_self_update_request,
     is_timer_cancel_request,
     is_timer_start_request,
     is_timer_status_request,
@@ -118,9 +117,6 @@ class AgentRouter:
 
         if is_pull_request_request(message):
             return RouteDecision(mode="tool", tool_name="create_pull_request", tool_args={})
-
-        if is_self_update_request(message):
-            return RouteDecision(mode="interaction", interaction="self_update")
 
         if is_capability_question(message):
             return RouteDecision(mode="capabilities")

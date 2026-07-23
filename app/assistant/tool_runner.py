@@ -15,9 +15,7 @@ from app.tools import get_tool, list_tools
 from app.tools.errors import ToolError
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
-_STRUCTURED_RESULT_TOOLS = frozenset(
-    {"propose_self_changes", "create_pull_request", "apply_updates_and_restart"}
-)
+_STRUCTURED_RESULT_TOOLS = frozenset({"propose_self_changes", "create_pull_request"})
 _STRUCTURED_FAILURE_TITLES: dict[str, str] = {
     "propose_self_changes": failed_tool_title("propose_self_changes"),
     "create_pull_request": failed_tool_title("create_pull_request"),
@@ -25,7 +23,6 @@ _STRUCTURED_FAILURE_TITLES: dict[str, str] = {
 _STRUCTURED_FAILURE_SPOKEN: dict[str, str] = {
     "propose_self_changes": "I could not complete the self-improvement.",
     "create_pull_request": "I could not complete the pull request.",
-    "apply_updates_and_restart": "I could not pull the latest changes.",
 }
 
 

@@ -93,13 +93,6 @@ TOOL_COMMANDS: tuple[ToolCommand, ...] = (
         description="Analyze Nano's code and open a self-improvement PR.",
     ),
     ToolCommand(
-        id="apply_updates_and_restart",
-        label="Pull latest and restart",
-        message="Pull the latest changes and restart.",
-        category="GitHub",
-        description="Pull main and reload app changes in dev mode.",
-    ),
-    ToolCommand(
         id="capabilities",
         label="What can you do?",
         message="What can you do?",

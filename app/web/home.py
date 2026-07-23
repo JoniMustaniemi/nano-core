@@ -71,11 +71,11 @@ def home() -> str:
 
             <title>{app_name}</title>
 
-            <link rel="stylesheet" href="/static/home.css?v=procedural-orb-7" />
+            <link rel="stylesheet" href="/static/home.css?v=procedural-orb-10" />
 
             <script defer src="/static/three.min.js?v=0.160.1"></script>
             <script defer src="/static/globe_visualizer.js?v=procedural-orb-15"></script>
-            <script defer src="/static/home.js?v=procedural-orb-15"></script>
+            <script defer src="/static/home.js?v=procedural-orb-17"></script>
 
           </head>
 
@@ -169,15 +169,13 @@ def home() -> str:
 
                   role="dialog"
 
-                  aria-modal="true"
+                  aria-modal="false"
 
-                  aria-labelledby="nano-sheet-title"
+                  aria-label="Nano controls"
 
                 >
 
                   <header class="nano-sheet-header">
-
-                    <h2 id="nano-sheet-title">Nano Controls</h2>
 
                     <button
 
@@ -453,7 +451,7 @@ def home() -> str:
 
                 role="dialog"
 
-                aria-modal="true"
+                aria-modal="false"
 
                 aria-labelledby="commands-title"
 

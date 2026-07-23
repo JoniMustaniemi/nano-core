@@ -86,12 +86,6 @@ SELF_IMPROVE_PATTERNS: tuple[str, ...] = (
     r"\bpropose\s+self[\s-]?changes?\b",
 )
 
-SELF_UPDATE_PATTERNS: tuple[str, ...] = (
-    r"\b(?:pull|download|fetch)\b.*\b(?:latest|newest|updates?)\b",
-    r"\brestart\b.*\b(?:yourself|nano)\b",
-    r"\bapply\s+updates?\b",
-)
-
 SELF_IMPROVE_FOLLOW_UP_PATTERNS: tuple[str, ...] = (
     r"^\s*(?:do it|go ahead|proceed|yes do it)\s*\.?$",
 )
@@ -134,11 +128,6 @@ def is_pull_request_request(message: str) -> bool:
 def is_self_improve_request(message: str) -> bool:
     lowered = " ".join(message.lower().split())
     return any(re.search(pattern, lowered) for pattern in SELF_IMPROVE_PATTERNS)
-
-
-def is_self_update_request(message: str) -> bool:
-    lowered = " ".join(message.lower().split())
-    return any(re.search(pattern, lowered) for pattern in SELF_UPDATE_PATTERNS)
 
 
 def is_self_improve_follow_up(message: str) -> bool:
@@ -335,8 +324,6 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_pull_request_request(message)
     if tool_name == "propose_self_changes":
         return is_self_improve_request(message) or is_self_improve_follow_up(message)
-    if tool_name == "apply_updates_and_restart":
-        return is_self_update_request(message)
     if tool_name == "add_note":
         return is_note_add_request(message)
     if tool_name == "list_notes":
