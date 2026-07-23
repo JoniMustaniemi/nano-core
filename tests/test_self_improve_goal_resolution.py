@@ -7,7 +7,7 @@ from app.memory.db import create_db_and_tables
 from app.memory.internal_note_service import InternalNoteService
 from app.proactive.types import ProactiveOffer
 from app.tools import get_tool
-from app.tools.self_improve_service import SelfImproveResult
+from app.tools.improvement_plan_service import ImprovementPlanResult
 
 
 def _record_self_improve_note(
@@ -75,7 +75,7 @@ def test_resolve_self_improve_goal_falls_back_without_notes(tmp_path, monkeypatc
     assert preferred_files == []
 
 
-def test_propose_self_changes_marks_note_delivered_on_success(tmp_path, monkeypatch) -> None:
+def test_draft_improvement_plan_marks_note_delivered_on_success(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'delivered.sqlite3'}")
     create_db_and_tables()
     _record_self_improve_note(goal="clearer timer errors")
@@ -85,16 +85,16 @@ def test_propose_self_changes_marks_note_delivered_on_success(tmp_path, monkeypa
     note_id = pending.id
     assert note_id is not None
 
-    tool = get_tool("propose_self_changes")
+    tool = get_tool("draft_improvement_plan")
     assert tool is not None
 
     monkeypatch.setattr(
-        "app.tools.self_improve_tools.SelfImproveService.run",
-        lambda self, client, goal, preferred_files=None: SelfImproveResult(
+        "app.tools.self_improve_tools.ImprovementPlanService.draft",
+        lambda self, client, goal, preferred_files=None, source_note_id=None: ImprovementPlanResult(
             ok=True,
             step="complete",
-            changed_files=["app/main.py"],
-            pr_url="https://example/pr",
+            plan_id=1,
+            title=goal,
             goal=goal,
         ),
     )
@@ -123,7 +123,7 @@ def test_router_bare_improve_yourself_routes_to_tool() -> None:
         history=[],
     )
     assert decision.mode == "tool"
-    assert decision.tool_name == "propose_self_changes"
+    assert decision.tool_name == "draft_improvement_plan"
     assert decision.tool_args == {"goal": "Improve yourself"}
 
 

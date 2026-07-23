@@ -74,6 +74,8 @@ def extract_json(raw: str) -> Any:
     Returns:
         Any result.
     """
+    if not isinstance(raw, str):
+        return None
     text = raw.strip()
     if text.startswith("```"):
         text = text.strip("`")

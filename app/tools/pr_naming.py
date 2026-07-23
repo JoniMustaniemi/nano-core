@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Any, cast
+from typing import Any
 
 from app.assistant.rules.parsing import extract_json
 from app.tools.git_github import ensure_unique_branch_slug
@@ -26,6 +26,13 @@ class PrNaming:
     commit_message: str
     body: str
     branch: str
+
+
+def _complete_text(client: Any, messages: list[dict[str, str]]) -> str:
+    raw = client.complete(messages=messages)
+    if not isinstance(raw, str):
+        return ""
+    return raw.strip()
 
 
 class PrNamingService:
@@ -52,7 +59,7 @@ class PrNamingService:
         naming: PrNaming | None = None
 
         for _attempt in range(2):
-            raw = cast(str, client.complete(messages=messages)).strip()
+            raw = _complete_text(client, messages)
             if looks_like_llm_unavailable(raw):
                 return _build_fallback_naming(context)
             naming = _parse_naming(raw, context=context)
@@ -208,15 +215,13 @@ def _correction_message(*, naming: PrNaming | None, invalid_json: bool) -> str:
 
 
 def _generate_prose_body(*, client: Any, context: dict[str, Any], slug: str) -> str:
-    return cast(
-        str,
-        client.complete(
-            messages=[
-                {"role": "system", "content": _BODY_SYSTEM_PROMPT},
-                {"role": "user", "content": _build_body_prompt(context, slug)},
-            ]
-        ),
-    ).strip()
+    return _complete_text(
+        client,
+        [
+            {"role": "system", "content": _BODY_SYSTEM_PROMPT},
+            {"role": "user", "content": _build_body_prompt(context, slug)},
+        ],
+    )
 
 
 def _derive_slug_from_context(context: dict[str, Any]) -> str:

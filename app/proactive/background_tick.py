@@ -2,19 +2,20 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from app.assistant.flows.presence_gate import presence_gate
 from app.assistant.pending import pending_interactions
 from app.config import get_settings
 from app.llm.factory import get_llm_client
+from app.memory import improvement_plans
 from app.memory.internal_note_service import internal_note_service
 from app.proactive.codebase_crawl import CodebaseCrawlService
 from app.proactive.store import proactive_store
 from app.runtime.activity import activity
 from app.runtime.user_activity import user_activity
+from app.tools.improvement_plan_service import ImprovementPlanService
 
 
 def run_proactive_background_tick() -> None:
-  """Silent internal-note check every 5 min; outreach when idle >= 10 min."""
+  """Silent internal-note check every 5 min; draft plans when idle >= 10 min."""
   settings = get_settings()
   conversation_id = settings.proactive_conversation_id
 
@@ -34,27 +35,27 @@ def run_proactive_background_tick() -> None:
   if pending_interactions.get(conversation_id) is not None:
     return
 
-  if proactive_store.has_offer() or proactive_store.snapshot()["waiting_for_presence"]:
-    return
-
   snapshot = activity.snapshot()
   if snapshot.get("state") != "standby":
     return
 
-  note = internal_note_service.top_priority_due_note()
+  if improvement_plans.has_unprocessed_plan():
+    return
+
+  due_notes = internal_note_service.list_due_notes()
+  note = next(
+    (candidate for candidate in due_notes if candidate.kind == "self_improvement_suggestion"),
+    None,
+  )
   if note is None:
     return
 
-  offer = internal_note_service.offer_from_internal_note(note)
-  proactive_store.set_offer(offer, internal_note_id=note.id)
-  presence_gate.start(
-    offer,
-    internal_note_id=note.id,
-    conversation_id=conversation_id,
-    follow_up=note.attempt_count > 0,
+  activity.working(
+    title="I'm drafting an improvement plan.",
+    detail=internal_note_service.goal_from_internal_note(note),
+    source="proactive.background_tick",
   )
-  if note.id is not None:
-    internal_note_service.mark_attempted(note.id)
+  ImprovementPlanService().draft_from_note(note, client=get_llm_client())
 
 
 def check_presence_timeouts() -> None:
@@ -63,6 +64,8 @@ def check_presence_timeouts() -> None:
   pending = pending_interactions.get(conversation_id)
   if pending is None or pending.kind != "presence_check":
     return
+
+  from app.assistant.flows.presence_gate import presence_gate
 
   started_raw = pending.payload.get("presence_started_at")
   if not isinstance(started_raw, str):

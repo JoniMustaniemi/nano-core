@@ -85,11 +85,9 @@ WIPED_MEMORY_DETAIL = (
     "Notes, reminders, conversation history, internal notes, and codebase memory are gone."
 )
 CANCELLED_WIPE_TITLE = "I cancelled the wipe."
-SELF_IMPROVE_FAILED_TITLE = "I could not improve myself."
-SELF_IMPROVE_WORKTREE_DETAIL = "Using isolated worktree so dev reload stays stable."
-PLANNING_SELF_IMPROVE_TITLE = "I'm planning self-improvement."
-VERIFYING_SELF_IMPROVE_TITLE = "I'm verifying self-improvement."
-VERIFYING_SELF_IMPROVE_DETAIL = "Making sure nothing broke before I ask for a review."
+DRAFTING_IMPROVEMENT_PLAN_TITLE = "I'm drafting an improvement plan."
+DRAFTING_IMPROVEMENT_PLAN_DETAIL = "Reviewing code and writing a readable plan."
+IMPROVEMENT_PLAN_FAILED_TITLE = "I could not draft an improvement plan."
 PREPARING_PR_TITLE = "I'm preparing a pull request."
 PREPARING_PR_PREFLIGHT_DETAIL = "Running preflight checks."
 PREPARING_PR_LINT_DETAIL = "Running lint checks before any git writes."
@@ -128,7 +126,7 @@ _TOOL_ACTIVITY_TITLES: dict[str, str] = {
     "list_notes": "I'm reading notes.",
     "list_reminders": "I'm checking reminders.",
     "list_timers": "I'm checking timers.",
-    "propose_self_changes": "I'm improving myself.",
+    "draft_improvement_plan": "I'm drafting an improvement plan.",
     "read_file": "I'm reading a file.",
     "run_python": "I'm running code.",
     "start_timer": "I'm setting a timer.",
@@ -146,7 +144,7 @@ _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
     "list_notes": "I read your notes.",
     "list_reminders": "I checked reminders.",
     "list_timers": "I checked timers.",
-    "propose_self_changes": "I finished planning improvements.",
+    "draft_improvement_plan": "I drafted an improvement plan.",
     "read_file": "I read a file.",
     "run_python": "I ran code.",
     "start_timer": "I set a timer.",
@@ -155,7 +153,7 @@ _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
 
 
 _TOOL_ACTIVITY_FAILED_TITLES: dict[str, str] = {
-    "propose_self_changes": SELF_IMPROVE_FAILED_TITLE,
+    "draft_improvement_plan": IMPROVEMENT_PLAN_FAILED_TITLE,
     "create_pull_request": PR_WORKFLOW_FAILED_TITLE,
 }
 

@@ -33,6 +33,7 @@ nanoControlsToggle.addEventListener("click", () => {
 nanoSheetClose.addEventListener("click", closeNanoSheet);
 nanoSheetBackdrop.addEventListener("click", closeNanoSheet);
 nanoTabBrains.addEventListener("click", () => setNanoTab("brains"));
+nanoTabPlans.addEventListener("click", () => setNanoTab("plans"));
 nanoTabStorage.addEventListener("click", () => setNanoTab("storage"));
 nanoSheet.querySelector(".nano-sheet-panel").addEventListener("keydown", (event) => {
   if (event.key === "Escape") {

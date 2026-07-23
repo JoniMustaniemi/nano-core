@@ -26,9 +26,16 @@ const nanoSheetBackdrop = document.getElementById("nano-sheet-backdrop");
 const nanoSheetClose = document.getElementById("nano-sheet-close");
 const nanoControlsToggle = document.getElementById("nano-controls-toggle");
 const nanoTabBrains = document.getElementById("nano-tab-brains");
+const nanoTabPlans = document.getElementById("nano-tab-plans");
 const nanoTabStorage = document.getElementById("nano-tab-storage");
 const nanoPanelBrains = document.getElementById("nano-panel-brains");
+const nanoPanelPlans = document.getElementById("nano-panel-plans");
 const nanoPanelStorage = document.getElementById("nano-panel-storage");
+const plansList = document.getElementById("plans-list");
+const planReader = document.getElementById("plan-reader");
+const planReaderTitle = document.getElementById("plan-reader-title");
+const planReaderBody = document.getElementById("plan-reader-body");
+const planProcessButton = document.getElementById("plan-process-button");
 const globeCanvas = document.getElementById("globe-canvas");
 const globeMiniCanvas = document.getElementById("globe-mini-canvas");
 
@@ -74,6 +81,7 @@ const DEFAULT_VOICE_VOLUME = 0.8;
 let keyboardOpen = false;
 let nanoSheetOpen = false;
 let activeNanoTab = "brains";
+let activePlanId = null;
 let speakingActive = false;
 
 let mainGlobe = null;

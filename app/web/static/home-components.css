@@ -148,6 +148,15 @@
   padding: 20px 24px 14px;
 }
 
+.nano-sheet-chrome {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+}
+
 .nano-sheet-header h2 {
   margin: 0;
   color: var(--accent-strong);
@@ -157,42 +166,82 @@
 }
 
 .nano-sheet-close {
+  flex-shrink: 0;
+  align-self: center;
   min-height: 38px;
-  padding: 0 16px;
-  font-size: 0.8rem;
+  margin: 10px 16px 10px 8px;
+  padding: 0 14px;
+  font-size: 0.76rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   border-radius: 4px;
 }
 
 .nano-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex: 1;
+  min-width: 0;
   gap: 0;
-  border-bottom: 1px solid rgba(57, 255, 20, 0.12);
 }
 
 .nano-tab {
+  position: relative;
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 16px 14px;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px 10px;
   border: 0;
-  border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
   color: var(--muted);
-  font: 700 0.86rem/1 "Cascadia Mono", "Consolas", monospace;
+  font: 700 0.8rem/1.1 "Cascadia Mono", "Consolas", monospace;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.nano-tab::after {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: transparent;
+  transition: background 140ms ease;
 }
 
 .nano-tab.active {
   color: var(--accent-strong);
-  border-bottom-color: var(--accent);
+  background: rgba(57, 255, 20, 0.04);
+}
+
+.nano-tab.active::after {
+  background: var(--accent);
+}
+
+.nano-tab-text-short {
+  display: none;
+}
+
+@media (max-width: 520px) {
+  .nano-tab {
+    padding: 14px 6px;
+    font-size: 0.72rem;
+  }
+
+  .nano-tab-text-full {
+    display: none;
+  }
+
+  .nano-tab-text-short {
+    display: inline;
+  }
 }
 
 .nano-panels {
@@ -206,8 +255,8 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 24px 24px;
+  gap: 10px;
+  padding: 12px 16px 16px;
   overflow: hidden;
   opacity: 0;
   visibility: hidden;
@@ -222,15 +271,26 @@
 
 .nano-panel-toolbar {
   display: flex;
-  justify-content: flex-end;
-  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
   flex-shrink: 0;
+  padding: 0 2px;
 }
 
+.nano-panel-label {
+  color: rgba(107, 143, 114, 0.9);
+  font: 600 0.72rem/1.2 "Cascadia Mono", "Consolas", monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.panel-action,
 .brains-clear {
-  min-height: 36px;
-  padding: 0 14px;
-  font-size: 0.76rem;
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   border-radius: 4px;
@@ -647,4 +707,153 @@ body.inputs-locked #keyboard-toggle:disabled {
     width: 50px;
     height: 50px;
   }
+}
+
+.plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.plans-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 180px;
+  margin: 0;
+  padding: 24px 16px;
+  border: 1px dashed rgba(57, 255, 20, 0.14);
+  border-radius: 8px;
+  color: rgba(107, 143, 114, 0.95);
+  font: 500 0.84rem/1.5 "Cascadia Mono", "Consolas", monospace;
+  text-align: center;
+}
+
+.plan-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  row-gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(57, 255, 20, 0.12);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.plan-card:hover {
+  border-color: rgba(57, 255, 20, 0.28);
+  background: rgba(8, 18, 12, 0.72);
+  transform: translateY(-1px);
+}
+
+.plan-card-title {
+  grid-column: 1;
+  grid-row: 1;
+  font: 700 0.86rem/1.35 "Cascadia Mono", "Consolas", monospace;
+  color: var(--accent-strong);
+}
+
+.plan-card-meta {
+  grid-column: 1;
+  grid-row: 2;
+  font: 500 0.74rem/1.4 "Cascadia Mono", "Consolas", monospace;
+  color: var(--text-muted);
+}
+
+.plan-card-status {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font: 700 0.66rem/1 "Cascadia Mono", "Consolas", monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.plan-card-status.pending {
+  color: #9dffc0;
+  background: rgba(57, 255, 20, 0.12);
+  border: 1px solid rgba(57, 255, 20, 0.22);
+}
+
+.plan-card-status.processed {
+  color: rgba(107, 143, 114, 0.95);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plan-reader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 16px;
+  background: linear-gradient(180deg, rgba(2, 6, 4, 0.98), rgba(2, 6, 4, 0.94));
+}
+
+.plan-reader-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.plan-reader-header h3 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font: 700 0.9rem/1.35 "Cascadia Mono", "Consolas", monospace;
+  color: var(--accent-strong);
+}
+
+.plan-reader-body {
+  flex: 1;
+  margin: 0;
+  padding: 14px 16px;
+  overflow: auto;
+  border: 1px solid rgba(57, 255, 20, 0.12);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+  font: 500 0.84rem/1.55 "Cascadia Mono", "Consolas", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.plan-process-button {
+  align-self: stretch;
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid rgba(57, 255, 20, 0.28);
+  border-radius: 6px;
+  background: rgba(57, 255, 20, 0.1);
+  color: var(--accent-strong);
+  font: 700 0.8rem/1.2 "Cascadia Mono", "Consolas", monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.plan-process-button:hover {
+  background: rgba(57, 255, 20, 0.16);
+  border-color: rgba(57, 255, 20, 0.42);
 }

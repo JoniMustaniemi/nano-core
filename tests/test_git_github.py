@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.tools.git_command import resolve_executable, run_gh
+from app.tools.git_command import _normalize_output, resolve_executable, run_gh
 from app.tools.git_github import OpenPullRequest, ensure_feature_branch, get_open_pull_request
 
 
@@ -63,6 +63,28 @@ def test_run_gh_returns_clear_error_when_missing(monkeypatch: pytest.MonkeyPatch
 
     assert result.returncode == 127
     assert "GitHub CLI" in result.stderr
+
+
+def test_normalize_output_treats_none_as_empty() -> None:
+    assert _normalize_output(None) == ""
+    assert _normalize_output("hello\n") == "hello\n"
+
+
+def test_run_git_handles_none_subprocess_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.tools.git_command.resolve_executable", lambda name: "git")
+
+    def fake_run(*args, **kwargs):
+        return SimpleNamespace(returncode=0, stdout=None, stderr=None)
+
+    monkeypatch.setattr("app.tools.git_command.subprocess.run", fake_run)
+
+    from app.tools.git_command import run_git
+
+    result = run_git("status")
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
 
 
 def test_get_open_pull_request_returns_none_when_no_open_prs(

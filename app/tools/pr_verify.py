@@ -41,8 +41,9 @@ def resolve_verify_command() -> list[str] | None:
         Command argv list, or None when no command can be resolved.
     """
     settings = get_settings()
-    if settings.github_pr_verify_command.strip():
-        return _split_command(settings.github_pr_verify_command.strip())
+    configured = str(settings.github_pr_verify_command or "").strip()
+    if configured:
+        return _split_command(configured)
 
     root = effective_workspace_root()
     pyproject = root / "pyproject.toml"
@@ -148,6 +149,8 @@ def _run_command(command: list[str], *, failure_message: str) -> VerifyResult:
             cwd=effective_workspace_root(),
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=settings.github_pr_verify_timeout_seconds,
         )
     except subprocess.TimeoutExpired as exc:
