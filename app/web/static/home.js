@@ -1,20 +1,15 @@
 const stateLine = document.getElementById("state-line");
 const activityStatus = document.getElementById("activity-status");
-const stateSegments = Array.from(document.querySelectorAll("[data-state-segment]"));
+const activityStatusText = activityStatus.querySelector(".activity-status-text");
 const activityLog = document.getElementById("activity-log");
 const brainsClearButton = document.getElementById("brains-clear");
 const voiceStatus = document.getElementById("voice-status");
 const replyStatus = document.getElementById("reply-status");
 const messageBox = document.getElementById("message");
 const sendButton = document.getElementById("send");
-const listenButton = document.getElementById("voice-listen");
-const copyAnswerButton = document.getElementById("copy-answer");
+const audioToggle = document.getElementById("audio-toggle");
 const answerOutput = document.getElementById("answer-output");
 const voiceAudio = document.getElementById("voice-audio");
-const brainsPanel = document.querySelector(".brains");
-const brainsStatus = document.getElementById("brains-status");
-const storagePanel = document.querySelector(".storage");
-const storageStatus = document.getElementById("storage-status");
 const storageLog = document.getElementById("storage-log");
 const commandsToggle = document.getElementById("commands-toggle");
 const commandsDrawer = document.getElementById("commands-drawer");
@@ -22,6 +17,20 @@ const commandsBackdrop = document.getElementById("commands-backdrop");
 const commandsClose = document.getElementById("commands-close");
 const commandsPanel = document.getElementById("commands-panel");
 const commandsList = document.getElementById("commands-list");
+const voiceVolumeInput = document.getElementById("voice-volume");
+const voiceVolumeValue = document.getElementById("voice-volume-value");
+const keyboardToggle = document.getElementById("keyboard-toggle");
+const keyboardPanel = document.getElementById("keyboard-panel");
+const nanoSheet = document.getElementById("nano-sheet");
+const nanoSheetBackdrop = document.getElementById("nano-sheet-backdrop");
+const nanoSheetClose = document.getElementById("nano-sheet-close");
+const nanoControlsToggle = document.getElementById("nano-controls-toggle");
+const nanoTabBrains = document.getElementById("nano-tab-brains");
+const nanoTabStorage = document.getElementById("nano-tab-storage");
+const nanoPanelBrains = document.getElementById("nano-panel-brains");
+const nanoPanelStorage = document.getElementById("nano-panel-storage");
+const globeCanvas = document.getElementById("globe-canvas");
+const globeMiniCanvas = document.getElementById("globe-mini-canvas");
 
 let currentVoiceUrl = null;
 let voicePlaybackQueue = Promise.resolve();
@@ -50,14 +59,128 @@ let currentActivitySnapshot = {
 const activityStates = ["standby", "working", "error"];
 const STANDBY_HEADLINE = "I'm in standby.";
 const STANDBY_DETAIL_DEFAULT = "Awaiting your input.";
-const WORKING_HEADLINE_DEFAULT = "I'm working.";
 const LISTENING_HEADLINE_DEFAULT = "I'm listening.";
-const WORKING_DETAIL_DEFAULT = "Processing your message.";
+const WORKING_DETAIL_DEFAULT = "Give me a moment.";
+const RECEIVED_DETAIL = "Give me a moment.";
 let bootAnnouncementPlayed = false;
 let lastActivityEventId = 0;
 let activityLogHiddenBeforeId = 0;
 let answerClearTimer = null;
+let answerRevealTimer = null;
 const ANSWER_CLEAR_DELAY_MS = 20000;
+const IDLE_RESPONSE = "What can I do for you today?";
+const VOICE_VOLUME_STORAGE_KEY = "nano.voiceVolume";
+const DEFAULT_VOICE_VOLUME = 0.8;
+let keyboardOpen = false;
+let nanoSheetOpen = false;
+let activeNanoTab = "brains";
+let speakingActive = false;
+
+let mainGlobe = null;
+let miniGlobe = null;
+
+function initGlobes() {
+  if (typeof window.initEssenceOrbs === "function") {
+    window.initEssenceOrbs();
+    mainGlobe = window.mainGlobe || null;
+    miniGlobe = window.miniGlobe || null;
+  }
+}
+
+function updateGlobeState() {
+  let state = getDisplayState();
+  if (speakingActive) {
+    state = "speaking";
+  }
+  if (stateLine.textContent === "reconnecting") {
+    state = "reconnecting";
+  }
+  if (mainGlobe) {
+    mainGlobe.setState(state);
+  }
+  if (miniGlobe) {
+    miniGlobe.setState(state);
+  }
+}
+
+function formatVoiceVolumePercent(volume) {
+  return `${Math.round(volume * 100)}%`;
+}
+
+function loadVoiceVolume() {
+  try {
+    const stored = window.localStorage.getItem(VOICE_VOLUME_STORAGE_KEY);
+    if (stored === null) {
+      return DEFAULT_VOICE_VOLUME;
+    }
+    const parsed = Number(stored);
+    if (!Number.isFinite(parsed)) {
+      return DEFAULT_VOICE_VOLUME;
+    }
+    return Math.min(1, Math.max(0, parsed));
+  } catch (_error) {
+    return DEFAULT_VOICE_VOLUME;
+  }
+}
+
+function saveVoiceVolume(volume) {
+  try {
+    window.localStorage.setItem(VOICE_VOLUME_STORAGE_KEY, String(volume));
+  } catch (_error) {
+    return;
+  }
+}
+
+function applyVoiceVolume(volume = loadVoiceVolume()) {
+  const clamped = Math.min(1, Math.max(0, volume));
+  voiceAudio.volume = clamped;
+  if (voiceVolumeInput) {
+    voiceVolumeInput.value = String(Math.round(clamped * 100));
+    voiceVolumeInput.disabled = !voiceAvailable;
+  }
+  if (voiceVolumeValue) {
+    voiceVolumeValue.textContent = formatVoiceVolumePercent(clamped);
+  }
+  return clamped;
+}
+
+async function syncVoiceVolumeToServer(volume) {
+  try {
+    const response = await fetch("/api/voice/volume", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ volume }),
+    });
+    if (!response.ok) {
+      return;
+    }
+    const payload = await response.json();
+    if (typeof payload.volume === "number") {
+      saveVoiceVolume(payload.volume);
+    }
+  } catch (_error) {
+    return;
+  }
+}
+
+function setVoiceVolumeFromInput(percent) {
+  const volume = applyVoiceVolume(percent / 100);
+  saveVoiceVolume(volume);
+  void syncVoiceVolumeToServer(volume);
+}
+
+async function initVoiceVolumeControl() {
+  applyVoiceVolume();
+  await syncVoiceVolumeToServer(loadVoiceVolume());
+  if (!voiceVolumeInput) {
+    return;
+  }
+  voiceVolumeInput.addEventListener("input", () => {
+    setVoiceVolumeFromInput(Number(voiceVolumeInput.value));
+  });
+}
 
 function formatBootMessage(snapshot) {
   const headline = (snapshot.headline || "").trim();
@@ -86,7 +209,7 @@ async function announceBootMessage(snapshot) {
     return;
   }
   bootAnnouncementPlayed = true;
-  setAnswer(message);
+  setAnswer(message, { animate: false });
   if (voiceAvailable) {
     await playVoice(message);
   }
@@ -191,11 +314,13 @@ function updateInputLock() {
   messageBox.disabled = locked;
   sendButton.disabled = locked;
   commandsToggle.disabled = locked;
+  nanoControlsToggle.disabled = locked;
+  keyboardToggle.disabled = locked;
   setCommandButtonsDisabled(locked);
   if (!SpeechRecognitionCtor) {
-    listenButton.disabled = true;
+    audioToggle.disabled = true;
   } else {
-    listenButton.disabled = locked;
+    audioToggle.disabled = locked;
   }
   document.body.classList.toggle("inputs-locked", locked);
 }
@@ -237,15 +362,15 @@ async function runToolCommand(message) {
 
 function updateListenButton() {
   if (!SpeechRecognitionCtor) {
-    listenButton.disabled = true;
-    listenButton.textContent = "Voice Unavailable";
-    listenButton.classList.remove("active");
+    audioToggle.disabled = true;
+    audioToggle.classList.remove("active");
+    audioToggle.setAttribute("aria-pressed", "false");
     renderState();
     return;
   }
-  listenButton.disabled = false;
-  listenButton.textContent = listeningEnabled ? "Stop Listening" : "Start Listening";
-  listenButton.classList.toggle("active", listeningEnabled);
+  audioToggle.disabled = false;
+  audioToggle.classList.toggle("active", listeningEnabled);
+  audioToggle.setAttribute("aria-pressed", listeningEnabled ? "true" : "false");
   renderState();
 }
 
@@ -271,7 +396,7 @@ function resolveActivityHeadline() {
 
   if (displayState === "working") {
     if (!headline || headline === STANDBY_HEADLINE) {
-      headline = WORKING_HEADLINE_DEFAULT;
+      headline = detail || WORKING_DETAIL_DEFAULT;
     }
   } else if (displayState === "listening") {
     if (!headline || headline === STANDBY_HEADLINE) {
@@ -288,16 +413,14 @@ function resolveActivityHeadline() {
 }
 
 function renderActivityStatus() {
-  activityStatus.textContent = resolveActivityHeadline();
+  activityStatusText.textContent = resolveActivityHeadline();
 }
 
 function renderState() {
   const displayState = getDisplayState();
   stateLine.textContent = displayState;
-  for (const segment of stateSegments) {
-    segment.classList.toggle("active", segment.dataset.stateSegment === displayState);
-  }
   renderActivityStatus();
+  updateGlobeState();
   updateInputLock();
 }
 
@@ -728,20 +851,35 @@ function applyStatusSnapshot(snapshot) {
 }
 
 function applyActivityEvent(event) {
+  if (event.kind === "log" && (requestInFlight || currentActivitySnapshot.state === "working")) {
+    const progressLine = (event.title || "").trim();
+    if (progressLine) {
+      currentActivitySnapshot = {
+        ...currentActivitySnapshot,
+        state: "working",
+        detail: progressLine,
+      };
+      renderState();
+    }
+    return;
+  }
+
   if (event.kind !== "state") {
     return;
   }
   const nextState = activityStates.includes(event.state) ? event.state : "standby";
   const useServerCopy = nextState === "standby" || nextState === "error";
+  const nextHeadline = useServerCopy
+    ? (event.title || STANDBY_HEADLINE)
+    : (event.title || currentActivitySnapshot.headline);
+  const nextDetail = useServerCopy
+    ? (event.detail ?? STANDBY_DETAIL_DEFAULT)
+    : (event.detail ?? currentActivitySnapshot.detail);
   currentActivitySnapshot = {
     ...currentActivitySnapshot,
     state: nextState,
-    headline: useServerCopy
-      ? (event.title || STANDBY_HEADLINE)
-      : (event.title || currentActivitySnapshot.headline),
-    detail: useServerCopy
-      ? (event.detail ?? STANDBY_DETAIL_DEFAULT)
-      : (event.detail ?? currentActivitySnapshot.detail),
+    headline: nextHeadline,
+    detail: nextDetail,
   };
   if (event.source === "proactive.presence_gate") {
     void fetchProactiveStatus();
@@ -824,6 +962,117 @@ function appendEvent(event) {
   activityLog.scrollTop = activityLog.scrollHeight;
 }
 
+function openKeyboardPanel() {
+  if (isBusy()) {
+    return;
+  }
+  keyboardOpen = true;
+  keyboardPanel.hidden = false;
+  document.body.classList.add("keyboard-open");
+  keyboardToggle.querySelector("span").textContent = "Use Voice";
+  messageBox.focus();
+}
+
+function closeKeyboardPanel() {
+  keyboardOpen = false;
+  document.body.classList.remove("keyboard-open");
+  keyboardPanel.hidden = true;
+  keyboardToggle.querySelector("span").textContent = "Use Keyboard";
+}
+
+function toggleKeyboardPanel() {
+  if (keyboardOpen) {
+    closeKeyboardPanel();
+  } else {
+    openKeyboardPanel();
+  }
+}
+
+function setNanoTab(tab) {
+  activeNanoTab = tab;
+  const isBrains = tab === "brains";
+  nanoTabBrains.classList.toggle("active", isBrains);
+  nanoTabStorage.classList.toggle("active", !isBrains);
+  nanoTabBrains.setAttribute("aria-selected", isBrains ? "true" : "false");
+  nanoTabStorage.setAttribute("aria-selected", isBrains ? "false" : "true");
+  nanoPanelBrains.classList.toggle("active", isBrains);
+  nanoPanelStorage.classList.toggle("active", !isBrains);
+  nanoPanelBrains.hidden = !isBrains;
+  nanoPanelStorage.hidden = isBrains;
+}
+
+function openNanoSheet(tab = "brains") {
+  if (isBusy()) {
+    return;
+  }
+  nanoSheetOpen = true;
+  nanoSheet.classList.add("open");
+  nanoSheet.setAttribute("aria-hidden", "false");
+  nanoControlsToggle.setAttribute("aria-expanded", "true");
+  setNanoTab(tab);
+  nanoSheetClose.focus();
+}
+
+function closeNanoSheet() {
+  nanoSheetOpen = false;
+  nanoSheet.classList.remove("open");
+  nanoSheet.setAttribute("aria-hidden", "true");
+  nanoControlsToggle.setAttribute("aria-expanded", "false");
+  nanoControlsToggle.focus();
+}
+
+function cancelAnswerReveal() {
+  if (answerRevealTimer !== null) {
+    window.clearTimeout(answerRevealTimer);
+    answerRevealTimer = null;
+  }
+  answerOutput.classList.remove("rolling");
+}
+
+function computeResponseFontSize(length) {
+  if (length <= 90) {
+    return "clamp(1.35rem, 3.5vw + 0.6rem, 2.6rem)";
+  }
+  if (length <= 180) {
+    return "clamp(1.15rem, 2.8vw + 0.45rem, 2.1rem)";
+  }
+  if (length <= 320) {
+    return "clamp(1rem, 2.2vw + 0.3rem, 1.65rem)";
+  }
+  if (length <= 480) {
+    return "clamp(0.92rem, 1.8vw + 0.2rem, 1.35rem)";
+  }
+  return "clamp(0.82rem, 1.4vw + 0.15rem, 1.1rem)";
+}
+
+function applyResponseTypography(length) {
+  answerOutput.style.setProperty("--response-font-size", computeResponseFontSize(length));
+}
+
+function revealAnswerRolling(content, onComplete) {
+  const tokens = content.match(/\S+\s*/gu) || [content];
+  let index = 0;
+  answerOutput.textContent = "";
+  answerOutput.classList.add("rolling");
+
+  const step = () => {
+    if (index >= tokens.length) {
+      answerOutput.classList.remove("rolling");
+      answerRevealTimer = null;
+      if (typeof onComplete === "function") {
+        onComplete();
+      }
+      return;
+    }
+    answerOutput.textContent += tokens[index];
+    index += 1;
+    const delay = content.length > 420 ? 18 : content.length > 240 ? 24 : content.length > 120 ? 32 : 42;
+    answerRevealTimer = window.setTimeout(step, delay);
+  };
+
+  step();
+}
+
 function clearAnswerClearTimer() {
   if (answerClearTimer !== null) {
     window.clearTimeout(answerClearTimer);
@@ -835,21 +1084,105 @@ function scheduleAnswerClear() {
   clearAnswerClearTimer();
   answerClearTimer = window.setTimeout(() => {
     answerClearTimer = null;
-    setAnswer("");
+    setAnswer("", { animate: false });
   }, ANSWER_CLEAR_DELAY_MS);
 }
 
-function setAnswer(text) {
+function setAnswer(text, options = {}) {
   const content = text.trim();
+  const animate = options.animate !== false;
   clearAnswerClearTimer();
+  cancelAnswerReveal();
   if (!content) {
-    answerOutput.textContent = "Awaiting signal.";
+    answerOutput.textContent = IDLE_RESPONSE;
     answerOutput.classList.add("empty");
+    applyResponseTypography(IDLE_RESPONSE.length);
     return;
   }
-  answerOutput.textContent = content;
   answerOutput.classList.remove("empty");
-  scheduleAnswerClear();
+  applyResponseTypography(content.length);
+
+  const finish = () => {
+    scheduleAnswerClear();
+  };
+
+  if (!animate) {
+    answerOutput.textContent = content;
+    finish();
+    return;
+  }
+
+  revealAnswerRolling(content, finish);
+}
+
+let voiceAudioContext = null;
+let voiceAnalyser = null;
+let voiceAnalyserBuffer = null;
+let voiceLevelFrame = null;
+
+function ensureVoiceAnalyser() {
+  if (voiceAnalyser) {
+    return voiceAnalyser;
+  }
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) {
+    return null;
+  }
+  voiceAudioContext = new AudioCtx();
+  const source = voiceAudioContext.createMediaElementSource(voiceAudio);
+  voiceAnalyser = voiceAudioContext.createAnalyser();
+  voiceAnalyser.fftSize = 512;
+  voiceAnalyser.smoothingTimeConstant = 0.8;
+  source.connect(voiceAnalyser);
+  voiceAnalyser.connect(voiceAudioContext.destination);
+  voiceAnalyserBuffer = new Uint8Array(voiceAnalyser.fftSize);
+  return voiceAnalyser;
+}
+
+async function resumeVoiceAudioContext() {
+  ensureVoiceAnalyser();
+  if (voiceAudioContext && voiceAudioContext.state === "suspended") {
+    await voiceAudioContext.resume();
+  }
+}
+
+function measureVoiceLevel() {
+  if (!voiceAnalyser || !voiceAnalyserBuffer) {
+    return 0;
+  }
+  voiceAnalyser.getByteTimeDomainData(voiceAnalyserBuffer);
+  let sum = 0;
+  for (let index = 0; index < voiceAnalyserBuffer.length; index += 1) {
+    const sample = (voiceAnalyserBuffer[index] - 128) / 128;
+    sum += sample * sample;
+  }
+  return Math.min(1, Math.sqrt(sum / voiceAnalyserBuffer.length) * 6.2);
+}
+
+function pushVoiceLevelToGlobes(level) {
+  if (mainGlobe) {
+    mainGlobe.setAudioLevel(level);
+  }
+  if (miniGlobe) {
+    miniGlobe.setAudioLevel(level);
+  }
+}
+
+function startVoiceLevelMonitor() {
+  stopVoiceLevelMonitor();
+  const tick = () => {
+    pushVoiceLevelToGlobes(measureVoiceLevel());
+    voiceLevelFrame = requestAnimationFrame(tick);
+  };
+  voiceLevelFrame = requestAnimationFrame(tick);
+}
+
+function stopVoiceLevelMonitor() {
+  if (voiceLevelFrame) {
+    cancelAnimationFrame(voiceLevelFrame);
+    voiceLevelFrame = null;
+  }
+  pushVoiceLevelToGlobes(0);
 }
 
 async function playVoice(text, options = {}) {
@@ -869,6 +1202,8 @@ async function playVoiceNow(text, options = {}) {
     await pauseRecognitionForSpeech();
   }
   clearVoiceSource();
+  speakingActive = true;
+  updateGlobeState();
   try {
     const response = await fetch("/api/voice", {
       method: "POST",
@@ -884,11 +1219,17 @@ async function playVoiceNow(text, options = {}) {
     const blob = await response.blob();
     currentVoiceUrl = URL.createObjectURL(blob);
     voiceAudio.src = currentVoiceUrl;
+    applyVoiceVolume();
+    await resumeVoiceAudioContext();
     await voiceAudio.play();
+    startVoiceLevelMonitor();
     await waitForVoicePlayback();
   } catch (error) {
     replyStatus.textContent = `I answered, but voice playback failed: ${error.message}`;
   } finally {
+    stopVoiceLevelMonitor();
+    speakingActive = false;
+    updateGlobeState();
     clearVoiceSource();
     if (shouldResumeRecognition && microphoneReady) {
       listeningForCommand = preserveCommandMode;
@@ -1002,6 +1343,7 @@ async function bootstrap() {
         replyStatus.textContent = voice.detail;
       }
     }
+    applyVoiceVolume();
     await announceBootMessage(snapshot);
     const commands = await loadToolCommands();
     renderToolCommands(commands);
@@ -1037,6 +1379,7 @@ function listen(lastEventId = 0) {
   });
   source.onerror = () => {
     stateLine.textContent = "reconnecting";
+    updateGlobeState();
   };
 }
 
@@ -1059,14 +1402,22 @@ async function sendRecognizedMessage(message) {
   await sendMessage();
 }
 
-async function submitMessage(message, source) {
-  requestInFlight = true;
+async function acknowledgeRequest(source) {
   currentActivitySnapshot = {
     ...currentActivitySnapshot,
-    headline: WORKING_HEADLINE_DEFAULT,
-    detail: WORKING_DETAIL_DEFAULT,
+    state: "working",
+    headline: "",
+    detail: RECEIVED_DETAIL,
   };
   renderState();
+  if (source === "voice") {
+    pauseRecognitionForSpeech();
+  }
+}
+
+async function submitMessage(message, source) {
+  requestInFlight = true;
+  await acknowledgeRequest(source);
   replyStatus.textContent = source === "voice" ? "Sending voice command..." : "Sending...";
   let answerText = "";
   let requestFailed = false;
@@ -1123,7 +1474,7 @@ commandsPanel.addEventListener("keydown", (event) => {
     closeCommandsDrawer();
   }
 });
-listenButton.addEventListener("click", () => {
+audioToggle.addEventListener("click", () => {
   if (isBusy()) {
     return;
   }
@@ -1133,19 +1484,26 @@ listenButton.addEventListener("click", () => {
   }
   startVoiceListening();
 });
-copyAnswerButton.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(answerOutput.textContent);
-    copyAnswerButton.classList.add("copied");
-    copyAnswerButton.setAttribute("aria-label", "Answer copied");
-    copyAnswerButton.title = "Answer copied";
-    setTimeout(() => {
-      copyAnswerButton.classList.remove("copied");
-      copyAnswerButton.setAttribute("aria-label", "Copy answer");
-      copyAnswerButton.title = "Copy answer";
-    }, 1200);
-  } catch (error) {
-    replyStatus.textContent = "Could not copy the answer.";
+keyboardToggle.addEventListener("click", () => {
+  if (isBusy()) {
+    return;
+  }
+  toggleKeyboardPanel();
+});
+nanoControlsToggle.addEventListener("click", () => {
+  if (nanoSheetOpen) {
+    closeNanoSheet();
+    return;
+  }
+  openNanoSheet("brains");
+});
+nanoSheetClose.addEventListener("click", closeNanoSheet);
+nanoSheetBackdrop.addEventListener("click", closeNanoSheet);
+nanoTabBrains.addEventListener("click", () => setNanoTab("brains"));
+nanoTabStorage.addEventListener("click", () => setNanoTab("storage"));
+nanoSheet.querySelector(".nano-sheet-panel").addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeNanoSheet();
   }
 });
 messageBox.addEventListener("keydown", (event) => {
@@ -1156,14 +1514,11 @@ messageBox.addEventListener("keydown", (event) => {
     }
     sendMessage();
   }
-});
-brainsPanel.addEventListener("toggle", () => {
-  brainsStatus.textContent = brainsPanel.open ? "open" : "sealed";
+  if (event.key === "Escape") {
+    closeKeyboardPanel();
+  }
 });
 brainsClearButton.addEventListener("click", clearActivityLog);
-storagePanel.addEventListener("toggle", () => {
-  storageStatus.textContent = storagePanel.open ? "open" : "sealed";
-});
 window.addEventListener("pointerdown", maybeStartListeningAfterGesture, { passive: true });
 window.addEventListener("keydown", maybeStartListeningAfterGesture);
 window.addEventListener("beforeunload", () => {
@@ -1172,9 +1527,21 @@ window.addEventListener("beforeunload", () => {
       track.stop();
     }
   }
+  if (mainGlobe) {
+    mainGlobe.destroy();
+  }
+  if (miniGlobe) {
+    miniGlobe.destroy();
+  }
 });
 
-setAnswer("");
-setVoiceStatus("Voice on standby.");
-updateListenButton();
-bootstrap();
+window.addEventListener("load", () => {
+  requestAnimationFrame(() => {
+    initGlobes();
+    void initVoiceVolumeControl();
+    setAnswer("", { animate: false });
+    setVoiceStatus("Voice on standby.");
+    updateListenButton();
+    bootstrap();
+  });
+});

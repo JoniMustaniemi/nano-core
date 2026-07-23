@@ -23,6 +23,13 @@ TOOL_COMMANDS: tuple[ToolCommand, ...] = (
         description="Run Nano diagnostics.",
     ),
     ToolCommand(
+        id="wipe_data",
+        label="Wipe data",
+        message="Wipe your data.",
+        category="System",
+        description="Clear all stored notes, reminders, conversation, and internal memory.",
+    ),
+    ToolCommand(
         id="add_note",
         label="Add note",
         message="Add a note.",

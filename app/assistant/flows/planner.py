@@ -15,7 +15,9 @@ from app.runtime.status_copy import (
     COULD_NOT_FINISH_TITLE,
     PLANNING_ACTION_DETAIL,
     PLANNING_ACTION_TITLE,
+    RUNNING_TOOL_DETAIL,
     ran_tool_title,
+    running_tool_title,
 )
 
 
@@ -77,6 +79,11 @@ class AgentPlanner:
         invalid_json_attempts = 0
         executed_tools: dict[str, ToolResult] = {}
         for _ in range(8):
+            activity.working(
+                title=PLANNING_ACTION_TITLE,
+                detail=PLANNING_ACTION_DETAIL,
+                source="assistant.flows.planner",
+            )
             raw = client.complete(messages=messages)
             decision = parse_decision(raw)
 
@@ -133,14 +140,19 @@ class AgentPlanner:
                 )
                 continue
 
-            activity.log(
-                title=ran_tool_title(tool_name),
-                detail=json.dumps(args, ensure_ascii=False),
+            activity.working(
+                title=running_tool_title(tool_name),
+                detail=RUNNING_TOOL_DETAIL,
                 source="assistant.flows.planner",
             )
             self.tool_runner.announce_call(tool_name)
             result = self.tool_runner.execute(tool_name, args)
             executed_tools[signature] = result
+            activity.log(
+                title=ran_tool_title(tool_name),
+                detail="Done.",
+                source="assistant.flows.planner",
+            )
             self._append_model_result(messages=messages, raw=raw, result=result)
 
         fallback = "I tried to complete the task, but I hit the step limit."

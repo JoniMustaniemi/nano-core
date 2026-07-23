@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 from helpers.agent_fixtures import wrap_with_alignment_intercept
 
 from app.main import app
+from app.runtime.status_copy import RECEIVED_TITLE, route_acknowledgment
 
 
 class _FakeClient:
@@ -91,5 +92,29 @@ def test_health_check_sets_working_activity(monkeypatch) -> None:
     assert payload["state"] == "standby"
     assert any(
         event["state"] == "working" and event["title"] == "I'm running a health check."
+        for event in payload["events"]
+    )
+
+
+def test_route_acknowledgment_uses_personality_copy() -> None:
+    title, detail = route_acknowledgment(mode="tool", tool_name="check_health")
+    assert title == "I'm running a health check."
+    assert detail
+
+
+def test_agent_request_acknowledges_before_processing(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.assistant.service.get_llm_client",
+        lambda: wrap_with_alignment_intercept(_FakeClient()),
+    )
+
+    with TestClient(app) as client:
+        response = client.post("/chat", json={"message": "Hello", "mode": "chat"})
+        status = client.get("/api/status")
+
+    assert response.status_code == 200
+    payload = status.json()
+    assert any(
+        event["state"] == "working" and event["title"] == RECEIVED_TITLE
         for event in payload["events"]
     )

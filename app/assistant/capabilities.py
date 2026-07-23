@@ -21,7 +21,8 @@ _EXTRA_CAPABILITIES: tuple[CapabilityItem, ...] = (
     CapabilityItem(
         name="memory_wipe",
         description=(
-            "clear stored notes, reminders, and chat history after explicit confirmation."
+            "clear all stored notes, reminders, chat history, internal notes, "
+            "and codebase memory after explicit confirmation."
         ),
     ),
 )

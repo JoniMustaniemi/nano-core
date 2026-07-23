@@ -14,6 +14,8 @@ from app.llm.schemas import ChatResponse
 from app.memory import repository
 from app.runtime.activity import activity
 from app.runtime.status_copy import (
+    RECEIVED_DETAIL,
+    RECEIVED_TITLE,
     STANDBY_DETAIL_WAITING,
     THINKING_DETAIL,
     THINKING_TITLE,
@@ -85,6 +87,11 @@ class AssistantService:
         """
         settings = get_settings()
         user_activity.touch()
+        activity.working(
+            title=RECEIVED_TITLE,
+            detail=RECEIVED_DETAIL,
+            source="assistant.chat",
+        )
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
         history = repository.list_chat_messages(
             conversation_id=conversation_id,

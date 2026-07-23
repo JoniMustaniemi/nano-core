@@ -21,6 +21,8 @@ from app.assistant.tool_runner import ToolRunner
 from app.config import get_settings
 from app.llm.protocol import LLMClient
 from app.memory import repository
+from app.runtime import activity
+from app.runtime.status_copy import RECEIVED_TITLE, route_acknowledgment
 from app.runtime.user_activity import user_activity
 
 
@@ -133,6 +135,18 @@ class AgentOrchestrator:
             conversation_id=conversation_id,
             history=history,
         )
+        ack_title, ack_detail = route_acknowledgment(
+            mode=decision.mode,
+            tool_name=decision.tool_name,
+            interaction=decision.interaction,
+        )
+        activity.working(
+            title=ack_title,
+            detail=ack_detail,
+            source="assistant.orchestrator.route",
+        )
+        if decision.mode != "planner" and ack_title != RECEIVED_TITLE:
+            self.tool_runner.announce_message(ack_title)
         return self._dispatch(
             decision=decision,
             client=client,
