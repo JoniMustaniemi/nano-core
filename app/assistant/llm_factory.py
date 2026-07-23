@@ -1,11 +1,5 @@
-from app.llm.client import LocalLLMClient
+"""Backward-compatible re-export. Prefer app.llm.factory."""
 
+from app.llm.factory import get_llm_client
 
-def get_llm_client() -> LocalLLMClient:
-    """
-    Get llm client.
-
-    Returns:
-        LocalLLMClient result.
-    """
-    return LocalLLMClient()
+__all__ = ["get_llm_client"]

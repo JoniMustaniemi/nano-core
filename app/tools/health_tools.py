@@ -44,5 +44,23 @@ register_tool(
         description="check Nano's current health and report any problems.",
         args_schema={},
         handler=_check_health,
+        announcement="Running a health diagnostic.",
+        keywords=(
+            "check your health",
+            "health check",
+            "run diagnostics",
+            "run diagnostic",
+            "diagnostic check",
+            "diagnostics check",
+            "check diagnostics",
+            "check diagnostic",
+            "check yourself",
+            "self check",
+            "system check",
+        ),
+        ui_label="Health check",
+        ui_message="Check your health.",
+        ui_category="System",
+        ui_description="Run Nano diagnostics.",
     )
 )

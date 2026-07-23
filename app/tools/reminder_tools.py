@@ -61,6 +61,8 @@ register_tool(
             "due_at": "Reminder time in ISO-8601 format.",
         },
         handler=_add_reminder,
+        announcement="Scheduling a reminder.",
+        keywords=("reminder", "remind me"),
     )
 )
 
@@ -70,5 +72,11 @@ register_tool(
         description="list reminders.",
         args_schema={},
         handler=_list_reminders,
+        announcement="Checking reminders.",
+        keywords=("reminders", "reminder"),
+        ui_label="List reminders",
+        ui_message="List reminders.",
+        ui_category="Reminders",
+        ui_description="Show scheduled reminders.",
     )
 )

@@ -83,6 +83,50 @@ def render_tool_prompt(*, exclude: frozenset[str] | None = None) -> str:
     return "\n".join(lines)
 
 
+def tool_announcement_for(name: str) -> str:
+    """
+    Return the user-facing announcement for a registered tool.
+
+    Args:
+        name: Registered tool name.
+
+    Returns:
+        Announcement text or a generic fallback.
+    """
+    tool = get_tool(name)
+    if tool is not None and tool.announcement is not None:
+        return tool.announcement
+    return "Performing a local action."
+
+
+def tool_keywords_for(name: str) -> tuple[str, ...]:
+    """
+    Return keyword hints for a registered tool.
+
+    Args:
+        name: Registered tool name.
+
+    Returns:
+        Keyword tuple, possibly empty.
+    """
+    tool = get_tool(name)
+    if tool is None:
+        return ()
+    return tool.keywords
+
+
+def list_ui_tool_commands() -> list[ToolSpec]:
+    """
+    Return registered tools that expose web UI quick commands.
+
+    Returns:
+        Tool specs with UI metadata, sorted by category then label.
+    """
+    _load_builtin_tool_modules()
+    tools = [tool for tool in _REGISTERED_TOOLS.values() if tool.has_ui_command]
+    return sorted(tools, key=lambda tool: (tool.ui_category or "", tool.ui_label or ""))
+
+
 def _load_builtin_tool_modules() -> None:
     """
     Import built-in tool modules so they can register themselves.

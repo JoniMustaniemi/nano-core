@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from app.assistant.flows.presence_gate import presence_gate
-from app.assistant.llm_factory import get_llm_client
 from app.assistant.pending import pending_interactions
 from app.config import get_settings
+from app.llm.factory import get_llm_client
 from app.memory.internal_note_service import internal_note_service
 from app.proactive.codebase_crawl import CodebaseCrawlService
 from app.proactive.store import proactive_store

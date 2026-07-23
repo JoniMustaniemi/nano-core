@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.tools.registry import tool_announcement_for
+
 
 @dataclass(frozen=True, slots=True)
 class ToolIntentRule:
@@ -9,80 +11,23 @@ class ToolIntentRule:
     keywords: tuple[str, ...] = ()
 
 
-TOOL_RULES: dict[str, ToolIntentRule] = {
-    "run_python": ToolIntentRule(
-        announcement="Running a local procedure.",
-        keywords=("python", "calculate", "compute", "run code"),
-    ),
-    "read_file": ToolIntentRule(
-        announcement="Checking a file.",
-        keywords=("file", "open", "read", "show"),
-    ),
-    "write_file": ToolIntentRule(
-        announcement="Updating a file.",
-        keywords=("write", "edit", "change", "update", "file"),
-    ),
-    "list_files": ToolIntentRule(
-        announcement="Looking through local files.",
-        keywords=("files", "folders", "directory", "workspace"),
-    ),
-    "add_note": ToolIntentRule(
-        announcement="Saving that to memory.",
-        keywords=("note", "remember", "write down", "save this"),
-    ),
-    "list_notes": ToolIntentRule(
-        announcement="Checking memory.",
-        keywords=("notes", "note", "remembered"),
-    ),
-    "list_internal_notes": ToolIntentRule(
-        announcement="Reviewing internal follow-up notes.",
-        keywords=("internal notes", "follow-up notes", "discuss later"),
-    ),
-    "add_reminder": ToolIntentRule(
-        announcement="Scheduling a reminder.",
-        keywords=("reminder", "remind me"),
-    ),
-    "list_reminders": ToolIntentRule(
-        announcement="Checking reminders.",
-        keywords=("reminders", "reminder"),
-    ),
-    "start_timer": ToolIntentRule(
-        announcement="Starting a timer.",
-        keywords=("timer", "countdown"),
-    ),
-    "list_timers": ToolIntentRule(
-        announcement="Checking timers.",
-        keywords=("timer", "timers"),
-    ),
-    "cancel_timers": ToolIntentRule(
-        announcement="Cancelling timers.",
-        keywords=("timer", "timers", "countdown"),
-    ),
-    "check_health": ToolIntentRule(
-        announcement="Running a health diagnostic.",
-        keywords=(
-            "check your health",
-            "health check",
-            "run diagnostics",
-            "run diagnostic",
-            "diagnostic check",
-            "diagnostics check",
-            "check diagnostics",
-            "check diagnostic",
-            "check yourself",
-            "self check",
-            "system check",
-        ),
-    ),
-    "create_pull_request": ToolIntentRule(
-        announcement="Opening a pull request.",
-        keywords=("pull request", "open pr", "create pr", "github pr"),
-    ),
-    "propose_self_changes": ToolIntentRule(
-        announcement="Planning self-improvement changes.",
-        keywords=("improve yourself", "fix yourself", "your code", "propose self"),
-    ),
-}
+def build_tool_rules() -> dict[str, ToolIntentRule]:
+    """
+    Build tool intent rules from the registered tool catalog.
+
+    Returns:
+        Mapping of tool name to intent metadata.
+    """
+    from app.tools.registry import list_tools
+
+    rules: dict[str, ToolIntentRule] = {}
+    for tool in list_tools():
+        announcement = tool.announcement or tool_announcement_for(tool.name)
+        rules[tool.name] = ToolIntentRule(
+            announcement=announcement,
+            keywords=tool.keywords,
+        )
+    return rules
 
 
 def tool_announcement(tool_name: str) -> str:
@@ -95,10 +40,7 @@ def tool_announcement(tool_name: str) -> str:
     Returns:
         Generated or formatted string value.
     """
-    rule = TOOL_RULES.get(tool_name)
-    if rule is None:
-        return "Performing a local action."
-    return rule.announcement
+    return tool_announcement_for(tool_name)
 
 
 def tool_signature(tool_name: str, args: dict[str, object]) -> str:
@@ -115,3 +57,24 @@ def tool_signature(tool_name: str, args: dict[str, object]) -> str:
     import json
 
     return f"{tool_name}:{json.dumps(args, sort_keys=True, ensure_ascii=False)}"
+
+
+def get_tool_rule(tool_name: str) -> ToolIntentRule | None:
+    """
+    Return intent metadata for a registered tool.
+
+    Args:
+        tool_name: Registered tool name.
+
+    Returns:
+        Tool intent rule when the tool is registered; otherwise None.
+    """
+    from app.tools.registry import get_tool
+
+    tool = get_tool(tool_name)
+    if tool is None:
+        return None
+    return ToolIntentRule(
+        announcement=tool.announcement or tool_announcement_for(tool_name),
+        keywords=tool.keywords,
+    )

@@ -103,6 +103,8 @@ register_tool(
             "timeout_seconds": "Optional timeout in seconds.",
         },
         handler=_run_python,
+        announcement="Running a local procedure.",
+        keywords=("python", "calculate", "compute", "run code"),
     )
 )
 
@@ -112,6 +114,8 @@ register_tool(
         description="read a text file under the workspace root.",
         args_schema={"path": "Path relative to the workspace root."},
         handler=_read_file,
+        announcement="Checking a file.",
+        keywords=("file", "open", "read", "show"),
     )
 )
 
@@ -124,6 +128,8 @@ register_tool(
             "content": "Full file contents to write.",
         },
         handler=_write_file,
+        announcement="Updating a file.",
+        keywords=("write", "edit", "change", "update", "file"),
     )
 )
 
@@ -133,5 +139,7 @@ register_tool(
         description="list files under the workspace root.",
         args_schema={"path": "Optional directory path relative to the workspace root."},
         handler=_list_files,
+        announcement="Looking through local files.",
+        keywords=("files", "folders", "directory", "workspace"),
     )
 )

@@ -39,5 +39,11 @@ register_tool(
         description="list Nano's private internal follow-up notes saved for later discussion.",
         args_schema={},
         handler=_list_internal_notes,
+        announcement="Reviewing internal follow-up notes.",
+        keywords=("internal notes", "follow-up notes", "discuss later"),
+        ui_label="Internal notes",
+        ui_message="Tell me about your internal notes.",
+        ui_category="Notes",
+        ui_description="Show Nano's private follow-up notes.",
     )
 )
