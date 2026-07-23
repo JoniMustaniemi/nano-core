@@ -201,6 +201,37 @@ body.keyboard-open {
   z-index: 0;
 }
 
+body[data-display-state="working"] .globe-zone::before {
+  background: radial-gradient(
+    circle,
+    rgba(244, 193, 93, 0.18) 0%,
+    rgba(244, 193, 93, 0.06) 40%,
+    transparent 72%
+  );
+  animation: workingPulse 2s ease-in-out infinite;
+}
+
+@keyframes workingPulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+body[data-display-state="working"] .activity-cursor {
+  color: var(--warning);
+}
+
+body[data-display-state="working"] .bottom-bar-btn-center {
+  box-shadow: 0 0 24px rgba(244, 193, 93, 0.35);
+}
+
 #globe-canvas,
 #globe-mini-canvas {
   width: 100%;

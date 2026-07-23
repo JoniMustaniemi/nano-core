@@ -59,8 +59,8 @@ const STATE_COLORS = {
     secondary: [0.14, 0.88, 0.36],
   },
   working: {
-    primary: [0.05, 0.30, 0.11],
-    secondary: [0.22, 1.0, 0.48],
+    primary: [0.28, 0.20, 0.04],
+    secondary: [1.0, 0.76, 0.15],
   },
   listening: {
     primary: [0.02, 0.28, 0.15],
