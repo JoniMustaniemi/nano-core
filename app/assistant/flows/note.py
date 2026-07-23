@@ -5,14 +5,12 @@ from app.assistant.agent_rules import (
     is_note_list_request,
     note_content_from_message,
 )
-from app.assistant.flows.note_direct import NoteDirectMixin
-from app.assistant.flows.note_lookup import NoteLookupMixin
 from app.assistant.flows.note_pending import NotePendingMixin
 from app.assistant.pending import pending_interactions
 from app.assistant.response_source import ResponseSource
 
 
-class NoteInteractionHandler(NoteDirectMixin, NoteLookupMixin, NotePendingMixin):
+class NoteInteractionHandler(NotePendingMixin):
     """
     Handle note-specific direct requests and pending follow-ups.
     """

@@ -5,6 +5,8 @@ from app.assistant.agent_rules import (
     is_rejection_message,
     note_content_from_message,
 )
+from app.assistant.flows.note_direct import NoteDirectMixin
+from app.assistant.flows.note_lookup import NoteLookupMixin
 from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_source import (
     ResponseSource,
@@ -16,7 +18,7 @@ from app.runtime.activity import activity
 from app.runtime.status_copy import CANCELLED_NOTE_TITLE, NO_NOTE_SAVED_DETAIL
 
 
-class NotePendingMixin:
+class NotePendingMixin(NoteDirectMixin, NoteLookupMixin):
     """Pending multi-turn note interactions."""
 
     def handle_pending(
