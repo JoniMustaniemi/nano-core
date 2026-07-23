@@ -113,7 +113,9 @@ class PresenceGateHandler:
       internal_note_service.mark_delivered(parsed_note_id)
     goal = str(offer.payload.get("goal", "")).strip()
     if goal:
-      proactive_store.set_last_goal(goal)
+      raw_files = offer.payload.get("files", [])
+      files = [str(path) for path in raw_files if str(path).strip()] if isinstance(raw_files, list) else []
+      proactive_store.set_last_goal(goal, files=files or None)
     proactive_store.clear_offer()
     return source
 

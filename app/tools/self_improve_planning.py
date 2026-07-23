@@ -17,6 +17,8 @@ SELECT_JSON_HINT = '{"files_to_read": ["app/..."]}'
 PLAN_JSON_HINT = '{"path": "app/...", "content": "..."}'
 PATCH_JSON_HINT = '{"path": "app/...", "old_text": "...", "new_text": "..."}'
 PLAN_TEMPERATURE = 0.1
+SMALL_FILE_LINE_LIMIT = 200
+FULL_FILE_PLAN_ATTEMPTS = 3
 PATCH_CORRECTIONS: dict[str, str] = {
     "invalid_json": (
         "Your previous response was invalid JSON. Return JSON only with path, old_text, and new_text. "
@@ -42,6 +44,7 @@ GOAL_FILE_HINTS: tuple[tuple[tuple[str, ...], str], ...] = (
     (("timer", "timers"), "app/assistant/flows/timer.py"),
     (("timer", "timers", "message", "messages", "status", "wording", "clearer", "copy"), "app/runtime/status_copy.py"),
     (("wake", "greeting", "ack"), "app/runtime/status_copy.py"),
+    (("message", "messages", "confirmation", "wipe", "note"), "app/assistant/rules/messages.py"),
     (("note", "notes"), "app/assistant/flows/note.py"),
     (("health",), "app/health/checks.py"),
     (("pull request", "pr", "github"), "app/tools/pr_service.py"),
@@ -62,6 +65,12 @@ def plan_max_tokens(content: str, *, settings: Settings) -> int:
 
 @dataclass(frozen=True, slots=True)
 class PatchParseResult:
+    parsed: dict[str, str] | None = None
+    reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PlanResult:
     parsed: dict[str, str] | None = None
     reason: str | None = None
 
@@ -171,19 +180,17 @@ def patch_correction_for_reason(reason: str | None) -> str:
     return PATCH_CORRECTIONS["invalid_json"]
 
 
-def plan_single_file_change(
+def _run_patch_attempts(
     client: Any,
     *,
     goal: str,
     path: str,
     content: str,
     allowed: str,
-) -> dict[str, str] | None:
-    settings = get_settings()
-    patch_max_tokens = min(2048, plan_max_tokens(content, settings=settings))
-    full_max_tokens = plan_max_tokens(content, settings=settings)
+    patch_max_tokens: int,
+    on_attempt: Any | None = None,
+) -> PlanResult:
     last_reason: str | None = None
-
     patch_messages = [
         {
             "role": "system",
@@ -199,7 +206,9 @@ def plan_single_file_change(
             "content": f"Goal: {goal}\n\n### {path}\n{content}",
         },
     ]
-    for _attempt in range(3):
+    for attempt in range(1, 4):
+        if on_attempt is not None:
+            on_attempt(attempt)
         raw = cast(
             str,
             client.complete(
@@ -209,7 +218,7 @@ def plan_single_file_change(
             ),
         ).strip()
         if looks_like_llm_unavailable(raw):
-            return None
+            return PlanResult(reason="llm_unavailable")
         payload = extract_json(raw)
         if isinstance(payload, dict):
             result = parse_patch_change(
@@ -219,7 +228,7 @@ def plan_single_file_change(
                 original_content=content,
             )
             if result.parsed is not None:
-                return result.parsed
+                return PlanResult(parsed=result.parsed)
             last_reason = result.reason
             patch_correction = patch_correction_for_reason(result.reason)
         else:
@@ -231,7 +240,20 @@ def plan_single_file_change(
                 {"role": "user", "content": patch_correction},
             ]
         )
+    return PlanResult(reason=last_reason or "invalid_json")
 
+
+def _run_full_file_attempts(
+    client: Any,
+    *,
+    goal: str,
+    path: str,
+    content: str,
+    allowed: str,
+    full_max_tokens: int,
+    on_attempt: Any | None = None,
+) -> PlanResult:
+    last_reason: str | None = None
     full_messages = [
         {
             "role": "system",
@@ -239,7 +261,9 @@ def plan_single_file_change(
                 "You edit one Python source file for a self-improvement task. "
                 f"Return JSON only: {PLAN_JSON_HINT} "
                 "where content is the complete updated file. "
-                "Use \\n for newlines inside the JSON string. No markdown fences."
+                "Use \\n for newlines inside the JSON string. "
+                "Escape quotes correctly. Output must be parseable by json.loads. "
+                "No markdown fences."
             ),
         },
         {
@@ -249,9 +273,12 @@ def plan_single_file_change(
     ]
     full_correction = (
         "Your previous response was invalid. Return JSON only with keys path and content. "
+        "Escape quotes and newlines correctly; output must be parseable by json.loads. "
         f"Example: {PLAN_JSON_HINT}"
     )
-    for _attempt in range(2):
+    for attempt in range(1, FULL_FILE_PLAN_ATTEMPTS + 1):
+        if on_attempt is not None:
+            on_attempt(attempt)
         raw = cast(
             str,
             client.complete(
@@ -261,7 +288,7 @@ def plan_single_file_change(
             ),
         ).strip()
         if looks_like_llm_unavailable(raw):
-            return None
+            return PlanResult(reason="llm_unavailable")
         payload = extract_json(raw)
         if isinstance(payload, dict):
             parsed = parse_single_file_change(
@@ -270,8 +297,8 @@ def plan_single_file_change(
                 allowed=allowed,
             )
             if parsed is not None:
-                return parsed
-            last_reason = "invalid_json"
+                return PlanResult(parsed=parsed)
+            last_reason = "invalid_shape"
         else:
             last_reason = "invalid_json"
         full_messages.extend(
@@ -280,13 +307,61 @@ def plan_single_file_change(
                 {"role": "user", "content": full_correction},
             ]
         )
+    return PlanResult(reason=last_reason or "invalid_json")
 
-    activity.log(
-        title="Self-improve plan failed",
-        detail=f"{path}: {last_reason or 'unknown'}",
-        source="tools.self_improve_service",
-    )
-    return None
+
+def plan_single_file_change(
+    client: Any,
+    *,
+    goal: str,
+    path: str,
+    content: str,
+    allowed: str,
+    on_attempt: Any | None = None,
+) -> PlanResult:
+    settings = get_settings()
+    patch_max_tokens = min(2048, plan_max_tokens(content, settings=settings))
+    full_max_tokens = plan_max_tokens(content, settings=settings)
+    is_small_file = content.count("\n") < SMALL_FILE_LINE_LIMIT
+
+    if is_small_file:
+        result = _run_full_file_attempts(
+            client,
+            goal=goal,
+            path=path,
+            content=content,
+            allowed=allowed,
+            full_max_tokens=full_max_tokens,
+            on_attempt=on_attempt,
+        )
+    else:
+        result = _run_patch_attempts(
+            client,
+            goal=goal,
+            path=path,
+            content=content,
+            allowed=allowed,
+            patch_max_tokens=patch_max_tokens,
+            on_attempt=on_attempt,
+        )
+        if result.parsed is None and result.reason != "llm_unavailable":
+            result = _run_full_file_attempts(
+                client,
+                goal=goal,
+                path=path,
+                content=content,
+                allowed=allowed,
+                full_max_tokens=full_max_tokens,
+                on_attempt=on_attempt,
+            )
+
+    if result.parsed is None:
+        activity.log(
+            title="Self-improve plan failed",
+            detail=f"{path}: {result.reason or 'unknown'}",
+            source="tools.self_improve_service",
+        )
+    return result
 
 
 def file_selection_lines(goal: str, *, limit: int = 40) -> list[str]:

@@ -15,6 +15,7 @@ class ProactiveState:
   waiting_for_presence: bool = False
   last_dismissal: str | None = None
   last_delivered_goal: str | None = None
+  last_delivered_files: list[str] | None = None
 
 
 class ProactiveStore:
@@ -64,17 +65,24 @@ class ProactiveStore:
       self._state.waiting_for_presence = False
       self._state.presence_started_at = None
 
-  def set_last_goal(self, goal: str) -> None:
+  def set_last_goal(self, goal: str, *, files: list[str] | None = None) -> None:
     with self._lock:
       self._state.last_delivered_goal = goal
+      self._state.last_delivered_files = list(files) if files else None
 
   def get_last_goal(self) -> str | None:
     with self._lock:
       return self._state.last_delivered_goal
 
+  def get_last_files(self) -> list[str]:
+    with self._lock:
+      files = self._state.last_delivered_files
+      return list(files) if files else []
+
   def clear_last_goal(self) -> None:
     with self._lock:
       self._state.last_delivered_goal = None
+      self._state.last_delivered_files = None
 
   def set_dismissal(self, message: str) -> None:
     with self._lock:

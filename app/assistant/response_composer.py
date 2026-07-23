@@ -255,7 +255,15 @@ class ResponseComposer:
             "complete": "finishing up",
         }
         step_label = step_labels.get(step, step.replace("_", " "))
+        reason = str(payload.get("reason", "")).strip()
         plan_prefix = "Could not parse change plan from the model for "
+        old_text_prefix = "The model could not match the exact text to replace in "
+        if step == "plan" and reason == "old_text_not_found" and error.startswith(old_text_prefix):
+            path = error[len(old_text_prefix) :].rstrip(".")
+            return (
+                f"I could not improve myself. I got stuck at the {step_label} step "
+                f"because I could not match the exact text to replace in {path}."
+            )
         if step == "plan" and error.startswith(plan_prefix):
             path = error[len(plan_prefix) :].rstrip(".")
             return (
