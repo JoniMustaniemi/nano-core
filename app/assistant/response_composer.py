@@ -47,9 +47,6 @@ class ResponseComposer:
         }:
             return self._compose_self_improve_result(source.facts)
 
-        if source.kind == "tool_result" and source.tool_name == "apply_updates_and_restart":
-            return self._compose_self_update_result(source.facts)
-
         if source.kind == "tool_result" and source.tool_name in COMPOSE_HINTS:
             return self._compose_with_hint(client, source)
 
@@ -270,17 +267,6 @@ class ResponseComposer:
                 f"I could not improve myself. I got stuck at the {step_label} step: {error}"
             )
         return "I could not improve myself."
-
-    def _compose_self_update_result(self, tool_result: str) -> str:
-        payload = self._parse_json_dict(tool_result)
-        if payload.get("ok"):
-            if payload.get("reload_expected"):
-                return "I pulled the latest changes. Uvicorn should reload app/ changes automatically."
-            return "I pulled the latest changes. No app/ files changed."
-        error = str(payload.get("error", "")).strip()
-        if error:
-            return error
-        return "I could not pull the latest changes."
 
     def _parse_json_dict(self, value: str) -> dict[str, Any]:
         try:

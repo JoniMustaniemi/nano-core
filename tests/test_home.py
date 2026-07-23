@@ -71,11 +71,11 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=procedural-orb-7"' in response.text
+    assert 'href="/static/home.css?v=procedural-orb-10"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/globe_visualizer.js?v=procedural-orb-15"' in response.text
-    assert 'src="/static/home.js?v=procedural-orb-15"' in response.text
+    assert 'src="/static/home.js?v=procedural-orb-17"' in response.text
 
     assert "Enter to send" in response.text
 

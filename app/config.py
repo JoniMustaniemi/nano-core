@@ -50,7 +50,6 @@ class Settings(BaseSettings):
     self_improve_max_files: int = Field(default=5, ge=1)
     self_improve_max_file_chars: int = Field(default=8000, ge=256)
     self_improve_plan_max_tokens: int = Field(default=8192, ge=512)
-    self_update_base_branch: str = ""
     proactive_conversation_id: str = "agent-default"
 
 

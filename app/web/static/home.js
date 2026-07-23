@@ -244,12 +244,12 @@ function renderToolCommands(commands) {
   toolCommands = commands;
   commandsList.replaceChildren();
   for (const [category, items] of groupCommands(commands)) {
-    const group = document.createElement("section");
-    group.className = "commands-group";
+    const dropdown = document.createElement("details");
+    dropdown.className = "commands-dropdown";
 
-    const title = document.createElement("h3");
-    title.className = "commands-group-title";
-    title.textContent = category;
+    const summary = document.createElement("summary");
+    summary.className = "commands-dropdown-toggle";
+    summary.textContent = category;
 
     const grid = document.createElement("div");
     grid.className = "commands-group-grid";
@@ -278,8 +278,8 @@ function renderToolCommands(commands) {
       grid.append(button);
     }
 
-    group.append(title, grid);
-    commandsList.append(group);
+    dropdown.append(summary, grid);
+    commandsList.append(dropdown);
   }
 }
 

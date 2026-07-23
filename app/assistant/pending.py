@@ -11,7 +11,6 @@ PendingKind = Literal[
     "timer_duration",
     "wipe_confirmation",
     "presence_check",
-    "self_update_confirmation",
 ]
 
 

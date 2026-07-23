@@ -85,14 +85,6 @@ WIPED_MEMORY_DETAIL = (
     "Notes, reminders, conversation history, internal notes, and codebase memory are gone."
 )
 CANCELLED_WIPE_TITLE = "I cancelled the wipe."
-CANCELLED_UPDATE_TITLE = "I cancelled the update."
-PREPARING_UPDATE_DETAIL = "Preparing confirmation for pulling latest changes."
-WAITING_UPDATE_CONFIRMATION_DETAIL = "Awaiting confirmation before pulling updates."
-UPDATE_CANCELLED_DETAIL = "I left everything as it was."
-PULLING_CHANGES_TITLE = "I'm pulling latest changes."
-PULLING_CHANGES_DETAIL = "Updating from the latest source."
-SWITCHING_BRANCH_TITLE = "I'm switching branches."
-SWITCHING_BRANCH_DETAIL = "Moving to the right branch before pulling updates."
 SELF_IMPROVE_FAILED_TITLE = "I could not improve myself."
 SELF_IMPROVE_WORKTREE_DETAIL = "Using isolated worktree so dev reload stays stable."
 PLANNING_SELF_IMPROVE_TITLE = "I'm planning self-improvement."
@@ -128,7 +120,6 @@ RESCHEDULED_FOLLOW_UP_TITLE = "I rescheduled a follow-up note."
 _TOOL_ACTIVITY_TITLES: dict[str, str] = {
     "add_note": "I'm saving a note.",
     "add_reminder": "I'm scheduling a reminder.",
-    "apply_updates_and_restart": "I'm updating myself.",
     "cancel_timers": "I'm cancelling timers.",
     "check_health": "I'm running a health check.",
     "create_pull_request": "I'm opening a pull request.",
@@ -147,7 +138,6 @@ _TOOL_ACTIVITY_TITLES: dict[str, str] = {
 _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
     "add_note": "I saved a note.",
     "add_reminder": "I scheduled a reminder.",
-    "apply_updates_and_restart": "I updated myself.",
     "cancel_timers": "I cancelled timers.",
     "check_health": "I finished the health check.",
     "create_pull_request": "I opened a pull request.",
@@ -224,7 +214,6 @@ def route_acknowledgment(
             "wipe": (WIPING_MEMORY_TITLE, PREPARING_WIPE_DETAIL),
             "timer": (SETTING_TIMER_TITLE, SETTING_TIMER_DETAIL),
             "note": (SAVING_NOTE_TITLE, SAVING_NOTE_DETAIL),
-            "self_update": (PULLING_CHANGES_TITLE, PREPARING_UPDATE_DETAIL),
         }
         return interaction_titles.get(interaction or "", (RECEIVED_TITLE, RECEIVED_DETAIL))
     return RECEIVED_TITLE, RECEIVED_DETAIL
