@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, cast
 
 from app.assistant.agent_rules import extract_json
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.memory import codebase_index
 from app.proactive.codebase_files import list_all_app_files
 from app.runtime.activity import activity
@@ -78,7 +78,7 @@ def _looks_like_llm_unavailable(raw: str) -> bool:
     return any(marker in raw for marker in _LLM_UNAVAILABLE_MARKERS)
 
 
-def _plan_max_tokens(content: str, *, settings: Any) -> int:
+def _plan_max_tokens(content: str, *, settings: Settings) -> int:
     estimated = len(content) // 2 + 512
     return min(
         max(estimated, settings.llm_max_tokens),
