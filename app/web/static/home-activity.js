@@ -40,7 +40,29 @@ function applyStatusSnapshot(snapshot) {
   renderState();
 }
 
+function formatProgressAnnouncement(event) {
+  const title = (event.title || "").trim();
+  const detail = (event.detail || "").trim();
+  if (!title) {
+    return detail;
+  }
+  if (!detail || title.includes(detail)) {
+    return title;
+  }
+  return detail;
+}
+
 function applyActivityEvent(event) {
+  if (event.kind === "log" && event.source === "runtime.long_task_progress") {
+    const message = formatProgressAnnouncement(event);
+    if (message) {
+      setAnswer(message, { animate: false });
+      if (voiceAvailable) {
+        void playVoice(message, { resumeListening: false });
+      }
+    }
+  }
+
   if (event.kind === "log" && (requestInFlight || currentActivitySnapshot.state === "working")) {
     const progressLine = (event.title || "").trim();
     if (progressLine) {

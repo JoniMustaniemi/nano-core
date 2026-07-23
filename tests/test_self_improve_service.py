@@ -16,6 +16,10 @@ def _self_improve_settings(**overrides):
     return SimpleNamespace(**defaults)
 
 
+def _large_file_padding(lines: int = 201) -> str:
+    return "".join(f"# padding {index}\n" for index in range(lines))
+
+
 class _PatchPlanClient:
     def complete(self, messages, **kwargs) -> str:
         content = messages[-1]["content"]
@@ -147,14 +151,16 @@ def test_fallback_files_for_timer_message_goal() -> None:
     )
     assert "app/runtime/status_copy.py" in files
     assert "app/assistant/flows/timer.py" in files
+    assert "app/assistant/rules/messages.py" in files
 
 
 def test_self_improve_service_applies_patch_plan(monkeypatch, tmp_path) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "app" / "runtime").mkdir(parents=True)
     status_copy = (
-        'SETTING_TIMER_TITLE = "I\'m setting a timer."\n'
-        "SETTING_TIMER_DETAIL = \"Scheduling the requested timer.\"\n"
+        _large_file_padding()
+        + 'SETTING_TIMER_TITLE = "I\'m setting a timer."\n'
+        + "SETTING_TIMER_DETAIL = \"Scheduling the requested timer.\"\n"
     )
     (tmp_path / "app" / "runtime" / "status_copy.py").write_text(status_copy, encoding="utf-8")
 
@@ -194,7 +200,8 @@ def test_self_improve_service_uses_goal_fallback_when_selection_invalid(monkeypa
     monkeypatch.chdir(tmp_path)
     (tmp_path / "app" / "runtime").mkdir(parents=True)
     (tmp_path / "app" / "runtime" / "status_copy.py").write_text(
-        'SETTING_TIMER_TITLE = "I\'m setting a timer."\n',
+        _large_file_padding()
+        + 'SETTING_TIMER_TITLE = "I\'m setting a timer."\n',
         encoding="utf-8",
     )
 
@@ -391,7 +398,7 @@ def test_plan_uses_elevated_max_tokens_for_large_file(monkeypatch, tmp_path) -> 
 def test_patch_retry_gets_old_text_not_found_hint(monkeypatch, tmp_path) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "app").mkdir()
-    (tmp_path / "app" / "main.py").write_text("original value\n", encoding="utf-8")
+    (tmp_path / "app" / "main.py").write_text(_large_file_padding() + "original value\n", encoding="utf-8")
     corrections: list[str] = []
 
     class _PatchRetryClient:
@@ -489,3 +496,118 @@ def test_full_file_plan_succeeds_for_messages_sized_content(monkeypatch, tmp_pat
     assert result.changed_files == [path]
     written = (tmp_path / "app" / "assistant" / "rules" / "messages.py").read_text(encoding="utf-8")
     assert written.startswith("# updated header")
+
+
+def test_self_improve_service_uses_preferred_files_without_selection_llm(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "app" / "assistant" / "rules").mkdir(parents=True)
+    path = "app/assistant/rules/messages.py"
+    (tmp_path / "app" / "assistant" / "rules" / "messages.py").write_text(
+        "# header\nvalue = 1\n",
+        encoding="utf-8",
+    )
+    selection_calls: list[str] = []
+
+    class _PreferredFileClient:
+        def complete(self, messages, **kwargs) -> str:
+            user_content = messages[-1]["content"]
+            if "Known files:" in user_content:
+                selection_calls.append(user_content)
+            return f'{{"path": "{path}", "content": "# updated\\n"}}'
+
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_lint",
+        lambda: SimpleNamespace(ok=True, error=None),
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_verification",
+        lambda: SimpleNamespace(ok=True, error=None),
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.PullRequestService.run",
+        lambda self, client: SimpleNamespace(ok=True, url="https://example/pr", step="complete"),
+    )
+    monkeypatch.setattr("app.config.get_settings", lambda: _self_improve_settings())
+
+    result = SelfImproveService().run(
+        client=_PreferredFileClient(),
+        goal="improve message helpers",
+        preferred_files=[path],
+    )
+
+    assert result.ok
+    assert selection_calls == []
+    assert result.changed_files == [path]
+
+
+def test_small_file_skips_patch_planning(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "app" / "assistant" / "rules").mkdir(parents=True)
+    path = "app/assistant/rules/messages.py"
+    (tmp_path / "app" / "assistant" / "rules" / "messages.py").write_text(
+        "# header\nvalue = 1\n",
+        encoding="utf-8",
+    )
+    saw_patch_prompt = False
+
+    class _SmallFileClient:
+        def complete(self, messages, **kwargs) -> str:
+            nonlocal saw_patch_prompt
+            if "old_text" in messages[0]["content"]:
+                saw_patch_prompt = True
+            user_content = messages[-1]["content"]
+            if "Known files:" in user_content:
+                return f'{{"files_to_read": ["{path}"]}}'
+            return f'{{"path": "{path}", "content": "# updated\\n"}}'
+
+    monkeypatch.setattr(
+        "app.tools.self_improve_planning.file_selection_lines",
+        lambda goal, limit=40: [f"- {path}: Message helpers."],
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_lint",
+        lambda: SimpleNamespace(ok=True, error=None),
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_verification",
+        lambda: SimpleNamespace(ok=True, error=None),
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.PullRequestService.run",
+        lambda self, client: SimpleNamespace(ok=True, url="https://example/pr", step="complete"),
+    )
+    monkeypatch.setattr("app.config.get_settings", lambda: _self_improve_settings())
+
+    result = SelfImproveService().run(client=_SmallFileClient(), goal="improve message helpers")
+
+    assert result.ok
+    assert not saw_patch_prompt
+
+
+def test_self_improve_service_plan_failure_returns_reason(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "app" / "assistant" / "rules").mkdir(parents=True)
+    path = "app/assistant/rules/messages.py"
+    (tmp_path / "app" / "assistant" / "rules" / "messages.py").write_text(
+        "# header\nvalue = 1\n",
+        encoding="utf-8",
+    )
+
+    class _BadPlanClient:
+        def complete(self, messages, **kwargs) -> str:
+            user_content = messages[-1]["content"]
+            if "Known files:" in user_content:
+                return f'{{"files_to_read": ["{path}"]}}'
+            return "not json"
+
+    monkeypatch.setattr(
+        "app.tools.self_improve_planning.file_selection_lines",
+        lambda goal, limit=40: [f"- {path}: Message helpers."],
+    )
+    monkeypatch.setattr("app.config.get_settings", lambda: _self_improve_settings())
+
+    result = SelfImproveService().run(client=_BadPlanClient(), goal="improve message helpers")
+
+    assert not result.ok
+    assert result.step == "plan"
+    assert result.reason == "invalid_json"

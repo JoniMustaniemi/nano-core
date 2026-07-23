@@ -223,6 +223,12 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "applyActivityEvent" in js_text
 
+    assert "runtime.long_task_progress" in js_text
+
+    assert "formatProgressAnnouncement" in js_text
+
+    assert 'playVoice(message, { resumeListening: false })' in js_text
+
     assert "applyStatusSnapshot" in js_text
 
     assert 'event.kind !== "state"' in js_text

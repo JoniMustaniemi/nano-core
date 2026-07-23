@@ -69,16 +69,32 @@ class InternalNoteService:
             return goal
         return offer.summary.strip()
 
-    def resolve_self_improve_goal(self, explicit_goal: str) -> tuple[str, int | None]:
+    def preferred_files_from_note(self, note: InternalNote) -> list[str]:
+        offer = self.offer_from_internal_note(note)
+        raw_files = offer.payload.get("files", [])
+        if not isinstance(raw_files, list):
+            return []
+        files: list[str] = []
+        for raw_path in raw_files:
+            path = str(raw_path).strip()
+            if path and path not in files:
+                files.append(path)
+        return files
+
+    def resolve_self_improve_goal(self, explicit_goal: str) -> tuple[str, int | None, list[str]]:
         cleaned = " ".join(explicit_goal.strip().split())
         if not is_vague_self_improve_goal(cleaned):
-            return cleaned, None
+            return cleaned, None, []
 
         note = self.top_pending_self_improvement_note()
         if note is None or note.id is None:
-            return "general improvement", None
+            return "general improvement", None, []
 
-        return self.goal_from_internal_note(note), note.id
+        return (
+            self.goal_from_internal_note(note),
+            note.id,
+            self.preferred_files_from_note(note),
+        )
 
     def top_priority_due_note(self, *, now: datetime | None = None) -> InternalNote | None:
         due = internal_notes.list_due_internal_notes(now=now, limit=1)

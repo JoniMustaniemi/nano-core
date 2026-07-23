@@ -136,6 +136,32 @@ def test_compose_self_improve_plan_failure_is_first_person() -> None:
     )
 
 
+def test_compose_self_improve_old_text_not_found_is_first_person() -> None:
+    composer = ResponseComposer()
+    payload = json.dumps(
+        {
+            "ok": False,
+            "step": "plan",
+            "reason": "old_text_not_found",
+            "error": "The model could not match the exact text to replace in app/config.py.",
+            "goal": "clearer timer messages",
+        }
+    )
+    source = tool_result_source(
+        user_message="Improve yourself.",
+        facts=payload,
+        tool_name="propose_self_changes",
+        conversation_id="default",
+    )
+
+    content = composer.compose(_StubClient(), source)
+
+    assert content == (
+        "I could not improve myself. I got stuck at the planning changes step "
+        "because I could not match the exact text to replace in app/config.py."
+    )
+
+
 def test_compose_self_improve_tool_error_uses_same_failure_copy() -> None:
     composer = ResponseComposer()
     payload = json.dumps(
