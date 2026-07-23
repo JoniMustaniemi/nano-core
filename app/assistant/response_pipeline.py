@@ -22,7 +22,7 @@ def finalize_response(
     composer: ResponseComposer,
     standby_detail: str = STANDBY_DETAIL_WAITING,
     standby_source: str = "assistant.response_pipeline",
-) -> str:
+) -> tuple[str, bool]:
     """
     Compose, guard, polish, persist, and return a user-facing assistant reply.
 
@@ -51,7 +51,7 @@ def finalize_response(
                 role="assistant",
                 content=content,
             )
-        return content
+        return content, source.speak
     finally:
         activity.standby(
             title=STANDBY_TITLE,

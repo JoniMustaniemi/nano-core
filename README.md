@@ -31,31 +31,6 @@ Open the home screen in your browser after starting Nano. The UI includes:
   - **Plans** — improvement plans Nano has drafted; click to read, then mark as processed
   - **Stored Data** — snapshot of notes, reminders, chat, and internal notes
 
-## Quick start
-
-Requires Python 3.12+.
-
-```bash
-pip install -e ".[dev,local-llm]"
-cp .env.example .env
-# Set LLM_MODEL_PATH to your GGUF model file in .env
-start-nano
-# or: nano-core dev
-```
-
-Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
-
-CLI examples:
-
-```bash
-nano-core chat "What can you do?"
-nano-core notes add "Buy milk" --name groceries
-nano-core reminders add "Stand up" 2026-07-23T15:00:00
-```
-
-Copy `.env.example` to `.env` and adjust settings for your model path, voice backend,
-and GitHub tooling if you use pull requests.
-
 ## Documentation
 
 For a technical overview — architecture, components, privacy, and capabilities in more

@@ -13,16 +13,18 @@ function closePlanReader() {
   activePlanId = null;
   planReader.hidden = true;
   plansList.hidden = false;
+  nanoPanelPlans.classList.remove("reading");
 }
 
 function openPlanReader(plan) {
   activePlanId = plan.id;
-  planReaderTitle.textContent = plan.title || "Improvement plan";
+  planReaderTitle.textContent = planCardLabel(plan);
   planReaderBody.textContent = plan.body || "";
   planProcessButton.hidden = plan.status !== "pending";
   planProcessButton.disabled = plan.status !== "pending";
   plansList.hidden = true;
   planReader.hidden = false;
+  nanoPanelPlans.classList.add("reading");
 }
 
 async function openPlanById(planId) {
@@ -34,7 +36,36 @@ async function openPlanById(planId) {
   openPlanReader(plan);
 }
 
+function planCardLabel(plan) {
+  const raw = plan.title || plan.goal || "Improvement plan";
+  const cleaned = String(raw).replace(/\s+/g, " ").trim();
+  if (cleaned.length <= 96) {
+    return cleaned;
+  }
+  return `${cleaned.slice(0, 93)}...`;
+}
+
+function updatePlansTabCount(plans) {
+  if (!plansTabCount) {
+    return;
+  }
+  const pending = Array.isArray(plans)
+    ? plans.filter((plan) => plan.status === "pending").length
+    : 0;
+  plansTabCount.hidden = pending === 0;
+  plansTabCount.textContent = String(pending);
+  plansTabCount.setAttribute(
+    "aria-label",
+    pending === 1 ? "1 pending plan" : `${pending} pending plans`,
+  );
+}
+
 function renderPlans(plans) {
+  updatePlansTabCount(plans);
+  if (!plansList) {
+    return;
+  }
+  plansList.hidden = false;
   plansList.replaceChildren();
   if (!Array.isArray(plans) || plans.length === 0) {
     const empty = document.createElement("p");
@@ -52,7 +83,7 @@ function renderPlans(plans) {
 
     const title = document.createElement("span");
     title.className = "plan-card-title";
-    title.textContent = plan.title || "Improvement plan";
+    title.textContent = planCardLabel(plan);
 
     const meta = document.createElement("span");
     meta.className = "plan-card-meta";
@@ -72,15 +103,19 @@ function renderPlans(plans) {
 }
 
 async function loadPlans() {
+  if (!plansList) {
+    return;
+  }
   try {
     const response = await fetch("/api/improvement-plans");
     if (!response.ok) {
+      renderPlans([]);
       return;
     }
     const plans = await response.json();
     renderPlans(plans);
   } catch (_error) {
-    // Keep the current list if the request fails.
+    renderPlans([]);
   }
 }
 

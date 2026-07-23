@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 
 import app.memory.db as db
 from app.assistant.agent import AgentService
-from app.memory import internal_notes, repository
+from app.memory import improvement_plans, internal_notes, repository
 from app.memory.codebase_index import sync_paths
 from app.memory.internal_note_service import InternalNoteService
 from app.memory.models import CodebaseFileRecord
@@ -153,6 +153,12 @@ def test_wipe_database_clears_all_tables() -> None:
         created_at=datetime.now(UTC),
     )
     InternalNoteService().record_from_offer(offer, next_attempt_at=datetime.now(UTC))
+    improvement_plans.create_plan(
+        title="Improve timers",
+        goal="clearer timer errors",
+        body="1. Update timer copy.",
+        files=["app/runtime/status_copy.py"],
+    )
     sync_paths(["app/main.py"])
 
     wipe_database()
@@ -161,6 +167,7 @@ def test_wipe_database_clears_all_tables() -> None:
     assert repository.list_reminders(include_sent=True) == []
     assert list_recent_chat_messages() == []
     assert internal_notes.list_internal_notes() == []
+    assert improvement_plans.list_plans() == []
     with Session(db.engine) as session:
         assert list(session.exec(select(CodebaseFileRecord)).all()) == []
 

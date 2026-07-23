@@ -5,6 +5,8 @@
   --panel: rgba(8, 12, 10, 0.92);
   --panel-border: rgba(57, 255, 20, 0.18);
   --text: #f0fff4;
+  --text-primary: #f0fff4;
+  --text-muted: #6b8f72;
   --muted: #6b8f72;
   --accent: #39ff14;
   --accent-soft: #76d39b;

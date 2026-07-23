@@ -25,12 +25,13 @@ def test_tool_executor_logs_success_only_when_tool_succeeds(monkeypatch) -> None
             )
 
     executor = ToolExecutor(tool_runner=_Runner())
-    executor.run(
+    source = executor.run(
         user_message="Improve yourself.",
         conversation_id="default",
         tool_name="draft_improvement_plan",
     )
 
+    assert source.speak is False
     assert logged == [(ran_tool_title("draft_improvement_plan"), "Done.")]
 
 

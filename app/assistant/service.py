@@ -53,10 +53,10 @@ class AssistantService:
             ChatResponse result.
         """
         if mode == "chat":
-            return ChatResponse(content=self._chat(message, conversation_id="chat-default"))
-        return ChatResponse(
-            content=AgentService().respond(message, conversation_id="agent-default")
-        )
+            content, speak = self._chat_with_voice(message, conversation_id="chat-default")
+            return ChatResponse(content=content, speak=speak)
+        content, speak = AgentService().respond_with_voice(message, conversation_id="agent-default")
+        return ChatResponse(content=content, speak=speak)
 
     def wake_response(self) -> ChatResponse:
         """
@@ -74,7 +74,10 @@ class AssistantService:
         )
         return ChatResponse(content=content)
 
-    def _chat(self, message: str, conversation_id: str) -> str:
+    def _chat_with_voice(self, message: str, conversation_id: str) -> tuple[str, bool]:
+        return self._chat(message, conversation_id=conversation_id)
+
+    def _chat(self, message: str, conversation_id: str) -> tuple[str, bool]:
         """
         Handle chat input and return a response.
 
