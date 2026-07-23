@@ -35,6 +35,35 @@ def parse_decision(raw: str) -> Decision:
     return {"type": "invalid"}
 
 
+def _find_balanced_json_object(text: str) -> str | None:
+    start = text.find("{")
+    if start == -1:
+        return None
+
+    depth = 0
+    in_string = False
+    escape = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+    return None
+
+
 def extract_json(raw: str) -> Any:
     """
     Extract json.
@@ -50,10 +79,14 @@ def extract_json(raw: str) -> Any:
         text = text.strip("`")
         if "\n" in text:
             text = text.split("\n", 1)[1]
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        text = text[start : end + 1]
+    balanced = _find_balanced_json_object(text)
+    if balanced is not None:
+        text = balanced
+    else:
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            text = text[start : end + 1]
     try:
         return json.loads(text)
     except json.JSONDecodeError:

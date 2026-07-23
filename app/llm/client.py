@@ -13,12 +13,20 @@ _LLAMA_CPP_CHAT_PATH = "/v1/chat/completions"
 
 
 class LocalLLMClient:
-    def complete(self, messages: Sequence[Mapping[str, str]]) -> str:
+    def complete(
+        self,
+        messages: Sequence[Mapping[str, str]],
+        *,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+    ) -> str:
         """
         Complete the requested operation.
 
         Args:
             messages: Conversation messages to send to the model.
+            max_tokens: Optional output token cap override.
+            temperature: Optional sampling temperature override.
 
         Returns:
             Generated or formatted string value.
@@ -26,20 +34,53 @@ class LocalLLMClient:
         settings = get_settings()
 
         if settings.llm_provider == "local":
-            return self._complete_local(messages) or self._unavailable_message()
+            return (
+                self._complete_local(
+                    messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+                or self._unavailable_message()
+            )
         if settings.llm_provider == "ollama":
-            return self._complete_ollama(messages) or self._unavailable_message()
+            return (
+                self._complete_ollama(
+                    messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+                or self._unavailable_message()
+            )
         if settings.llm_provider in {"llama_cpp", "llama_cpp_server"}:
-            return self._complete_llama_cpp_server(messages) or self._unavailable_message()
+            return (
+                self._complete_llama_cpp_server(
+                    messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+                or self._unavailable_message()
+            )
 
-        return self._complete_auto(messages)
+        return self._complete_auto(
+            messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
 
-    def _complete_auto(self, messages: Sequence[Mapping[str, str]]) -> str:
+    def _complete_auto(
+        self,
+        messages: Sequence[Mapping[str, str]],
+        *,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+    ) -> str:
         """
         Complete auto.
 
         Args:
             messages: Conversation messages to send to the model.
+            max_tokens: Optional output token cap override.
+            temperature: Optional sampling temperature override.
 
         Returns:
             Generated or formatted string value.
@@ -49,10 +90,28 @@ class LocalLLMClient:
             self._complete_ollama,
             self._complete_llama_cpp_server,
         ):
-            content = complete(messages, raise_on_error=False)
+            content = complete(
+                messages,
+                raise_on_error=False,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
             if content is not None:
                 return content
         return self._unavailable_message()
+
+    def _resolve_completion_options(
+        self,
+        *,
+        max_tokens: int | None,
+        temperature: float | None,
+    ) -> tuple[int, float]:
+        settings = get_settings()
+        resolved_max_tokens = max_tokens if max_tokens is not None else settings.llm_max_tokens
+        resolved_temperature = (
+            temperature if temperature is not None else settings.llm_temperature
+        )
+        return resolved_max_tokens, resolved_temperature
 
     def _unavailable_message(self) -> str:
         """
@@ -71,6 +130,8 @@ class LocalLLMClient:
         messages: Sequence[Mapping[str, str]],
         *,
         raise_on_error: bool = True,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> str | None:
         """
         Complete local.
@@ -78,6 +139,8 @@ class LocalLLMClient:
         Args:
             messages: Conversation messages to send to the model.
             raise_on_error: Raise on error value.
+            max_tokens: Optional output token cap override.
+            temperature: Optional sampling temperature override.
 
         Returns:
             Parsed value when available; otherwise None.
@@ -91,6 +154,11 @@ class LocalLLMClient:
                 )
             return None
 
+        resolved_max_tokens, resolved_temperature = self._resolve_completion_options(
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+
         try:
             model = _load_local_model(
                 settings.llm_model_path,
@@ -98,8 +166,8 @@ class LocalLLMClient:
             )
             result = model.create_chat_completion(
                 messages=list(messages),
-                temperature=settings.llm_temperature,
-                max_tokens=settings.llm_max_tokens,
+                temperature=resolved_temperature,
+                max_tokens=resolved_max_tokens,
             )
         except (ImportError, OSError, ValueError, RuntimeError):
             if raise_on_error:
@@ -119,6 +187,8 @@ class LocalLLMClient:
         messages: Sequence[Mapping[str, str]],
         *,
         raise_on_error: bool = True,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> str | None:
         """
         Complete ollama.
@@ -126,11 +196,17 @@ class LocalLLMClient:
         Args:
             messages: Conversation messages to send to the model.
             raise_on_error: Raise on error value.
+            max_tokens: Optional output token cap override.
+            temperature: Optional sampling temperature override.
 
         Returns:
             Parsed value when available; otherwise None.
         """
-        payload = self._ollama_payload(messages)
+        payload = self._ollama_payload(
+            messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
         response = self._post(_OLLAMA_CHAT_PATH, payload, raise_on_error=raise_on_error)
         if response is None:
             return None
@@ -145,6 +221,8 @@ class LocalLLMClient:
         messages: Sequence[Mapping[str, str]],
         *,
         raise_on_error: bool = True,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> str | None:
         """
         Complete llama cpp server.
@@ -152,11 +230,17 @@ class LocalLLMClient:
         Args:
             messages: Conversation messages to send to the model.
             raise_on_error: Raise on error value.
+            max_tokens: Optional output token cap override.
+            temperature: Optional sampling temperature override.
 
         Returns:
             Parsed value when available; otherwise None.
         """
-        payload = self._llama_cpp_server_payload(messages)
+        payload = self._llama_cpp_server_payload(
+            messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
         response = self._post(_LLAMA_CPP_CHAT_PATH, payload, raise_on_error=raise_on_error)
         if response is None:
             return None
@@ -198,41 +282,68 @@ class LocalLLMClient:
                 return None
             return None
 
-    def _ollama_payload(self, messages: Sequence[Mapping[str, str]]) -> dict[str, Any]:
+    def _ollama_payload(
+        self,
+        messages: Sequence[Mapping[str, str]],
+        *,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+    ) -> dict[str, Any]:
         """
         Handle ollama payload.
 
         Args:
             messages: Conversation messages to send to the model.
+            max_tokens: Optional output token cap override.
+            temperature: Optional sampling temperature override.
 
         Returns:
             Dictionary containing the requested data.
         """
         settings = get_settings()
+        resolved_max_tokens, resolved_temperature = self._resolve_completion_options(
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
         return {
             "model": settings.llm_model,
             "messages": list(messages),
             "stream": False,
+            "options": {
+                "num_predict": resolved_max_tokens,
+                "temperature": resolved_temperature,
+            },
         }
 
     def _llama_cpp_server_payload(
         self,
         messages: Sequence[Mapping[str, str]],
+        *,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
     ) -> dict[str, Any]:
         """
         Handle llama cpp server payload.
 
         Args:
             messages: Conversation messages to send to the model.
+            max_tokens: Optional output token cap override.
+            temperature: Optional sampling temperature override.
 
         Returns:
             Dictionary containing the requested data.
         """
         settings = get_settings()
+        resolved_max_tokens, resolved_temperature = self._resolve_completion_options(
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
         return {
             "model": settings.llm_model,
             "messages": list(messages),
             "stream": False,
+            "max_tokens": resolved_max_tokens,
+            "temperature": resolved_temperature,
         }
 
     def _extract_ollama_content(self, data: dict[str, Any]) -> str | None:

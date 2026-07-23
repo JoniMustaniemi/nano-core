@@ -419,6 +419,7 @@ function renderActivityStatus() {
 function renderState() {
   const displayState = getDisplayState();
   stateLine.textContent = displayState;
+  document.body.dataset.displayState = displayState;
   renderActivityStatus();
   updateGlobeState();
   updateInputLock();
