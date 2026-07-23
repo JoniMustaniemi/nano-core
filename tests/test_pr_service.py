@@ -98,6 +98,16 @@ def test_pr_service_verify_failure_does_not_mutate_git(monkeypatch: pytest.Monke
         lambda: {"changed_files": ["a.py"], "dirty": True},
     )
     monkeypatch.setattr(
+        "app.tools.pr_service.run_pr_lint",
+        lambda: SimpleNamespace(
+            ok=True,
+            command=["python", "-m", "ruff", "check", "app", "tests"],
+            exit_code=0,
+            output="",
+            error=None,
+        ),
+    )
+    monkeypatch.setattr(
         "app.tools.pr_service.run_pr_verification",
         lambda: SimpleNamespace(
             ok=False,
@@ -116,6 +126,45 @@ def test_pr_service_verify_failure_does_not_mutate_git(monkeypatch: pytest.Monke
 
     assert result.ok is False
     assert result.step == "verify"
+    assert not any(call[:2] == ("commit",) or call[:2] == ("push",) for call in git_calls)
+
+
+def test_pr_service_lint_failure_does_not_mutate_git(monkeypatch: pytest.MonkeyPatch) -> None:
+    git_calls: list[tuple[str, ...]] = []
+
+    def fake_run_git(*args: str):
+        git_calls.append(args)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr("app.tools.pr_service.is_git_repo", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.gh_available", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.gh_authenticated", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.get_open_pull_request", lambda: None)
+    monkeypatch.setattr("app.tools.pr_service.has_publishable_changes", lambda: True)
+    monkeypatch.setattr(
+        "app.tools.pr_service.collect_change_context",
+        lambda: {"changed_files": ["a.py"], "dirty": True},
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_pr_lint",
+        lambda: SimpleNamespace(
+            ok=False,
+            command=["python", "-m", "ruff", "check", "app", "tests"],
+            exit_code=1,
+            output="F401 unused import",
+            error="Lint checks failed.",
+        ),
+    )
+    monkeypatch.setattr("app.tools.pr_service.run_git", fake_run_git)
+    monkeypatch.setattr("app.tools.pr_service.activity.working", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.log", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.error", lambda **kwargs: None)
+
+    result = PullRequestService().run(client=SimpleNamespace())
+
+    assert result.ok is False
+    assert result.step == "lint"
+    assert result.output == "F401 unused import"
     assert not any(call[:2] == ("commit",) or call[:2] == ("push",) for call in git_calls)
 
 
@@ -151,6 +200,16 @@ def test_pr_service_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "app.tools.pr_service.collect_change_context",
         lambda: {"changed_files": ["a.py"], "dirty": True},
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_pr_lint",
+        lambda: SimpleNamespace(
+            ok=True,
+            command=["python", "-m", "ruff", "check", "app", "tests"],
+            exit_code=0,
+            output="",
+            error=None,
+        ),
     )
     monkeypatch.setattr(
         "app.tools.pr_service.run_pr_verification",

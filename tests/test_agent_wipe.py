@@ -5,17 +5,16 @@ from helpers.agent_fixtures import (
     WipeConfirmationClient,
     patch_agent,
 )
+from sqlmodel import Session, select
 
+import app.memory.db as db
 from app.assistant.agent import AgentService
 from app.memory import internal_notes, repository
 from app.memory.codebase_index import sync_paths
 from app.memory.internal_note_service import InternalNoteService
+from app.memory.models import CodebaseFileRecord
 from app.memory.repository import list_recent_chat_messages, wipe_database
 from app.proactive.types import ProactiveOffer
-from sqlmodel import Session, select
-
-import app.memory.db as db
-from app.memory.models import CodebaseFileRecord
 
 
 def test_agent_requires_confirmation_before_wiping_database(monkeypatch, tmp_path) -> None:

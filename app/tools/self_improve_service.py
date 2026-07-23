@@ -19,7 +19,7 @@ from app.runtime.status_copy import (
 )
 from app.tools.files import read_text_file, write_text_file
 from app.tools.pr_service import PullRequestService
-from app.tools.pr_verify import run_pr_verification
+from app.tools.pr_verify import run_pr_lint, run_pr_verification
 
 
 @dataclass(frozen=True, slots=True)
@@ -387,6 +387,15 @@ class SelfImproveService:
       detail=VERIFYING_SELF_IMPROVE_DETAIL,
       source="tools.self_improve_service",
     )
+    verify = run_pr_lint()
+    if not verify.ok:
+      return _fail_self_improve(
+        step="lint",
+        error=verify.error or "Lint checks failed.",
+        goal=goal,
+        changed_files=changed_files,
+      )
+
     verify = run_pr_verification()
     if not verify.ok:
       return _fail_self_improve(

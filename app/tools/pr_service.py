@@ -9,12 +9,16 @@ from app.runtime.status_copy import (
     COLLECTED_CHANGE_CONTEXT_TITLE,
     COMMITTING_CHANGES_TITLE,
     CREATING_FEATURE_BRANCH_TITLE,
+    LINT_AUTO_FIXED_TITLE,
+    LINT_CHECKS_FAILED_TITLE,
+    LINT_CHECKS_PASSED_TITLE,
     NAMING_PR_DETAIL,
     NAMING_PR_TITLE,
     OPENING_PR_TITLE,
     PR_CREATED_TITLE,
     PR_NAMING_FAILED_TITLE,
     PR_WORKFLOW_FAILED_TITLE,
+    PREPARING_PR_LINT_DETAIL,
     PREPARING_PR_PREFLIGHT_DETAIL,
     PREPARING_PR_TITLE,
     PREPARING_PR_VERIFY_DETAIL,
@@ -43,7 +47,7 @@ from app.tools.git_github import (
     working_tree_dirty,
 )
 from app.tools.pr_naming import PrNamingService
-from app.tools.pr_verify import command_display, run_pr_verification
+from app.tools.pr_verify import command_display, run_pr_lint, run_pr_verification
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,6 +144,39 @@ class PullRequestService:
             ),
             source="tools.pr_service",
         )
+
+        activity.working(
+            title=VERIFYING_PROJECT_TITLE,
+            detail=PREPARING_PR_LINT_DETAIL,
+            source="tools.pr_service",
+        )
+        lint = run_pr_lint()
+        if not lint.ok:
+            activity.error(
+                title=LINT_CHECKS_FAILED_TITLE,
+                detail=lint.error or lint.output,
+                source="tools.pr_service",
+            )
+            return PrResult(
+                ok=False,
+                step="lint",
+                verified_with=command_display(lint.command) if lint.command else None,
+                error=lint.error or "Lint checks failed.",
+                output=lint.output,
+            )
+
+        if lint.command:
+            if getattr(lint, "auto_fixed", False):
+                activity.log(
+                    title=LINT_AUTO_FIXED_TITLE,
+                    detail=command_display([*lint.command, "--fix"]),
+                    source="tools.pr_service",
+                )
+            activity.log(
+                title=LINT_CHECKS_PASSED_TITLE,
+                detail=command_display(lint.command),
+                source="tools.pr_service",
+            )
 
         activity.working(
             title=VERIFYING_PROJECT_TITLE,

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from app.assistant.agent_rules import parse_decision, tool_matches_request, tool_signature

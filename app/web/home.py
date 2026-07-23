@@ -1,20 +1,11 @@
 from html import escape
-
 from textwrap import dedent
 
-
-
 from fastapi import APIRouter
-
 from fastapi.responses import HTMLResponse
 
-
-
 from app.config import get_settings
-
 from app.web.tool_commands import list_tool_commands
-
-
 
 router = APIRouter(tags=["web"])
 

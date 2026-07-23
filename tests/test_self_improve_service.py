@@ -78,6 +78,10 @@ def test_self_improve_service_applies_and_delegates_pr(monkeypatch, tmp_path) ->
         lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
     )
     monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_lint",
+        lambda: SimpleNamespace(ok=True, error=None),
+    )
+    monkeypatch.setattr(
         "app.tools.self_improve_service.run_pr_verification",
         lambda: SimpleNamespace(ok=True, error=None),
     )
@@ -106,6 +110,10 @@ def test_self_improve_service_retries_invalid_plan_json(monkeypatch, tmp_path) -
     monkeypatch.setattr(
         "app.tools.self_improve_service._file_selection_lines",
         lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_lint",
+        lambda: SimpleNamespace(ok=True, error=None),
     )
     monkeypatch.setattr(
         "app.tools.self_improve_service.run_pr_verification",
@@ -155,6 +163,10 @@ def test_self_improve_service_applies_patch_plan(monkeypatch, tmp_path) -> None:
         lambda goal, limit=40: ["- app/runtime/status_copy.py: Status strings."],
     )
     monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_lint",
+        lambda: SimpleNamespace(ok=True, error=None),
+    )
+    monkeypatch.setattr(
         "app.tools.self_improve_service.run_pr_verification",
         lambda: SimpleNamespace(ok=True, error=None),
     )
@@ -193,6 +205,10 @@ def test_self_improve_service_uses_goal_fallback_when_selection_invalid(monkeypa
     monkeypatch.setattr(
         "app.tools.self_improve_service._file_selection_lines",
         lambda goal, limit=40: ["- app/runtime/status_copy.py: Status strings."],
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_service.run_pr_lint",
+        lambda: SimpleNamespace(ok=True, error=None),
     )
     monkeypatch.setattr(
         "app.tools.self_improve_service.run_pr_verification",
