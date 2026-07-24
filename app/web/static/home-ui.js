@@ -375,8 +375,84 @@ function resolveActivityHeadline() {
   return headline;
 }
 
-function renderActivityStatus() {
-  activityStatusText.textContent = resolveActivityHeadline();
+function isDefaultStandbyHeadline(headline) {
+  if (!headline || headline === STANDBY_HEADLINE) {
+    return true;
+  }
+  const standbyWithDetail = `${STANDBY_HEADLINE} — ${STANDBY_DETAIL_DEFAULT}`;
+  return headline === standbyWithDetail;
+}
+
+function cancelStatusReveal() {
+  if (statusRevealTimer !== null) {
+    window.clearTimeout(statusRevealTimer);
+    statusRevealTimer = null;
+  }
+  activityStatusText.classList.remove("rolling");
+}
+
+function revealStatusRolling(content, onComplete) {
+  const tokens = content.match(/\S+\s*/gu) || [content];
+  let index = 0;
+  activityStatusText.textContent = "";
+  activityStatusText.classList.add("rolling");
+
+  const step = () => {
+    if (index >= tokens.length) {
+      activityStatusText.classList.remove("rolling");
+      statusRevealTimer = null;
+      if (typeof onComplete === "function") {
+        onComplete();
+      }
+      return;
+    }
+    activityStatusText.textContent += tokens[index];
+    index += 1;
+    const delay = content.length > 180 ? 14 : content.length > 100 ? 20 : content.length > 50 ? 28 : 36;
+    statusRevealTimer = window.setTimeout(step, delay);
+  };
+
+  step();
+}
+
+function renderActivityStatus(options = {}) {
+  const animate = options.animate !== false;
+  const headline = resolveActivityHeadline();
+  const displayState = getDisplayState();
+
+  if (headline !== lastRenderedStatusText) {
+    const shouldAnimate =
+      animate &&
+      headline &&
+      !(displayState === "working" && lastRenderedStatusText);
+
+    cancelStatusReveal();
+    lastRenderedStatusText = headline;
+    if (shouldAnimate) {
+      revealStatusRolling(headline);
+    } else {
+      activityStatusText.textContent = headline;
+    }
+  }
+
+  if (displayState === "standby" && !isDefaultStandbyHeadline(headline)) {
+    if (answerOutput.classList.contains("empty") && answerClearTimer === null) {
+      scheduleStatusClear();
+    }
+    return;
+  }
+  if (displayState !== "standby") {
+    clearStatusClearTimer();
+    statusClearPending = false;
+  }
+}
+
+function resetActivityStatusIfIdle() {
+  if (isWorkingOnTask() || isListeningStateActive()) {
+    statusClearPending = true;
+    return;
+  }
+  resetStandbySnapshot();
 }
 
 function startWorkingResponse() {
@@ -387,7 +463,9 @@ function startWorkingResponse() {
     return;
   }
   cancelAnswerReveal();
+  cancelStatusReveal();
   clearAnswerClearTimer();
+  clearStatusClearTimer();
   if (!answerOutput.classList.contains("empty")) {
     savedResponseBeforeWorking = answerOutput.textContent;
   } else {
@@ -636,21 +714,45 @@ function clearAnswerClearTimer() {
   }
 }
 
+function clearStatusClearTimer() {
+  if (statusClearTimer !== null) {
+    window.clearTimeout(statusClearTimer);
+    statusClearTimer = null;
+  }
+}
+
+function scheduleStatusClear() {
+  clearStatusClearTimer();
+  statusClearPending = false;
+  statusClearTimer = window.setTimeout(() => {
+    statusClearTimer = null;
+    if (speakingActive) {
+      statusClearPending = true;
+      return;
+    }
+    resetActivityStatusIfIdle();
+  }, ANSWER_CLEAR_DELAY_MS);
+}
+
 function scheduleAnswerClear() {
   clearAnswerClearTimer();
+  clearStatusClearTimer();
   answerClearPending = false;
+  statusClearPending = false;
   answerClearTimer = window.setTimeout(() => {
     answerClearTimer = null;
     if (speakingActive) {
       answerClearPending = true;
+      statusClearPending = true;
       return;
     }
     setAnswer("", { animate: false, bypassSpeechGuard: true });
+    resetActivityStatusIfIdle();
   }, ANSWER_CLEAR_DELAY_MS);
 }
 
 function resumeAnswerClearAfterSpeech() {
-  if (!answerClearPending) {
+  if (!answerClearPending && !statusClearPending) {
     return;
   }
   scheduleAnswerClear();
@@ -672,7 +774,9 @@ function setAnswer(text, options = {}) {
   }
 
   clearAnswerClearTimer();
+  clearStatusClearTimer();
   answerClearPending = false;
+  statusClearPending = false;
   cancelAnswerReveal();
   if (!content) {
     answerOutput.textContent = IDLE_RESPONSE;

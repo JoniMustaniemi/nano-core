@@ -108,11 +108,11 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=working-response-1"' in response.text
+    assert 'href="/static/home.css?v=status-roll-1"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/essence_visualizer.js?v=default-hidden-1"' in response.text
-    assert 'src="/static/home-state.js?v=default-hidden-1"' in response.text
+    assert 'src="/static/home-state.js?v=status-roll-1"' in response.text
     assert 'src="/static/home-plans.js?v=plan-copy-1"' in response.text
     assert 'src="/static/home-chat.js?v=tool-activity-1"' in response.text
     assert 'src="/static/home.js?v=default-hidden-1"' in response.text
@@ -226,6 +226,10 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "renderActivityStatus" in js_text
 
+    assert "revealStatusRolling" in js_text
+
+    assert "statusRoll" in css_text
+
     assert "resolveActivityHeadline" in js_text
 
     assert "WORKING_DETAIL_DEFAULT" in js_text
@@ -299,6 +303,12 @@ def test_homepage_serves_static_assets() -> None:
     assert 'getElementById("brains-clear")' in js_text
 
     assert "ANSWER_CLEAR_DELAY_MS = 20000" in js_text
+
+    assert "scheduleStatusClear" in js_text
+
+    assert "resetActivityStatusIfIdle" in js_text
+
+    assert "statusClearTimer" in js_text
 
     assert "resumeAnswerClearAfterSpeech" in js_text
 
