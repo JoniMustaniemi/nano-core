@@ -267,6 +267,36 @@ class ImprovementPlanService:
             source="tools.improvement_plan_service",
         )
 
+        try:
+            return self._draft_after_working(
+                client=client,
+                goal=goal,
+                preferred_files=preferred_files,
+                source_note_id=source_note_id,
+                passive=passive,
+                allowed=allowed,
+            )
+        except Exception:
+            result = ImprovementPlanResult(
+                ok=False,
+                step="draft",
+                goal=goal,
+                error="Could not draft an improvement plan.",
+            )
+            _finalize_draft_activity(result)
+            return result
+
+    def _draft_after_working(
+        self,
+        *,
+        client: Any,
+        goal: str,
+        preferred_files: list[str] | None,
+        source_note_id: int | None,
+        passive: bool,
+        allowed: str,
+    ) -> ImprovementPlanResult:
+        settings = get_settings()
         files_to_read = _select_files(
             client,
             goal=goal,

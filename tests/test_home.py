@@ -260,6 +260,12 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "applyActivityEvent" in js_text
 
+    completion_block = js_text.split(
+        'event.source === "tools.improvement_plan_service.completed"'
+    )[1].split("if (event.kind === \"log\" && event.source === \"runtime.long_task_progress\")")[0]
+    assert "void loadPlans();" in completion_block
+    assert "return;" not in completion_block
+
     assert "runtime.long_task_progress" in js_text
 
     assert "--text-primary" in css_text
