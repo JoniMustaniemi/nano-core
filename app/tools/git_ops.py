@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import secrets
+from datetime import UTC, datetime
 from typing import Any
 
 from app.tools.git_command import GitCommandResult, run_git
+
+_SLUG_MAX_LEN = 48
 
 
 def is_git_repo() -> bool:
@@ -131,20 +135,55 @@ def ensure_feature_branch(name: str) -> GitCommandResult:
     return checkout_new_branch(name)
 
 
+def _append_slug_suffix(base: str, suffix: str) -> str:
+    """
+    Append a suffix to a branch slug while respecting max length.
+
+    Args:
+        base: Base snake_case slug.
+        suffix: Suffix without a leading underscore.
+
+    Returns:
+        Combined slug capped at 48 characters.
+    """
+    combined = f"{base}_{suffix}"
+    if len(combined) <= _SLUG_MAX_LEN:
+        return combined
+    trimmed_base = base[: _SLUG_MAX_LEN - len(suffix) - 1].rstrip("_")
+    return f"{trimmed_base}_{suffix}"
+
+
 def ensure_unique_branch_slug(slug: str) -> str:
     """
     Ensure a feature branch slug is unique locally and on origin.
+
+    When the base slug is taken, appends a short date or random token instead
+    of only incrementing _2, _3, and so on.
 
     Args:
         slug: Base snake_case slug.
 
     Returns:
-        Unique slug, with numeric suffix when needed.
+        Unique slug suitable for feature/{slug}.
     """
-    candidate = slug
+    if not branch_exists(f"feature/{slug}"):
+        return slug
+
+    date_suffix = datetime.now(UTC).strftime("%m%d")
+    dated = _append_slug_suffix(slug, date_suffix)
+    if not branch_exists(f"feature/{dated}"):
+        return dated
+
+    for _ in range(10):
+        token = secrets.token_hex(2)
+        candidate = _append_slug_suffix(slug, token)
+        if not branch_exists(f"feature/{candidate}"):
+            return candidate
+
     suffix = 2
+    candidate = slug
     while branch_exists(f"feature/{candidate}"):
-        candidate = f"{slug}_{suffix}"
+        candidate = _append_slug_suffix(slug, str(suffix))
         suffix += 1
     return candidate
 

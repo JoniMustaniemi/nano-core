@@ -384,8 +384,6 @@ def _build_fallback_naming(context: dict[str, Any]) -> PrNaming:
     unique_slug = ensure_unique_branch_slug(slug)
     title = _fallback_title(unique_slug, context)
     body = _fallback_body(unique_slug, context)
-    if unique_slug != slug:
-        body = f"{body} (branch suffix adjusted for uniqueness.)"
     return PrNaming(
         slug=unique_slug,
         title=title,
@@ -461,8 +459,6 @@ def _parse_naming(
 
     unique_slug = ensure_unique_branch_slug(slug)
     final_commit = unique_slug if unique_slug == slug else unique_slug
-    if unique_slug != slug:
-        body = f"{body} (branch suffix adjusted for uniqueness.)"
     return PrNaming(
         slug=unique_slug,
         title=title,
