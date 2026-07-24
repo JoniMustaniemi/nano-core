@@ -72,7 +72,6 @@ function applyActivityEvent(event) {
       void playVoice(message, { resumeListening: false });
     }
     void loadPlans();
-    return;
   }
 
   if (event.kind === "log" && event.source === "runtime.long_task_progress") {
