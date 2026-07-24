@@ -66,6 +66,8 @@ const STATE_COLORS = {
   },
 };
 
+const ESSENCE_SIZE_SCALE = 1.3;
+
 function shaderParamsForState(state) {
   const essence = ESSENCE_STATES[state] || ESSENCE_STATES.standby;
   const colors = STATE_COLORS[state] || STATE_COLORS.standby;
@@ -464,6 +466,8 @@ class EssenceVisualizer {
       radiusScale *= 0.92;
       energyStrength *= 1.25;
       glow *= 1.15;
+    } else {
+      radiusScale *= ESSENCE_SIZE_SCALE;
     }
     this.uniforms.u_energy_strength.value = energyStrength;
     this.uniforms.u_glow.value = glow;

@@ -20,6 +20,8 @@
   --bottom-bar-offset: max(16px, env(safe-area-inset-bottom, 0));
   --page-pad-x: clamp(16px, 4vw, 28px);
   --page-pad-top: clamp(12px, 2.5vh, 24px);
+  --top-zone-offset: 20dvh;
+  --essence-size-scale: 1.3;
 }
 
 * {
@@ -49,16 +51,6 @@ body.controls-hidden .shell {
 
 body.controls-hidden .top-zone {
   max-height: 38dvh;
-  align-items: center;
-  text-align: center;
-}
-
-body.controls-hidden .activity-status {
-  justify-content: center;
-}
-
-body.controls-hidden .response-zone {
-  text-align: center;
 }
 
 body.controls-hidden .essence-zone {
@@ -150,18 +142,24 @@ body.controls-hidden .commands-drawer {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: clamp(8px, 1.5vh, 14px);
   width: 100%;
   max-height: 46dvh;
+  margin-top: var(--top-zone-offset);
   overflow: hidden;
+  text-align: center;
 }
 
 .response-zone {
   flex: 1 1 auto;
   min-height: clamp(4.5rem, 14vh, 9rem);
+  width: 100%;
+  max-width: var(--content-max);
   overflow-x: hidden;
   overflow-y: auto;
   padding-right: 4px;
+  text-align: center;
   scrollbar-width: thin;
   scrollbar-color: rgba(57, 255, 20, 0.28) transparent;
 }
@@ -218,7 +216,10 @@ body.controls-hidden .commands-drawer {
   margin: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0;
+  width: 100%;
+  max-width: var(--content-max);
   color: var(--muted);
   font: 500 0.82rem/1.4 "Cascadia Mono", "Consolas", monospace;
   letter-spacing: 0.02em;
@@ -264,8 +265,8 @@ body.controls-hidden .commands-drawer {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: min(100%, min(88vw, 64vh));
-  height: min(100%, min(88vw, 64vh));
+  width: min(100%, calc(min(88vw, 64vh) * var(--essence-size-scale)));
+  height: min(100%, calc(min(88vw, 64vh) * var(--essence-size-scale)));
   aspect-ratio: 1;
   padding: 0;
   overflow: visible;
@@ -277,8 +278,8 @@ body.controls-hidden .commands-drawer {
 .essence-zone::before {
   content: "";
   position: absolute;
-  width: min(88%, min(88vw, 62vh));
-  height: min(88%, min(88vw, 62vh));
+  width: min(100%, calc(min(88vw, 62vh) * var(--essence-size-scale)));
+  height: min(100%, calc(min(88vw, 62vh) * var(--essence-size-scale)));
   aspect-ratio: 1;
   border-radius: 50%;
   background: radial-gradient(

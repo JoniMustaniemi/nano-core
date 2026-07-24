@@ -107,10 +107,10 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=controls-toggle-3"' in response.text
+    assert 'href="/static/home.css?v=controls-toggle-7"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
-    assert 'src="/static/essence_visualizer.js?v=aurora-core-7"' in response.text
+    assert 'src="/static/essence_visualizer.js?v=controls-toggle-7"' in response.text
     assert 'src="/static/home-state.js?v=controls-toggle-3"' in response.text
     assert 'src="/static/home-plans.js?v=procedural-orb-24"' in response.text
     assert 'src="/static/home.js?v=controls-toggle-1"' in response.text

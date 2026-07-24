@@ -671,8 +671,8 @@ body.inputs-locked #keyboard-toggle:disabled {
   }
 
   .essence-canvas-wrap {
-    width: min(100%, min(74vh, 64vw));
-    height: min(100%, min(74vh, 64vw));
+    width: min(100%, calc(min(74vh, 64vw) * var(--essence-size-scale)));
+    height: min(100%, calc(min(74vh, 64vw) * var(--essence-size-scale)));
   }
 }
 
@@ -696,13 +696,13 @@ body.inputs-locked #keyboard-toggle:disabled {
   }
 
   .essence-canvas-wrap {
-    width: min(100%, min(84vh, 58vw, 980px));
-    height: min(100%, min(84vh, 58vw, 980px));
+    width: min(100%, calc(min(84vh, 58vw, 980px) * var(--essence-size-scale)));
+    height: min(100%, calc(min(84vh, 58vw, 980px) * var(--essence-size-scale)));
   }
 
   .essence-zone::before {
-    width: min(100%, min(76vh, 52vw, 900px));
-    height: min(100%, min(76vh, 52vw, 900px));
+    width: min(100%, calc(min(76vh, 52vw, 900px) * var(--essence-size-scale)));
+    height: min(100%, calc(min(76vh, 52vw, 900px) * var(--essence-size-scale)));
   }
 
   .bottom-bar {
@@ -726,8 +726,8 @@ body.inputs-locked #keyboard-toggle:disabled {
   }
 
   .essence-canvas-wrap {
-    width: min(100%, min(86vh, 54vw, 1080px));
-    height: min(100%, min(86vh, 54vw, 1080px));
+    width: min(100%, calc(min(86vh, 54vw, 1080px) * var(--essence-size-scale)));
+    height: min(100%, calc(min(86vh, 54vw, 1080px) * var(--essence-size-scale)));
   }
 }
 
