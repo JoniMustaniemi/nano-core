@@ -13,8 +13,8 @@ from app.runtime.status_copy import (
     tool_error_title,
 )
 from app.tools import get_tool, list_tools
-from app.tools.registry import tool_announcement_for
 from app.tools.errors import ToolError
+from app.tools.registry import tool_announcement_for
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
 _STRUCTURED_RESULT_TOOLS = frozenset({"draft_improvement_plan", "create_pull_request"})
