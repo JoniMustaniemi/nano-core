@@ -1,12 +1,12 @@
-function initGlobes() {
+function initEssence() {
   if (typeof window.initEssenceOrbs === "function") {
     window.initEssenceOrbs();
-    mainGlobe = window.mainGlobe || null;
-    miniGlobe = window.miniGlobe || null;
+    mainEssence = window.mainEssence || null;
+    miniEssence = window.miniEssence || null;
   }
 }
 
-function updateGlobeState() {
+function updateEssenceState() {
   let state = getDisplayState();
   if (speakingActive) {
     state = "speaking";
@@ -14,11 +14,11 @@ function updateGlobeState() {
   if (stateLine.textContent === "reconnecting") {
     state = "reconnecting";
   }
-  if (mainGlobe) {
-    mainGlobe.setState(state);
+  if (mainEssence) {
+    mainEssence.setState(state);
   }
-  if (miniGlobe) {
-    miniGlobe.setState(state);
+  if (miniEssence) {
+    miniEssence.setState(state);
   }
 }
 
@@ -138,7 +138,7 @@ function renderToolCommands(commands) {
       }
 
       button.addEventListener("click", () => {
-        void runToolCommand(command.message);
+        void runToolCommand(command);
       });
       grid.append(button);
     }
@@ -222,14 +222,106 @@ async function loadToolCommands() {
   return response.json();
 }
 
-async function runToolCommand(message) {
+async function runToolCommand(command) {
   if (isBusy()) {
     return;
   }
+  if (command.client_action === "toggle_controls") {
+    toggleControlsHidden();
+    closeCommandsDrawer();
+    return;
+  }
+  const message = command.message;
   messageBox.value = message;
   closeCommandsDrawer();
   await submitMessage(message, "command");
   messageBox.value = "";
+}
+
+function normalizeUiCommandText(message) {
+  return message
+    .trim()
+    .toLowerCase()
+    .replace(/[.!?,]+/g, " ")
+    .replace(/\b(hey|hi)\s+nano\b/g, " ")
+    .replace(/\bnano\b/g, " ")
+    .replace(/\bplease\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchControlsUiCommand(message) {
+  const normalized = normalizeUiCommandText(message);
+  if (!normalized) {
+    return null;
+  }
+  if (
+    /^hide(\s+the)?\s+controls?$/.test(normalized) ||
+    /^hide(\s+the)?\s+ui\s+controls?$/.test(normalized)
+  ) {
+    return "hide";
+  }
+  if (
+    /^show(\s+the)?\s+controls?$/.test(normalized) ||
+    /^show(\s+the)?\s+ui\s+controls?$/.test(normalized)
+  ) {
+    return "show";
+  }
+  if (
+    /^(hide\s*\/\s*show|toggle)(\s+the)?\s+controls?$/.test(normalized) ||
+    normalized === "hide show controls"
+  ) {
+    return "toggle";
+  }
+  return null;
+}
+
+function tryHandleUiCommand(message) {
+  const action = matchControlsUiCommand(message);
+  if (action === "hide") {
+    setControlsHidden(true);
+    return true;
+  }
+  if (action === "show") {
+    setControlsHidden(false);
+    return true;
+  }
+  if (action === "toggle") {
+    toggleControlsHidden();
+    return true;
+  }
+  return false;
+}
+
+async function completeUiCommand(source) {
+  const status = controlsHidden ? "Controls hidden." : "Controls shown.";
+  replyStatus.textContent = status;
+  setVoiceStatus(status);
+  if (source === "voice") {
+    await playVoice(status, { pauseRecognition: true });
+    returnToWakeDetection();
+  }
+}
+
+function applyControlsVisibility() {
+  document.body.classList.toggle("controls-hidden", controlsHidden);
+  if (controlsRevealZone) {
+    controlsRevealZone.hidden = !controlsHidden;
+  }
+}
+
+function setControlsHidden(hidden) {
+  controlsHidden = hidden;
+  if (controlsHidden) {
+    closeKeyboardPanel();
+    closeCommandsDrawer();
+    closeNanoSheet();
+  }
+  applyControlsVisibility();
+}
+
+function toggleControlsHidden() {
+  setControlsHidden(!controlsHidden);
 }
 
 function updateListenButton() {
@@ -293,7 +385,7 @@ function renderState() {
   stateLine.textContent = displayState;
   document.body.dataset.displayState = displayState;
   renderActivityStatus();
-  updateGlobeState();
+  updateEssenceState();
   updateInputLock();
 }
 

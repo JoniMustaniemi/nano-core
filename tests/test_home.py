@@ -59,9 +59,13 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert "What can I do for you today?" in response.text
 
-    assert 'id="globe-canvas"' in response.text
+    assert 'id="essence-canvas"' in response.text
 
-    assert 'id="globe-mini-canvas"' in response.text
+    assert 'id="essence-mini-canvas"' in response.text
+
+    assert 'id="controls-reveal-zone"' in response.text
+
+    assert 'id="controls-reveal"' in response.text
 
     assert 'id="keyboard-toggle"' in response.text
 
@@ -103,13 +107,13 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=procedural-orb-24"' in response.text
+    assert 'href="/static/home.css?v=controls-toggle-7"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
-    assert 'src="/static/globe_visualizer.js?v=procedural-orb-15"' in response.text
-    assert 'src="/static/home-state.js?v=procedural-orb-24"' in response.text
+    assert 'src="/static/essence_visualizer.js?v=controls-toggle-7"' in response.text
+    assert 'src="/static/home-state.js?v=controls-toggle-3"' in response.text
     assert 'src="/static/home-plans.js?v=procedural-orb-24"' in response.text
-    assert 'src="/static/home.js?v=procedural-orb-19"' in response.text
+    assert 'src="/static/home.js?v=controls-toggle-1"' in response.text
 
     assert "Enter to send" in response.text
 
@@ -137,7 +141,7 @@ def test_homepage_serves_static_assets() -> None:
     with TestClient(app) as client:
         css_text = _load_home_css(client)
         js_text = _load_home_js(client)
-        globe_js_response = client.get("/static/globe_visualizer.js")
+        essence_js_response = client.get("/static/essence_visualizer.js")
 
     assert ".nano-sheet" in css_text
 
@@ -145,7 +149,13 @@ def test_homepage_serves_static_assets() -> None:
 
     assert ".footer-cluster" in css_text
 
-    assert ".globe-zone" in css_text
+    assert ".essence-zone" in css_text
+
+    assert ".controls-reveal-zone" in css_text
+
+    assert ".controls-reveal" in css_text
+
+    assert "controls-hidden" in css_text
 
     assert "@keyframes blink" in css_text
 
@@ -225,6 +235,12 @@ def test_homepage_serves_static_assets() -> None:
 
     assert ".voice-volume" in css_text
 
+    assert "matchControlsUiCommand" in js_text
+
+    assert "completeUiCommand" in js_text
+
+    assert "toggleControlsHidden" in js_text
+
     assert 'fetch("/api/tool-commands")' in js_text
 
     assert "runToolCommand" in js_text
@@ -283,11 +299,11 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "if (isWorkingOnTask())" in js_text
 
-    assert "GlobeVisualizer" in globe_js_response.text
+    assert "EssenceVisualizer" in essence_js_response.text
 
-    assert "GLOBE_STATES" in globe_js_response.text
+    assert "ESSENCE_STATES" in essence_js_response.text
 
-    assert "orbitingRings3D" in globe_js_response.text
+    assert "auroraBands" in essence_js_response.text
     assert "measureVoiceLevel" in js_text
 
     assert "toggleKeyboardPanel" in js_text
@@ -331,6 +347,8 @@ def test_tool_commands_endpoint_lists_quick_actions() -> None:
     assert any(item["id"] == "check_health" for item in payload)
 
     assert any(item["id"] == "wipe_data" for item in payload)
+
+    assert any(item["id"] == "toggle_controls" for item in payload)
 
     assert any(item["message"] == "List my notes." for item in payload)
 

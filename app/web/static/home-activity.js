@@ -270,7 +270,7 @@ function listen(lastEventId = 0) {
   });
   source.onerror = () => {
     stateLine.textContent = "reconnecting";
-    updateGlobeState();
+    updateEssenceState();
   };
 }
 

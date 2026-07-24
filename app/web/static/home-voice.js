@@ -441,22 +441,22 @@ function measureVoiceLevel() {
     const sample = (voiceAnalyserBuffer[index] - 128) / 128;
     sum += sample * sample;
   }
-  return Math.min(1, Math.sqrt(sum / voiceAnalyserBuffer.length) * 6.2);
+  return Math.min(1, Math.sqrt(sum / voiceAnalyserBuffer.length) * 4.0);
 }
 
-function pushVoiceLevelToGlobes(level) {
-  if (mainGlobe) {
-    mainGlobe.setAudioLevel(level);
+function pushVoiceLevelToEssence(level) {
+  if (mainEssence) {
+    mainEssence.setAudioLevel(level);
   }
-  if (miniGlobe) {
-    miniGlobe.setAudioLevel(level);
+  if (miniEssence) {
+    miniEssence.setAudioLevel(level);
   }
 }
 
 function startVoiceLevelMonitor() {
   stopVoiceLevelMonitor();
   const tick = () => {
-    pushVoiceLevelToGlobes(measureVoiceLevel());
+    pushVoiceLevelToEssence(measureVoiceLevel());
     voiceLevelFrame = requestAnimationFrame(tick);
   };
   voiceLevelFrame = requestAnimationFrame(tick);
@@ -467,7 +467,7 @@ function stopVoiceLevelMonitor() {
     cancelAnimationFrame(voiceLevelFrame);
     voiceLevelFrame = null;
   }
-  pushVoiceLevelToGlobes(0);
+  pushVoiceLevelToEssence(0);
 }
 
 async function playVoice(text, options = {}) {
@@ -488,7 +488,7 @@ async function playVoiceNow(text, options = {}) {
   }
   clearVoiceSource();
   speakingActive = true;
-  updateGlobeState();
+  updateEssenceState();
   try {
     const response = await fetch("/api/voice", {
       method: "POST",
@@ -514,7 +514,7 @@ async function playVoiceNow(text, options = {}) {
   } finally {
     stopVoiceLevelMonitor();
     speakingActive = false;
-    updateGlobeState();
+    updateEssenceState();
     clearVoiceSource();
     resumeAnswerClearAfterSpeech();
     if (shouldResumeRecognition && microphoneReady) {

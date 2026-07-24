@@ -37,8 +37,10 @@ const planReader = document.getElementById("plan-reader");
 const planReaderTitle = document.getElementById("plan-reader-title");
 const planReaderBody = document.getElementById("plan-reader-body");
 const planProcessButton = document.getElementById("plan-process-button");
-const globeCanvas = document.getElementById("globe-canvas");
-const globeMiniCanvas = document.getElementById("globe-mini-canvas");
+const essenceCanvas = document.getElementById("essence-canvas");
+const essenceMiniCanvas = document.getElementById("essence-mini-canvas");
+const controlsRevealZone = document.getElementById("controls-reveal-zone");
+const controlsRevealButton = document.getElementById("controls-reveal");
 
 let currentVoiceUrl = null;
 let voicePlaybackQueue = Promise.resolve();
@@ -85,7 +87,8 @@ let nanoSheetOpen = false;
 let activeNanoTab = "brains";
 let activePlanId = null;
 let speakingActive = false;
+let controlsHidden = false;
 
-let mainGlobe = null;
-let miniGlobe = null;
+let mainEssence = null;
+let miniEssence = null;
 let toolCommands = [];

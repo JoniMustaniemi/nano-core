@@ -1,11 +1,16 @@
 async function sendMessage() {
-  if (isBusy()) {
-    replyStatus.textContent = "I'm still working. Wait for the current answer.";
-    return;
-  }
   const message = messageBox.value.trim();
   if (!message) {
     replyStatus.textContent = "Write a message first.";
+    return;
+  }
+  if (tryHandleUiCommand(message)) {
+    await completeUiCommand("text");
+    messageBox.value = "";
+    return;
+  }
+  if (isBusy()) {
+    replyStatus.textContent = "I'm still working. Wait for the current answer.";
     return;
   }
   await submitMessage(message, "text");
@@ -14,6 +19,11 @@ async function sendMessage() {
 
 async function sendRecognizedMessage(message) {
   messageBox.value = message;
+  if (tryHandleUiCommand(message)) {
+    await completeUiCommand("voice");
+    messageBox.value = "";
+    return;
+  }
   await sendMessage();
 }
 
@@ -31,6 +41,10 @@ async function acknowledgeRequest(source) {
 }
 
 async function submitMessage(message, source) {
+  if (tryHandleUiCommand(message)) {
+    await completeUiCommand(source);
+    return;
+  }
   requestInFlight = true;
   await acknowledgeRequest(source);
   replyStatus.textContent = source === "voice" ? "Sending voice command..." : "Sending...";

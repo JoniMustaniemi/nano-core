@@ -10,17 +10,17 @@
 
 <title>{app_name}</title>
 
-<link rel="stylesheet" href="/static/home.css?v=procedural-orb-24" />
+<link rel="stylesheet" href="/static/home.css?v=controls-toggle-7" />
 
 <script defer src="/static/three.min.js?v=0.160.1"></script>
-<script defer src="/static/globe_visualizer.js?v=procedural-orb-15"></script>
-<script defer src="/static/home-state.js?v=procedural-orb-24"></script>
+<script defer src="/static/essence_visualizer.js?v=controls-toggle-7"></script>
+<script defer src="/static/home-state.js?v=controls-toggle-3"></script>
 <script defer src="/static/home-plans.js?v=procedural-orb-24"></script>
-<script defer src="/static/home-ui.js?v=procedural-orb-19"></script>
-<script defer src="/static/home-voice.js?v=procedural-orb-19"></script>
+<script defer src="/static/home-ui.js?v=controls-toggle-4"></script>
+<script defer src="/static/home-voice.js?v=aurora-core-4"></script>
 <script defer src="/static/home-activity.js?v=procedural-orb-24"></script>
-<script defer src="/static/home-chat.js?v=procedural-orb-24"></script>
-<script defer src="/static/home.js?v=procedural-orb-19"></script>
+<script defer src="/static/home-chat.js?v=controls-toggle-4"></script>
+<script defer src="/static/home.js?v=controls-toggle-1"></script>
 
 </head>
 
@@ -50,15 +50,25 @@ What can I do for you today?
 
 </header>
 
-<section class="globe-zone" aria-hidden="true">
+<section class="essence-zone" aria-hidden="true">
 
-<div class="globe-canvas-wrap">
+<div class="essence-canvas-wrap">
 
-<canvas id="globe-canvas"></canvas>
+<canvas id="essence-canvas"></canvas>
 
 </div>
 
 </section>
+
+<div id="controls-reveal-zone" class="controls-reveal-zone" hidden>
+
+<button id="controls-reveal" class="controls-reveal" type="button">
+
+Show controls
+
+</button>
+
+</div>
 
 <section id="keyboard-panel" class="keyboard-panel" hidden>
 
@@ -388,7 +398,7 @@ aria-pressed="false"
 
 >
 
-<canvas id="globe-mini-canvas" aria-hidden="true"></canvas>
+<canvas id="essence-mini-canvas" aria-hidden="true"></canvas>
 
 <span class="sr-only">Audio mode</span>
 

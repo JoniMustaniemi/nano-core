@@ -53,6 +53,16 @@ messageBox.addEventListener("keydown", (event) => {
   }
 });
 brainsClearButton.addEventListener("click", clearActivityLog);
+if (controlsRevealButton) {
+  controlsRevealButton.addEventListener("click", () => {
+    setControlsHidden(false);
+  });
+}
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && controlsHidden) {
+    setControlsHidden(false);
+  }
+});
 window.addEventListener("pointerdown", maybeStartListeningAfterGesture, { passive: true });
 window.addEventListener("keydown", maybeStartListeningAfterGesture);
 window.addEventListener("beforeunload", () => {
@@ -61,17 +71,17 @@ window.addEventListener("beforeunload", () => {
       track.stop();
     }
   }
-  if (mainGlobe) {
-    mainGlobe.destroy();
+  if (mainEssence) {
+    mainEssence.destroy();
   }
-  if (miniGlobe) {
-    miniGlobe.destroy();
+  if (miniEssence) {
+    miniEssence.destroy();
   }
 });
 
 window.addEventListener("load", () => {
   requestAnimationFrame(() => {
-    initGlobes();
+    initEssence();
     void initVoiceVolumeControl();
     setAnswer("", { animate: false });
     setVoiceStatus("Voice on standby.");

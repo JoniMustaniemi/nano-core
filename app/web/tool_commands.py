@@ -14,6 +14,7 @@ class ToolCommand:
     message: str
     category: str
     description: str = ""
+    client_action: str = ""
 
 
 EXTRA_UI_COMMANDS: tuple[ToolCommand, ...] = (
@@ -30,6 +31,14 @@ EXTRA_UI_COMMANDS: tuple[ToolCommand, ...] = (
         message="What can you do?",
         category="System",
         description="List Nano capabilities.",
+    ),
+    ToolCommand(
+        id="toggle_controls",
+        label="Hide/show controls",
+        message="Hide controls.",
+        category="Interface",
+        description="Toggle footer controls for a focused view.",
+        client_action="toggle_controls",
     ),
 )
 
