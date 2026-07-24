@@ -55,7 +55,7 @@ def _result_to_json(result: ImprovementPlanResult, *, internal_note_id: int | No
 register_tool(
     ToolSpec(
         name="draft_improvement_plan",
-        description="Draft a text improvement plan for Nano's own codebase without applying changes.",
+        description="Draft a text improvement plan for Nano's own codebase. Does not edit code, create branches, or open pull requests.",
         args_schema={"goal": "What to improve in Nano's own code."},
         handler=_draft_improvement_plan,
         announcement="Drafting an improvement plan.",

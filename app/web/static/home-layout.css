@@ -21,7 +21,7 @@
   --page-pad-x: clamp(16px, 4vw, 28px);
   --page-pad-top: clamp(12px, 2.5vh, 24px);
   --top-zone-offset: 20dvh;
-  --essence-size-scale: 1.3;
+  --essence-size-scale: 1.05;
 }
 
 * {
@@ -266,6 +266,10 @@ body[data-display-state="working"] .commands-reveal-zone {
   min-height: 1.28em;
 }
 
+.activity-status[hidden] {
+  display: none;
+}
+
 .activity-status {
   margin: 0;
   width: 100%;
@@ -351,13 +355,13 @@ body[data-display-state="working"] .commands-reveal-zone {
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(18, 210, 160, 0.14) 0%,
-    rgba(18, 210, 160, 0.05) 35%,
+    rgba(18, 210, 160, 0.16) 0%,
+    rgba(18, 210, 160, 0.06) 35%,
     rgba(18, 210, 160, 0.015) 55%,
     transparent 78%
   );
   pointer-events: none;
-  filter: blur(52px);
+  filter: blur(56px);
   z-index: 0;
 }
 

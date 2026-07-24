@@ -2,11 +2,11 @@
 
 const ESSENCE_STATES = {
   standby: {
-    speed: 0.3,
-    breathe: 0.5,
-    glow: 0.7,
-    spread: 0.9,
-    core: 0.8,
+    speed: 0.38,
+    breathe: 0.68,
+    glow: 0.88,
+    spread: 0.98,
+    core: 0.9,
   },
   working: {
     speed: 0.8,
@@ -40,9 +40,9 @@ const ESSENCE_STATES = {
 
 const STATE_COLORS = {
   standby: {
-    primary: [0.05, 0.1, 0.14],
-    secondary: [0.12, 0.82, 0.58],
-    accent: [0.28, 0.95, 0.72],
+    primary: [0.03, 0.08, 0.12],
+    secondary: [0.1, 0.88, 0.66],
+    accent: [0.38, 0.98, 0.8],
   },
   working: {
     primary: [0.1, 0.08, 0.05],
@@ -66,7 +66,7 @@ const STATE_COLORS = {
   },
 };
 
-const ESSENCE_SIZE_SCALE = 1.3;
+const ESSENCE_SIZE_SCALE = 1.05;
 
 function shaderParamsForState(state) {
   const essence = ESSENCE_STATES[state] || ESSENCE_STATES.standby;
@@ -142,6 +142,7 @@ uniform float u_energy_strength;
 uniform float u_glow;
 uniform float u_radius_scale;
 uniform float u_breath;
+uniform float u_idle_lift;
 
 varying vec2 vUv;
 
@@ -198,6 +199,20 @@ float coreRadiance(float z, float audio) {
   return pow(z, 2.2) * (0.55 + audio * 0.22);
 }
 
+float circularVignette(vec2 p) {
+  float dist = length(p);
+  return 1.0 - smoothstep(0.68, 0.92, dist);
+}
+
+float idleCausticShimmer(vec3 normal, float time, float lift) {
+  if (lift < 0.01) {
+    return 0.0;
+  }
+  float n1 = noise2d(vec2(atan(normal.y, normal.x) * 3.2, acos(normal.z) * 4.0) + time * 0.28);
+  float n2 = noise2d(vec2(normal.x, normal.y) * 5.5 - time * 0.22);
+  return smoothstep(0.35, 0.82, n1 * 0.6 + n2 * 0.4) * lift * 0.65;
+}
+
 void main() {
   vec2 p = vUv * 2.0 - 1.0;
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
@@ -213,13 +228,14 @@ void main() {
   float screenDistance = length(sphereUv);
 
   float atmosphereInner = exp(-radiusSquared * 2.4);
-  float atmosphereOuter = exp(-max(screenDistance - 0.55, 0.0) * 2.8);
-  float haloBloom = exp(-max(screenDistance - 0.78, 0.0) * 1.9);
-  float outerHaze = exp(-max(screenDistance - 1.0, 0.0) * 1.35);
-  float bloomStrength = (atmosphereOuter * 0.55 + haloBloom * 0.75 + outerHaze * 0.45);
+  float atmosphereOuter = exp(-max(screenDistance - 0.5, 0.0) * 3.6);
+  float haloBloom = exp(-max(screenDistance - 0.68, 0.0) * 2.6);
+  float bloomStrength = atmosphereOuter * 0.62 + haloBloom * 0.55;
   bloomStrength *= u_glow * breathGlow * (0.5 + u_audio_level * 0.28);
+  bloomStrength *= 1.0 + u_idle_lift * (0.12 + breathe * 0.08);
+  bloomStrength *= circularVignette(p);
 
-  float edgeFeather = smoothstep(1.18, 0.62, screenDistance);
+  float edgeFeather = smoothstep(1.35, 0.55, screenDistance);
   float spherePresence = atmosphereInner * edgeFeather;
 
   vec3 viewDirection = vec3(0.0, 0.0, 1.0);
@@ -238,6 +254,8 @@ void main() {
   float depthShading = 0.42 + z * 0.58;
 
   float aurora = auroraBands(normal, u_energy_time, u_energy_strength, u_audio_level);
+  float idleShimmer = idleCausticShimmer(normal, u_time, u_idle_lift);
+  aurora = mix(aurora, min(aurora + idleShimmer * 0.28, 1.0), u_idle_lift);
   vec3 auroraColor = mix(u_secondary_color, u_accent_color, aurora * 0.75);
 
   float core = coreRadiance(z, u_audio_level);
@@ -253,6 +271,9 @@ void main() {
 
   float alpha = max(spherePresence * 0.95, bloomStrength * 0.88);
   alpha = smoothstep(0.0, 0.08, alpha) * clamp(alpha, 0.0, 1.0);
+  float vignette = circularVignette(p);
+  alpha *= vignette;
+  color *= vignette;
 
   gl_FragColor = vec4(color, alpha);
 }
@@ -269,8 +290,14 @@ uniform vec3 u_accent_color;
 uniform float u_glow;
 uniform float u_radius_scale;
 uniform float u_breath;
+uniform float u_idle_lift;
 
 varying vec2 vUv;
+
+float circularVignette(vec2 p) {
+  float dist = length(p);
+  return 1.0 - smoothstep(0.68, 0.92, dist);
+}
 
 void main() {
   vec2 p = vUv * 2.0 - 1.0;
@@ -279,15 +306,17 @@ void main() {
 
   float breathe = u_breath;
   float breathGlow = 0.94 + breathe * 0.06;
-  float radius = u_radius_scale * 1.42 + u_audio_level * 0.035 + breathe * u_radius_scale * 0.0052;
+  float radius = u_radius_scale * (1.22 + u_idle_lift * 0.02) + u_audio_level * 0.028 + breathe * u_radius_scale * 0.0042;
   float dist = length(p / radius);
 
-  float inner = exp(-dist * dist * 1.6);
-  float outer = exp(-max(dist - 0.6, 0.0) * 1.4);
-  float strength = (inner * 0.35 + outer * 0.65) * u_glow * breathGlow * (0.4 + u_audio_level * 0.22);
+  float inner = exp(-dist * dist * 1.8);
+  float outer = exp(-max(dist - 0.52, 0.0) * 1.8);
+  float strength = (inner * 0.42 + outer * 0.58) * u_glow * breathGlow * (0.4 + u_audio_level * 0.22);
+  strength *= 1.0 + u_idle_lift * 0.1;
+  strength *= circularVignette(p);
 
   vec3 bloomColor = mix(u_secondary_color, u_accent_color, 0.55);
-  gl_FragColor = vec4(bloomColor * strength, strength * 0.7);
+  gl_FragColor = vec4(bloomColor * strength, strength * 0.65);
 }
 `;
 
@@ -301,6 +330,7 @@ function createBloomUniforms(params) {
     u_glow: { value: params.glow },
     u_radius_scale: { value: params.radiusScale },
     u_breath: { value: 0 },
+    u_idle_lift: { value: 0 },
   };
 }
 
@@ -317,6 +347,7 @@ function createOrbUniforms(params) {
     u_glow: { value: params.glow },
     u_radius_scale: { value: params.radiusScale },
     u_breath: { value: 0 },
+    u_idle_lift: { value: 0 },
   };
 }
 
@@ -350,6 +381,7 @@ class EssenceVisualizer {
       energySpeed: this.current.energySpeed,
     };
     this.useExternalAudio = false;
+    this.idleLift = 1;
     this.width = 1;
     this.height = 1;
 
@@ -443,6 +475,16 @@ class EssenceVisualizer {
       return;
     }
 
+    if (this.state === "standby") {
+      this.audioPhase += dt * 1.2;
+      const raw =
+        0.02 +
+        (0.5 + 0.5 * Math.sin(this.audioPhase)) * 0.06 +
+        (0.5 + 0.5 * Math.sin(this.audioPhase * 1.65 + 0.9)) * 0.03;
+      this.targetAudioLevel = Math.min(0.22, raw);
+      return;
+    }
+
     this.targetAudioLevel = 0;
   }
 
@@ -485,6 +527,8 @@ class EssenceVisualizer {
     );
     this.bloomUniforms.u_glow.value = glow * (this.mini ? 1.2 : 1.0);
     this.bloomUniforms.u_radius_scale.value = radiusScale;
+    this.uniforms.u_idle_lift.value = this.idleLift;
+    this.bloomUniforms.u_idle_lift.value = this.idleLift;
   }
 
   tick(timestamp) {
@@ -502,6 +546,10 @@ class EssenceVisualizer {
 
     const audioBlend = 1 - Math.exp(-4.5 * dt);
     this.audioLevel += (this.targetAudioLevel - this.audioLevel) * audioBlend;
+
+    const targetIdleLift = this.state === "standby" ? 1 : 0;
+    const idleBlend = 1 - Math.exp(-2.8 * dt);
+    this.idleLift += (targetIdleLift - this.idleLift) * idleBlend;
 
     this.energyTime += dt * this.motion.energySpeed;
 

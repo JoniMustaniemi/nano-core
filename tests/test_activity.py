@@ -1,8 +1,10 @@
 from fastapi.testclient import TestClient
 from helpers.agent_fixtures import wrap_with_alignment_intercept
 
+from app.assistant.pending import pending_interactions
+from app.config import get_settings
 from app.main import app
-from app.runtime.status_copy import RECEIVED_TITLE, route_acknowledgment
+from app.runtime.status_copy import RECEIVED_TITLE, STANDBY_GREETINGS, route_acknowledgment
 
 
 class _FakeClient:
@@ -60,7 +62,7 @@ def test_chat_updates_activity(monkeypatch) -> None:
 
     payload = status.json()
     assert payload["state"] == "standby"
-    assert payload["headline"] == "I'm in standby."
+    assert payload["headline"] in set(STANDBY_GREETINGS) | {"I'm in standby."}
     assert any(event["source"] == "assistant.chat" for event in payload["events"])
 
 
@@ -122,3 +124,31 @@ def test_agent_request_acknowledges_before_processing(monkeypatch) -> None:
         event["state"] == "working" and event["title"] == RECEIVED_TITLE
         for event in payload["events"]
     )
+
+
+def test_status_snapshot_exposes_pending_kind() -> None:
+    settings = get_settings()
+    pending_interactions.set(
+        conversation_id=settings.proactive_conversation_id,
+        kind="timer_duration",
+        payload={},
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.get("/api/status")
+        assert response.status_code == 200
+        assert response.json()["pending"] == {"kind": "timer_duration"}
+    finally:
+        pending_interactions.clear(settings.proactive_conversation_id)
+
+
+def test_greeting_api_returns_standby_greeting() -> None:
+    from app.runtime.status_copy import STANDBY_GREETINGS, choose_standby_greeting
+
+    assert len(STANDBY_GREETINGS) >= 10
+    assert choose_standby_greeting() in STANDBY_GREETINGS
+
+    with TestClient(app) as client:
+        response = client.get("/api/greeting")
+    assert response.status_code == 200
+    assert response.json()["greeting"] in STANDBY_GREETINGS

@@ -46,7 +46,18 @@ async function acknowledgeRequest(source, commandHint) {
   }
 }
 
+async function submitDefaultNoAnswer() {
+  if (!isWaitingForUserAnswer() || requestInFlight) {
+    return;
+  }
+  clearAnswerTimeoutTimer();
+  answerTimeoutPending = false;
+  await submitMessage(DEFAULT_NO_ANSWER, "voice");
+}
+
 async function submitMessage(message, source, commandHint) {
+  clearAnswerTimeoutTimer();
+  answerTimeoutPending = false;
   if (tryHandleUiCommand(message)) {
     await completeUiCommand(source);
     return;
@@ -74,7 +85,7 @@ async function submitMessage(message, source, commandHint) {
     }
     answerText = data.content;
     shouldSpeak = data.speak !== false;
-    setAnswer(answerText);
+    setAnswer(answerText, { deferClearUntilSpeech: shouldSpeak });
     replyStatus.textContent = "";
     await refreshStorage();
   } catch (error) {
@@ -87,6 +98,14 @@ async function submitMessage(message, source, commandHint) {
   }
 
   if (requestFailed || !answerText) {
+    return;
+  }
+
+  if (isWaitingForUserAnswer()) {
+    if (shouldSpeak) {
+      await playVoice(answerText, { pauseRecognition: true });
+    }
+    ensureDirectAnswerListening();
     return;
   }
 

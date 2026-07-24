@@ -32,6 +32,7 @@ function resetPlanCopyButtonLabel() {
 
 function closePlanReader() {
   activePlanId = null;
+  activePlanKind = "drafted";
   planReader.hidden = true;
   plansList.hidden = false;
   nanoPanelPlans.classList.remove("reading");
@@ -45,10 +46,11 @@ function closePlanReader() {
 
 function openPlanReader(plan) {
   activePlanId = plan.id;
+  activePlanKind = plan.kind || "drafted";
   planReaderTitle.textContent = planCardLabel(plan);
   planReaderBody.textContent = plan.body || "";
-  planProcessButton.hidden = plan.status !== "pending";
-  planProcessButton.disabled = plan.status !== "pending";
+  planProcessButton.hidden = plan.status !== "pending" || activePlanKind !== "drafted";
+  planProcessButton.disabled = plan.status !== "pending" || activePlanKind !== "drafted";
   plansList.hidden = true;
   planReader.hidden = false;
   nanoPanelPlans.classList.add("reading");
@@ -56,8 +58,12 @@ function openPlanReader(plan) {
   updatePlanCopyButton();
 }
 
-async function openPlanById(planId) {
-  const response = await fetch(`/api/improvement-plans/${planId}`);
+async function openPlanById(planId, kind = "drafted") {
+  const path =
+    kind === "suggestion"
+      ? `/api/improvement-plans/suggestions/${planId}`
+      : `/api/improvement-plans/${planId}`;
+  const response = await fetch(path);
   if (!response.ok) {
     return;
   }
@@ -79,7 +85,7 @@ function updatePlansTabCount(plans) {
     return;
   }
   const pending = Array.isArray(plans)
-    ? plans.filter((plan) => plan.status === "pending").length
+    ? plans.filter((plan) => plan.status === "pending" || plan.status === "queued").length
     : 0;
   plansTabCount.hidden = pending === 0;
   plansTabCount.textContent = String(pending);
@@ -101,7 +107,8 @@ function renderPlans(plans) {
     }
     const empty = document.createElement("p");
     empty.className = "plans-empty";
-    empty.textContent = "No improvement plans yet. Nano will draft one when idle.";
+    empty.textContent =
+      "No improvement topics yet. Nano will queue ideas from codebase scans when idle.";
     plansList.appendChild(empty);
     return;
   }
@@ -122,12 +129,13 @@ function renderPlans(plans) {
 
     const status = document.createElement("span");
     const isPending = plan.status === "pending";
-    status.className = `plan-card-status ${isPending ? "pending" : "processed"}`;
-    status.textContent = isPending ? "Pending" : "Done";
+    const isQueued = plan.status === "queued";
+    status.className = `plan-card-status ${isPending ? "pending" : isQueued ? "queued" : "processed"}`;
+    status.textContent = isPending ? "Pending" : isQueued ? "Queued" : "Done";
 
     button.append(title, meta, status);
     button.addEventListener("click", () => {
-      void openPlanById(plan.id);
+      void openPlanById(plan.id, plan.kind || "drafted");
     });
     plansList.appendChild(button);
   }
@@ -152,7 +160,7 @@ async function loadPlans() {
 }
 
 async function processActivePlan() {
-  if (activePlanId === null) {
+  if (activePlanId === null || activePlanKind !== "drafted") {
     return;
   }
   const response = await fetch(`/api/improvement-plans/${activePlanId}/process`, {

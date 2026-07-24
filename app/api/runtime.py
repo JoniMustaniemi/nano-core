@@ -6,8 +6,15 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import StreamingResponse
 
 from app.runtime.activity import activity
+from app.runtime.status_copy import choose_standby_greeting
 
 router = APIRouter(tags=["runtime"])
+
+
+@router.get("/api/greeting")
+def greeting() -> dict[str, str]:
+    """Return a short idle greeting for the home UI."""
+    return {"greeting": choose_standby_greeting()}
 
 
 @router.get("/api/status")

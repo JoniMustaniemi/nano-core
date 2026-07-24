@@ -13,13 +13,13 @@
 <link rel="stylesheet" href="/static/home.css?v=working-controls-1" />
 
 <script defer src="/static/three.min.js?v=0.160.1"></script>
-<script defer src="/static/essence_visualizer.js?v=default-hidden-1"></script>
-<script defer src="/static/home-state.js?v=request-ack-1"></script>
-<script defer src="/static/home-plans.js?v=plan-copy-1"></script>
-<script defer src="/static/home-ui.js?v=working-controls-1"></script>
-<script defer src="/static/home-voice.js?v=default-hidden-1"></script>
-<script defer src="/static/home-activity.js?v=procedural-orb-24"></script>
-<script defer src="/static/home-chat.js?v=request-ack-1"></script>
+<script defer src="/static/essence_visualizer.js?v=idle-essence-3"></script>
+<script defer src="/static/home-state.js?v=waiting-for-answer-1"></script>
+<script defer src="/static/home-plans.js?v=plans-queue-1"></script>
+<script defer src="/static/home-ui.js?v=waiting-for-answer-1"></script>
+<script defer src="/static/home-voice.js?v=default-no-answer-1"></script>
+<script defer src="/static/home-activity.js?v=default-no-answer-1"></script>
+<script defer src="/static/home-chat.js?v=default-no-answer-1"></script>
 <script defer src="/static/home.js?v=working-controls-1"></script>
 
 </head>
@@ -30,20 +30,16 @@
 
 <header class="top-zone">
 
-<p id="activity-status" class="activity-status" aria-live="polite">
+<p id="activity-status" class="activity-status" aria-live="polite" hidden>
 
-<span class="activity-status-text">I'm in standby. Awaiting your input.</span>
+<span class="activity-status-text"></span>
 
 <span class="activity-cursor" aria-hidden="true">|</span>
 
 </p>
 
 <div class="response-zone">
-<h1 id="answer-output" class="response-headline empty">
-
-What can I do for you today?
-
-</h1>
+<h1 id="answer-output" class="response-headline empty"></h1>
 </div>
 
 <div class="sr-only" id="state-line">standby</div>

@@ -90,6 +90,10 @@ class ProactiveStore:
             self._state.waiting_for_presence = False
             self._state.presence_started_at = None
 
+    def clear_dismissal(self) -> None:
+        with self._lock:
+            self._state.last_dismissal = None
+
     def snapshot(self) -> dict[str, object]:
         with self._lock:
             offer = self._state.offer

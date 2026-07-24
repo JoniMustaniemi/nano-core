@@ -87,6 +87,8 @@ SELF_IMPROVE_PATTERNS: tuple[str, ...] = (
 
 SELF_IMPROVE_FOLLOW_UP_PATTERNS: tuple[str, ...] = (
     r"^\s*(?:do it|go ahead|proceed|yes do it)\s*\.?$",
+    r"\b(?:implement|apply|execute|make|build|ship)\b.*\bplan\b",
+    r"\b(?:make|apply)\b.*\b(?:changes|improvements?)\b",
 )
 
 

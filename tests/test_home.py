@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.runtime.status_copy import STANDBY_GREETINGS
 
 HOME_JS_MODULES = (
     "home-state.js",
@@ -49,11 +50,12 @@ def test_homepage_shows_standby_ui() -> None:
     assert response.status_code == 200
 
     assert 'id="activity-status"' in response.text
+    assert 'activity-status" aria-live="polite" hidden' in response.text
 
     assert 'id="answer-output"' in response.text
     assert 'class="response-zone"' in response.text
 
-    assert "What can I do for you today?" in response.text
+    assert "What can I do for you today?" not in response.text
 
     assert 'id="essence-canvas"' in response.text
 
@@ -107,10 +109,13 @@ def test_homepage_shows_standby_ui() -> None:
     assert 'href="/static/home.css?v=working-controls-1"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
-    assert 'src="/static/essence_visualizer.js?v=default-hidden-1"' in response.text
-    assert 'src="/static/home-state.js?v=request-ack-1"' in response.text
-    assert 'src="/static/home-plans.js?v=plan-copy-1"' in response.text
-    assert 'src="/static/home-chat.js?v=request-ack-1"' in response.text
+    assert 'src="/static/essence_visualizer.js?v=idle-essence-3"' in response.text
+    assert 'src="/static/home-state.js?v=waiting-for-answer-1"' in response.text
+    assert 'src="/static/home-plans.js?v=plans-queue-1"' in response.text
+    assert 'src="/static/home-ui.js?v=waiting-for-answer-1"' in response.text
+    assert 'src="/static/home-voice.js?v=default-no-answer-1"' in response.text
+    assert 'src="/static/home-activity.js?v=default-no-answer-1"' in response.text
+    assert 'src="/static/home-chat.js?v=default-no-answer-1"' in response.text
     assert 'src="/static/home.js?v=working-controls-1"' in response.text
 
     assert "Enter to send" in response.text
@@ -217,6 +222,7 @@ def test_homepage_serves_static_assets() -> None:
     assert "returnToWakeDetection" in js_text
 
     assert ".activity-status" in css_text
+    assert ".activity-status[hidden]" in css_text
 
     assert "renderActivityStatus" in js_text
 
@@ -272,6 +278,27 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "formatProgressAnnouncement" in js_text
 
+    assert "enterPresenceListenMode" in js_text
+    assert "handlePresenceDismissal" in js_text
+    assert "waitingForPresence" in js_text
+    assert "waitingForFollowUp" in js_text
+    assert "resolveListeningIntent" in js_text
+    assert "refreshStandbyGreeting" in js_text
+    assert "scheduleAnswerTimeout" in js_text
+    assert "submitDefaultNoAnswer" in js_text
+    assert 'DEFAULT_NO_ANSWER = "no"' in js_text
+    assert 'How can I help?' in js_text
+    assert "GREETING_SPOKEN_KEY" in js_text
+    assert "speakOnce" in js_text
+    assert 'fetch("/api/greeting")' in js_text
+    assert "hasScheduledAnswerContent" in js_text
+    assert 'Say "hey nano" when ready.' in js_text
+    assert "WAITING_FOR_ANSWER_HEADLINE" in js_text
+    assert "Waiting for answer" in js_text
+    assert "isWaitingForAnswerActivity" in js_text
+    assert "hasCustomStandbyActivityCopy" in js_text
+    assert "acknowledgePresenceDismissal" in js_text
+
     assert "playVoice(message, { resumeListening: false })" in js_text
 
     assert "applyStatusSnapshot" in js_text
@@ -302,6 +329,9 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "ANSWER_CLEAR_DELAY_MS = 20000" in js_text
 
+    assert "shouldShowActivityStatus" in js_text
+    assert "hasVisibleAnswerContent" in js_text
+    assert "clearActivityStatusDisplay" in js_text
     assert "scheduleStatusClear" in js_text
 
     assert "shouldDeferStatusClear" in js_text
@@ -315,10 +345,6 @@ def test_homepage_serves_static_assets() -> None:
     assert "resumeAnswerClearAfterSpeech" in js_text
 
     assert "bypassSpeechGuard" in js_text
-
-    assert "announceBootMessage" in js_text
-
-    assert 'event.source === "system.boot"' in js_text
 
     assert "formatBusyWakeMessage" in js_text
 
@@ -405,8 +431,8 @@ def test_status_endpoint_starts_in_standby() -> None:
 
     assert payload["state"] == "standby"
 
-    assert payload["headline"] == "Booting complete."
+    assert payload["headline"] in set(STANDBY_GREETINGS)
 
-    assert payload["detail"] == "I'm ready and awake."
+    assert payload["detail"] is None
 
     assert any(event["source"] == "system.boot" for event in payload["events"])

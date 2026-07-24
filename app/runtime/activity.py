@@ -194,7 +194,13 @@ class ActivityHub:
 
     def snapshot(self) -> dict[str, object]:
         with self._lock:
+            from app.assistant.pending import pending_interactions
+            from app.config import get_settings
             from app.proactive.store import proactive_store
+
+            settings = get_settings()
+            pending = pending_interactions.get(settings.proactive_conversation_id)
+            pending_kind = pending.kind if pending is not None else None
 
             return {
                 "state": self._state,
@@ -203,6 +209,7 @@ class ActivityHub:
                 "updated_at": self._updated_at.isoformat(),
                 "events": [event.to_dict() for event in self._events],
                 "proactive": proactive_store.snapshot(),
+                "pending": {"kind": pending_kind},
             }
 
     def _record(
