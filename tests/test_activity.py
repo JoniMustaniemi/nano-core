@@ -101,6 +101,10 @@ def test_route_acknowledgment_uses_personality_copy() -> None:
     assert title == "I'm running a health check."
     assert detail
 
+    identity_title, identity_detail = route_acknowledgment(mode="identity")
+    assert identity_title == "I'm introducing myself."
+    assert identity_detail
+
 
 def test_agent_request_acknowledges_before_processing(monkeypatch) -> None:
     monkeypatch.setattr(

@@ -48,11 +48,14 @@ messageBox.addEventListener("keydown", (event) => {
 brainsClearButton.addEventListener("click", clearActivityLog);
 if (controlsRevealButton) {
   controlsRevealButton.addEventListener("click", () => {
+    if (getDisplayState() === "working") {
+      return;
+    }
     setControlsHidden(false);
   });
 }
 window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && controlsHidden) {
+  if (event.key === "Escape" && controlsHidden && getDisplayState() !== "working") {
     setControlsHidden(false);
   }
 });

@@ -23,6 +23,23 @@ IDENTITY_QUESTION_TRIGGERS: tuple[str, ...] = (
     "who are you",
     "introduce yourself",
     "what are you",
+    "tell me about yourself",
+    "tell me about himself",
+    "tell me about herself",
+    "tell me about itself",
+    "tell me who you are",
+    "who is nano",
+    "what is nano",
+)
+
+IDENTITY_QUESTION_PATTERNS: tuple[str, ...] = (
+    r"\bwho are you\b",
+    r"\bintroduce yourself\b",
+    r"\bwhat are you\b",
+    r"\btell me about (?:yourself|himself|herself|itself)\b",
+    r"\btell me who you are\b",
+    r"\bwho is nano\b",
+    r"\bwhat is nano\b",
 )
 
 WIPE_REQUEST_TRIGGERS: tuple[str, ...] = (
@@ -140,8 +157,10 @@ def is_identity_question(message: str) -> bool:
     Returns:
         True when the user is asking about Nano's identity.
     """
-    lowered = message.lower()
-    return any(trigger in lowered for trigger in IDENTITY_QUESTION_TRIGGERS)
+    lowered = " ".join(message.lower().split())
+    if any(trigger in lowered for trigger in IDENTITY_QUESTION_TRIGGERS):
+        return True
+    return any(re.search(pattern, lowered) for pattern in IDENTITY_QUESTION_PATTERNS)
 
 
 def is_capability_question(message: str) -> bool:
