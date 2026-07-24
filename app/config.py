@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     proactive_background_interval_seconds: int = Field(default=300, ge=30)
     idle_examine_idle_seconds: int = Field(default=300, ge=60)
     proactive_outreach_idle_seconds: int = Field(default=600, ge=60)
+    proactive_outreach_enabled: bool = True
     idle_examine_enabled: bool = True
     codebase_crawl_files_per_tick: int = Field(default=1, ge=1)
     presence_check_timeout_seconds: int = Field(default=60, ge=10)

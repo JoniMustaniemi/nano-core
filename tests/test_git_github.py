@@ -3,7 +3,12 @@ from types import SimpleNamespace
 import pytest
 
 from app.tools.git_command import _normalize_output, resolve_executable, run_gh
-from app.tools.git_github import OpenPullRequest, ensure_feature_branch, get_open_pull_request
+from app.tools.git_github import (
+    OpenPullRequest,
+    ensure_feature_branch,
+    ensure_unique_branch_slug,
+    get_open_pull_request,
+)
 
 
 def test_ensure_feature_branch_checks_out_existing_branch(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -85,6 +90,55 @@ def test_run_git_handles_none_subprocess_output(monkeypatch: pytest.MonkeyPatch)
     assert result.returncode == 0
     assert result.stdout == ""
     assert result.stderr == ""
+
+
+def test_ensure_unique_branch_slug_returns_base_when_free(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.tools.git_ops.branch_exists", lambda name: False)
+
+    assert ensure_unique_branch_slug("proactive_outreach") == "proactive_outreach"
+
+
+def test_ensure_unique_branch_slug_uses_date_suffix_before_numeric(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.tools.git_ops.branch_exists",
+        lambda name: name == "feature/start_nano",
+    )
+
+    slug = ensure_unique_branch_slug("start_nano")
+
+    assert slug.startswith("start_nano_")
+    assert slug != "start_nano_2"
+    assert len(slug) <= 48
+
+
+def test_ensure_unique_branch_slug_uses_random_suffix_when_dated_branch_exists(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.tools.git_ops.datetime",
+        type(
+            "FixedDateTime",
+            (),
+            {
+                "now": staticmethod(
+                    lambda tz=None: __import__("datetime").datetime(2026, 7, 24, tzinfo=__import__("datetime").UTC)
+                )
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "app.tools.git_ops.secrets.token_hex",
+        lambda nbytes: "a1b2",
+    )
+
+    def branch_exists(name: str) -> bool:
+        return name in {"feature/start_nano", "feature/start_nano_0724"}
+
+    monkeypatch.setattr("app.tools.git_ops.branch_exists", branch_exists)
+
+    assert ensure_unique_branch_slug("start_nano") == "start_nano_a1b2"
 
 
 def test_get_open_pull_request_returns_none_when_no_open_prs(

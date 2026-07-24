@@ -436,9 +436,7 @@ function renderActivityStatus(options = {}) {
   }
 
   if (displayState === "standby" && !isDefaultStandbyHeadline(headline)) {
-    if (answerOutput.classList.contains("empty") && answerClearTimer === null) {
-      scheduleStatusClear();
-    }
+    scheduleStatusClear();
     return;
   }
   if (displayState !== "standby") {
@@ -447,11 +445,16 @@ function renderActivityStatus(options = {}) {
   }
 }
 
+function shouldDeferStatusClear() {
+  return isWorkingOnTask() || listeningForCommand || wakeAcknowledging;
+}
+
 function resetActivityStatusIfIdle() {
-  if (isWorkingOnTask() || isListeningStateActive()) {
+  if (shouldDeferStatusClear()) {
     statusClearPending = true;
     return;
   }
+  statusClearPending = false;
   resetStandbySnapshot();
 }
 
@@ -736,23 +739,31 @@ function scheduleStatusClear() {
 
 function scheduleAnswerClear() {
   clearAnswerClearTimer();
-  clearStatusClearTimer();
   answerClearPending = false;
-  statusClearPending = false;
   answerClearTimer = window.setTimeout(() => {
     answerClearTimer = null;
     if (speakingActive) {
       answerClearPending = true;
-      statusClearPending = true;
       return;
     }
     setAnswer("", { animate: false, bypassSpeechGuard: true });
-    resetActivityStatusIfIdle();
   }, ANSWER_CLEAR_DELAY_MS);
 }
 
+function resumeStatusClearIfPending() {
+  if (!statusClearPending) {
+    return;
+  }
+  if (speakingActive || shouldDeferStatusClear()) {
+    return;
+  }
+  statusClearPending = false;
+  resetActivityStatusIfIdle();
+}
+
 function resumeAnswerClearAfterSpeech() {
-  if (!answerClearPending && !statusClearPending) {
+  resumeStatusClearIfPending();
+  if (!answerClearPending) {
     return;
   }
   scheduleAnswerClear();
@@ -774,9 +785,7 @@ function setAnswer(text, options = {}) {
   }
 
   clearAnswerClearTimer();
-  clearStatusClearTimer();
   answerClearPending = false;
-  statusClearPending = false;
   cancelAnswerReveal();
   if (!content) {
     answerOutput.textContent = IDLE_RESPONSE;

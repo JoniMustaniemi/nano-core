@@ -375,13 +375,10 @@ class ImprovementPlanService:
     def draft_from_note(self, note: InternalNote, *, client: Any) -> ImprovementPlanResult:
         goal = internal_note_service.goal_from_internal_note(note)
         preferred_files = internal_note_service.preferred_files_from_note(note)
-        result = self.draft(
+        return self.draft(
             client=client,
             goal=goal,
             preferred_files=preferred_files or None,
             source_note_id=note.id,
             passive=True,
         )
-        if result.ok and note.id is not None:
-            internal_note_service.mark_delivered(note.id)
-        return result

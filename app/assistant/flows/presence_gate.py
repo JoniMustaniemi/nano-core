@@ -109,8 +109,11 @@ class PresenceGateHandler:
       client=llm_client,
       conversation_id=conversation_id,
     )
-    if parsed_note_id is not None:
-      internal_note_service.mark_delivered(parsed_note_id)
+    if parsed_note_id is not None and "could not draft" not in source.facts.lower():
+      from app.memory import improvement_plans
+
+      if improvement_plans.has_unprocessed_plan():
+        internal_note_service.mark_delivered(parsed_note_id)
     goal = str(offer.payload.get("goal", "")).strip()
     if goal:
       raw_files = offer.payload.get("files", [])

@@ -11,11 +11,10 @@ from app.proactive.codebase_crawl import CodebaseCrawlService
 from app.proactive.store import proactive_store
 from app.runtime.activity import activity
 from app.runtime.user_activity import user_activity
-from app.tools.improvement_plan_service import ImprovementPlanService
 
 
 def run_proactive_background_tick() -> None:
-  """Silent internal-note check every 5 min; draft plans when idle >= 10 min."""
+  """Silent internal-note check every 5 min; outreach when idle >= 10 min."""
   settings = get_settings()
   conversation_id = settings.proactive_conversation_id
 
@@ -29,10 +28,16 @@ def run_proactive_background_tick() -> None:
         if offer is not None:
           internal_note_service.record_from_offer(offer, next_attempt_at=datetime.now(UTC))
 
+  if not settings.proactive_outreach_enabled:
+    return
+
   if user_activity.seconds_idle() < settings.proactive_outreach_idle_seconds:
     return
 
   if pending_interactions.get(conversation_id) is not None:
+    return
+
+  if proactive_store.has_offer():
     return
 
   snapshot = activity.snapshot()
@@ -50,7 +55,10 @@ def run_proactive_background_tick() -> None:
   if note is None:
     return
 
-  ImprovementPlanService().draft_from_note(note, client=get_llm_client())
+  from app.assistant.flows.presence_gate import presence_gate
+
+  offer = internal_note_service.offer_from_internal_note(note)
+  presence_gate.start(offer, internal_note_id=note.id, conversation_id=conversation_id)
 
 
 def check_presence_timeouts() -> None:

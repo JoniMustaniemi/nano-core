@@ -16,8 +16,8 @@ installable assistant hardware like Raspberry Pi longer term.
 - **Health checks** — diagnose database, voice, and model issues in plain language
 - **GitHub pull requests** — inspect your changes, run lint and verification, name the work,
   create a feature branch, commit, push, and open a pull request on GitHub when you ask
-- **Self-improvement plans** — during idle time, review its own codebase and draft readable
-  improvement plans; read them in the **Plans** tab and mark them processed when done
+- **Self-improvement plans** — during idle time, review its own codebase, ask if you are there,
+  and draft readable improvement plans when you confirm; read them in the **Plans** tab
 - **Voice** — optional spoken replies and wake-phrase listening with `"hey nano"` in the web UI
 
 ## Documentation
