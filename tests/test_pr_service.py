@@ -119,11 +119,17 @@ def test_pr_service_verify_failure_does_not_mutate_git(monkeypatch: pytest.Monke
     monkeypatch.setattr("app.tools.pr_service.activity.working", lambda **kwargs: None)
     monkeypatch.setattr("app.tools.pr_service.activity.log", lambda **kwargs: None)
     monkeypatch.setattr("app.tools.pr_service.activity.error", lambda **kwargs: None)
+    standby_calls: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "app.tools.pr_service.activity.standby",
+        lambda **kwargs: standby_calls.append(kwargs),
+    )
 
     result = PullRequestService().run(client=SimpleNamespace())
 
     assert result.ok is False
     assert result.step == "verify"
+    assert standby_calls
     assert not any(call[:2] == ("commit",) or call[:2] == ("push",) for call in git_calls)
 
 

@@ -66,6 +66,32 @@ def test_compose_pr_result_success_is_voice_friendly() -> None:
     assert client.messages is None
 
 
+def test_compose_pr_tool_error_skips_llm() -> None:
+    composer = ResponseComposer()
+    payload = json.dumps(
+        {
+            "ok": False,
+            "step": "verify",
+            "error": "Verification failed.",
+            "output": "FAILED tests/test_example.py",
+        }
+    )
+    source = tool_error_source(
+        user_message="Open a PR",
+        facts=payload,
+        tool_name="create_pull_request",
+        conversation_id="default",
+    )
+    client = _StubClient(response="Slow LLM reply.")
+
+    content = composer.compose(client, source)
+
+    assert content == (
+        "Your tests failed, so I declined to commit anything or open a pull request."
+    )
+    assert client.messages is None
+
+
 def test_compose_confirmation_uses_follow_up_text() -> None:
     composer = ResponseComposer()
     source = follow_up_source(

@@ -3,7 +3,9 @@ from __future__ import annotations
 import shlex
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 
 from app.config import get_settings
 from app.tools.workspace_context import effective_workspace_root
@@ -48,7 +50,7 @@ def resolve_verify_command() -> list[str] | None:
     root = effective_workspace_root()
     pyproject = root / "pyproject.toml"
     if pyproject.exists() and _pyproject_has_pytest(pyproject.read_text(encoding="utf-8")):
-        return [sys.executable, "-m", "pytest", "-q"]
+        return [sys.executable, "-m", "pytest", "-q", _pytest_basetemp_arg()]
 
     package_json = root / "package.json"
     if package_json.exists():
@@ -139,6 +141,11 @@ def command_display(command: list[str]) -> str:
 
 def _split_command(command: str) -> list[str]:
     return shlex.split(command, posix=False)
+
+
+def _pytest_basetemp_arg() -> str:
+    base = Path(tempfile.gettempdir()) / "nano-pr-pytest"
+    return f"--basetemp={base}"
 
 
 def _run_command(command: list[str], *, failure_message: str) -> VerifyResult:

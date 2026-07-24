@@ -44,13 +44,31 @@ function closePlanReader() {
   updatePlanCopyButton();
 }
 
+function isPlanProcessable(plan) {
+  if (!plan) {
+    return false;
+  }
+  if (plan.kind === "suggestion") {
+    return plan.status === "waiting";
+  }
+  return plan.status === "pending";
+}
+
+function updatePlanProcessButton(plan) {
+  if (!planProcessButton) {
+    return;
+  }
+  const processable = isPlanProcessable(plan);
+  planProcessButton.hidden = !processable;
+  planProcessButton.disabled = !processable;
+}
+
 function openPlanReader(plan) {
   activePlanId = plan.id;
   activePlanKind = plan.kind || "drafted";
   planReaderTitle.textContent = planCardLabel(plan);
   planReaderBody.textContent = plan.body || "";
-  planProcessButton.hidden = plan.status !== "pending" || activePlanKind !== "drafted";
-  planProcessButton.disabled = plan.status !== "pending" || activePlanKind !== "drafted";
+  updatePlanProcessButton(plan);
   plansList.hidden = true;
   planReader.hidden = false;
   nanoPanelPlans.classList.add("reading");
@@ -85,7 +103,7 @@ function updatePlansTabCount(plans) {
     return;
   }
   const pending = Array.isArray(plans)
-    ? plans.filter((plan) => plan.status === "pending" || plan.status === "queued").length
+    ? plans.filter((plan) => plan.status === "pending" || plan.status === "waiting").length
     : 0;
   plansTabCount.hidden = pending === 0;
   plansTabCount.textContent = String(pending);
@@ -108,7 +126,7 @@ function renderPlans(plans) {
     const empty = document.createElement("p");
     empty.className = "plans-empty";
     empty.textContent =
-      "No improvement topics yet. Nano will queue ideas from codebase scans when idle.";
+      "No improvement topics yet. Nano will suggest one idea at a time when idle.";
     plansList.appendChild(empty);
     return;
   }
@@ -129,9 +147,9 @@ function renderPlans(plans) {
 
     const status = document.createElement("span");
     const isPending = plan.status === "pending";
-    const isQueued = plan.status === "queued";
-    status.className = `plan-card-status ${isPending ? "pending" : isQueued ? "queued" : "processed"}`;
-    status.textContent = isPending ? "Pending" : isQueued ? "Queued" : "Done";
+    const isWaiting = plan.status === "waiting";
+    status.className = `plan-card-status ${isPending ? "pending" : isWaiting ? "waiting" : "processed"}`;
+    status.textContent = isPending ? "Pending" : isWaiting ? "Waiting" : "Done";
 
     button.append(title, meta, status);
     button.addEventListener("click", () => {
@@ -160,10 +178,14 @@ async function loadPlans() {
 }
 
 async function processActivePlan() {
-  if (activePlanId === null || activePlanKind !== "drafted") {
+  if (activePlanId === null || !planProcessButton || planProcessButton.disabled) {
     return;
   }
-  const response = await fetch(`/api/improvement-plans/${activePlanId}/process`, {
+  const path =
+    activePlanKind === "suggestion"
+      ? `/api/improvement-plans/suggestions/${activePlanId}/process`
+      : `/api/improvement-plans/${activePlanId}/process`;
+  const response = await fetch(path, {
     method: "POST",
   });
   if (!response.ok) {

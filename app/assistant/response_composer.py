@@ -42,6 +42,9 @@ class ResponseComposer:
         if source.kind == "tool_result" and source.tool_name == "create_pull_request":
             return self._compose_pr_result(source.facts)
 
+        if source.kind == "tool_error" and source.tool_name == "create_pull_request":
+            return self._compose_pr_result(source.facts)
+
         if source.tool_name == "draft_improvement_plan" and source.kind in {
             "tool_result",
             "tool_error",

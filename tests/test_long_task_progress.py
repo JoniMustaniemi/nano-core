@@ -25,6 +25,19 @@ def test_format_progress_update_for_plan_step() -> None:
     assert "attempt two" in announcement.spoken
 
 
+def test_format_progress_update_for_pr_verify_step() -> None:
+    announcement = format_progress_update(
+        LongTaskProgress(
+            task_name="pull request",
+            step="verify",
+        )
+    )
+
+    assert announcement.title == "I'm verifying the project."
+    assert "few minutes" in (announcement.detail or "")
+    assert "verifying the project" in announcement.spoken.lower()
+
+
 def test_progress_reporter_emits_activity_log() -> None:
     logged: list[dict[str, str | None]] = []
     reporter = LongTaskProgressReporter(
@@ -60,6 +73,23 @@ def test_progress_reporter_emits_activity_log_on_interval() -> None:
 
     assert logged
     assert logged[-1]["source"] == "runtime.long_task_progress"
+
+
+def test_progress_reporter_can_announce_on_start() -> None:
+    logged: list[dict[str, str | None]] = []
+
+    with LongTaskProgressReporter(
+        task_name="pull request",
+        interval_seconds=120,
+        announce_on_start=True,
+        log_fn=lambda **kwargs: logged.append(kwargs),
+        time_fn=lambda: 0.0,
+        sleep_fn=lambda _seconds: None,
+    ) as reporter:
+        reporter.update(step="verify")
+
+    assert logged
+    assert "verifying the project" in (logged[0]["title"] or "").lower()
 
 
 def test_progress_reporter_stops_thread_on_exit() -> None:

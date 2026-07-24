@@ -21,7 +21,11 @@ def run_proactive_background_tick() -> None:
     _ = internal_note_service.list_due_notes()
 
     if user_activity.is_idle(settings.idle_examine_idle_seconds):
-        if settings.idle_examine_enabled and not proactive_store.has_offer():
+        if (
+            settings.idle_examine_enabled
+            and not proactive_store.has_offer()
+            and not internal_note_service.has_active_plan_pipeline()
+        ):
             pending = pending_interactions.get(conversation_id)
             if pending is None:
                 offer = CodebaseCrawlService().scan_next_file(client=get_llm_client())

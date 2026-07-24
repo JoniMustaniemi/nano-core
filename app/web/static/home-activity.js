@@ -175,10 +175,13 @@ function applyActivityEvent(event) {
   if (event.kind === "log" && (requestInFlight || currentActivitySnapshot.state === "working")) {
     const progressLine = (event.title || "").trim();
     if (progressLine) {
+      const nextState =
+        currentActivitySnapshot.state === "error" ? "error" : "working";
       currentActivitySnapshot = {
         ...currentActivitySnapshot,
-        state: "working",
-        detail: progressLine,
+        state: nextState,
+        headline: progressLine,
+        detail: (event.detail || "").trim() || progressLine,
       };
       renderState();
     }

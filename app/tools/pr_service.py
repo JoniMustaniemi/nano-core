@@ -5,6 +5,10 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from app.runtime.activity import activity
+from app.runtime.long_task_progress import (
+    PR_TASK_PROGRESS_INTERVAL_SECONDS,
+    LongTaskProgressReporter,
+)
 from app.runtime.status_copy import (
     COLLECTED_CHANGE_CONTEXT_TITLE,
     COMMITTING_CHANGES_TITLE,
@@ -48,6 +52,16 @@ from app.tools.git_github import (
 )
 from app.tools.pr_naming import PrNamingService
 from app.tools.pr_verify import command_display, run_pr_lint, run_pr_verification
+
+
+def _finalize_pr_activity(result: PrResult) -> None:
+    if result.ok:
+        return
+    activity.standby(
+        title=PR_WORKFLOW_FAILED_TITLE,
+        detail=result.error or "I could not complete the pull request.",
+        source="tools.pr_service",
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,7 +130,7 @@ class PullRequestService:
         open_pr = get_open_pull_request()
         if open_pr is not None:
             branch_suffix = f" on {open_pr.branch}" if open_pr.branch else ""
-            return PrResult(
+            result = PrResult(
                 ok=False,
                 step="preflight",
                 url=open_pr.url,
@@ -128,6 +142,8 @@ class PullRequestService:
                     "Merge or close it before opening another."
                 ),
             )
+            _finalize_pr_activity(result)
+            return result
 
         if not has_publishable_changes():
             return self._fail("preflight", "Nothing to open a pull request for.")
@@ -150,20 +166,28 @@ class PullRequestService:
             detail=PREPARING_PR_LINT_DETAIL,
             source="tools.pr_service",
         )
-        lint = run_pr_lint()
+        with LongTaskProgressReporter(
+            task_name="pull request",
+            interval_seconds=PR_TASK_PROGRESS_INTERVAL_SECONDS,
+            announce_on_start=True,
+        ) as progress:
+            progress.update(step="lint")
+            lint = run_pr_lint()
         if not lint.ok:
             activity.error(
                 title=LINT_CHECKS_FAILED_TITLE,
                 detail=lint.error or lint.output,
                 source="tools.pr_service",
             )
-            return PrResult(
+            result = PrResult(
                 ok=False,
                 step="lint",
                 verified_with=command_display(lint.command) if lint.command else None,
                 error=lint.error or "Lint checks failed.",
                 output=lint.output,
             )
+            _finalize_pr_activity(result)
+            return result
 
         if lint.command:
             if getattr(lint, "auto_fixed", False):
@@ -183,20 +207,34 @@ class PullRequestService:
             detail=PREPARING_PR_VERIFY_DETAIL,
             source="tools.pr_service",
         )
-        verify = run_pr_verification()
+        activity.log(
+            title=VERIFYING_PROJECT_TITLE,
+            detail="Running the full test suite. This can take a few minutes.",
+            source="tools.pr_service",
+        )
+        with LongTaskProgressReporter(
+            task_name="pull request",
+            interval_seconds=PR_TASK_PROGRESS_INTERVAL_SECONDS,
+            announce_on_start=True,
+        ) as progress:
+            progress.update(step="verify")
+            verify = run_pr_verification()
         if not verify.ok:
+            failure_detail = verify.output or verify.error or "Verification failed."
             activity.error(
                 title=VERIFICATION_FAILED_TITLE,
-                detail=verify.error or verify.output,
+                detail=failure_detail,
                 source="tools.pr_service",
             )
-            return PrResult(
+            result = PrResult(
                 ok=False,
                 step="verify",
                 verified_with=command_display(verify.command) if verify.command else None,
                 error=verify.error or "Verification failed.",
                 output=verify.output,
             )
+            _finalize_pr_activity(result)
+            return result
 
         activity.log(
             title=VERIFICATION_PASSED_TITLE,
@@ -299,7 +337,7 @@ class PullRequestService:
         if pr_result.returncode != 0:
             stdout = pr_result.stdout.strip()
             stderr = pr_result.stderr.strip()
-            return PrResult(
+            result = PrResult(
                 ok=False,
                 step="pr_create",
                 branch=naming.branch,
@@ -309,6 +347,8 @@ class PullRequestService:
                 error=format_command_result(pr_result),
                 output=stdout or stderr,
             )
+            _finalize_pr_activity(result)
+            return result
 
         url = pr_result.stdout.strip()
         if not url:
@@ -334,4 +374,6 @@ class PullRequestService:
             detail=error,
             source="tools.pr_service",
         )
-        return PrResult(ok=False, step=step, error=error)
+        result = PrResult(ok=False, step=step, error=error)
+        _finalize_pr_activity(result)
+        return result

@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from app.assistant.flows.presence_gate import PresenceGateHandler
 from app.assistant.pending import pending_interactions
 from app.config import get_settings
-from app.memory import improvement_plans
+from app.memory import improvement_plans, internal_notes
 from app.memory.db import create_db_and_tables
 from app.memory.internal_note_service import InternalNoteService
 from app.proactive.background_tick import run_proactive_background_tick
@@ -166,4 +166,54 @@ def test_background_tick_skips_under_ten_minutes_idle(tmp_path, monkeypatch) -> 
 
     assert pending_interactions.get("agent-default") is None
     assert improvement_plans.has_unprocessed_plan() is False
+    get_settings.cache_clear()
+
+
+def test_background_tick_skips_crawl_when_plan_pipeline_active(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'tick-crawl-skip.sqlite3'}")
+    monkeypatch.setenv("IDLE_EXAMINE_ENABLED", "true")
+    create_db_and_tables()
+    get_settings.cache_clear()
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "main.py").write_text("print('nano')\n", encoding="utf-8")
+
+    _record_due_note()
+    activity.reset()
+    proactive_store.reset()
+    pending_interactions.reset()
+    user_activity._last_activity_at = datetime.now(UTC) - timedelta(seconds=700)
+
+    crawl_calls: list[str] = []
+
+    class _CrawlClient:
+        def complete(self, messages) -> str:
+            crawl_calls.append("scan")
+            return (
+                '{"summary": "Timer module handles reminders.", '
+                '"suggestion": "Add clearer timer errors.", '
+                '"confidence": "medium"}'
+            )
+
+    monkeypatch.setattr(
+        "app.proactive.background_tick.get_llm_client",
+        lambda: _CrawlClient(),
+    )
+    monkeypatch.setattr(
+        "app.memory.codebase_index.pick_next_scan_target",
+        lambda all_paths: "app/main.py",
+    )
+    monkeypatch.setattr(
+        "app.proactive.codebase_crawl.read_text_file",
+        lambda path: "print('nano')",
+    )
+    monkeypatch.setattr(
+        "app.proactive.codebase_crawl.file_content_hash",
+        lambda path: "hash-main",
+    )
+
+    run_proactive_background_tick()
+
+    assert crawl_calls == []
+    assert len(internal_notes.list_pending_self_improvement_notes(limit=10)) == 1
     get_settings.cache_clear()
