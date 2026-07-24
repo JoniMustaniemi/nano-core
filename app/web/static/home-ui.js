@@ -240,7 +240,7 @@ async function runToolCommand(command) {
   const message = command.message;
   messageBox.value = message;
   closeCommandsDrawer();
-  await submitMessage(message, "command");
+  await submitMessage(message, "command", command);
   messageBox.value = "";
 }
 
@@ -379,11 +379,68 @@ function renderActivityStatus() {
   activityStatusText.textContent = resolveActivityHeadline();
 }
 
+function startWorkingResponse() {
+  if (answerOutput.classList.contains("working")) {
+    return;
+  }
+  if (suppressWorkingResponse && !requestInFlight) {
+    return;
+  }
+  cancelAnswerReveal();
+  clearAnswerClearTimer();
+  if (!answerOutput.classList.contains("empty")) {
+    savedResponseBeforeWorking = answerOutput.textContent;
+  } else {
+    savedResponseBeforeWorking = null;
+  }
+  answerOutput.classList.add("working");
+  answerOutput.classList.remove("empty");
+  applyResponseTypography(3);
+  let step = 0;
+  const tick = () => {
+    step = (step % 3) + 1;
+    answerOutput.textContent = ".".repeat(step);
+  };
+  tick();
+  workingDotsTimer = window.setInterval(tick, 450);
+}
+
+function stopWorkingResponse({ restore = true } = {}) {
+  if (workingDotsTimer !== null) {
+    window.clearInterval(workingDotsTimer);
+    workingDotsTimer = null;
+  }
+  if (!answerOutput.classList.contains("working")) {
+    return;
+  }
+  answerOutput.classList.remove("working");
+  if (!restore) {
+    savedResponseBeforeWorking = null;
+    return;
+  }
+  if (savedResponseBeforeWorking) {
+    answerOutput.textContent = savedResponseBeforeWorking;
+    answerOutput.classList.remove("empty");
+    applyResponseTypography(savedResponseBeforeWorking.length);
+    savedResponseBeforeWorking = null;
+    return;
+  }
+  setAnswer("", { animate: false });
+}
+
 function renderState() {
   const displayState = getDisplayState();
   stateLine.textContent = displayState;
   document.body.dataset.displayState = displayState;
   renderActivityStatus();
+  if (displayState === "working") {
+    if (!(suppressWorkingResponse && !requestInFlight)) {
+      startWorkingResponse();
+    }
+  } else {
+    suppressWorkingResponse = false;
+    stopWorkingResponse();
+  }
   updateEssenceState();
   updateInputLock();
 }
@@ -607,6 +664,11 @@ function setAnswer(text, options = {}) {
   if (!content && speakingActive && !bypassSpeechGuard) {
     answerClearPending = true;
     return;
+  }
+
+  if (content) {
+    suppressWorkingResponse = true;
+    stopWorkingResponse({ restore: false });
   }
 
   clearAnswerClearTimer();

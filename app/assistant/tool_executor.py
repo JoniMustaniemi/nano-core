@@ -6,12 +6,7 @@ from typing import Any
 from app.assistant.response_source import ResponseSource, tool_error_source, tool_result_source
 from app.assistant.tool_runner import ToolRunner
 from app.runtime.activity import activity
-from app.runtime.status_copy import (
-    RUNNING_TOOL_DETAIL,
-    failed_tool_title,
-    ran_tool_title,
-    running_tool_title,
-)
+from app.runtime.status_copy import failed_tool_title, ran_tool_title
 
 
 class ToolExecutor:
@@ -49,11 +44,6 @@ class ToolExecutor:
             Tool result or error response source.
         """
         tool_args = args or {}
-        activity.working(
-            title=running_tool_title(tool_name),
-            detail=RUNNING_TOOL_DETAIL,
-            source="assistant.tool_executor",
-        )
         result = self.tool_runner.execute(tool_name, tool_args)
         if result.ok:
             activity.log(

@@ -34,7 +34,7 @@ def test_agent_requires_confirmation_before_wiping_database(monkeypatch, tmp_pat
     content = AgentService().respond("Wipe your database.")
 
     assert "erase what I remember" in content
-    assert "reply yes to proceed" in content.lower()
+    assert "say yes" in content.lower()
     assert repository.list_notes()[0].content == "keep me for now"
 
 
@@ -55,7 +55,7 @@ def test_agent_wipe_confirmation_recovers_from_refusal_draft(monkeypatch, tmp_pa
 
     content = AgentService().respond("Wipe your database.")
 
-    assert "reply yes to proceed" in content.lower()
+    assert "say yes" in content.lower()
     assert "afraid" not in content.lower()
     assert "can't assist" not in content.lower()
     assert repository.list_notes()[0].content == "keep me for now"
@@ -78,7 +78,7 @@ def test_agent_requires_confirmation_for_local_data_removal(monkeypatch, tmp_pat
 
     content = AgentService().respond("Remove local data.")
 
-    assert "reply yes to proceed" in content.lower()
+    assert "say yes" in content.lower()
     assert repository.list_notes()[0].content == "keep me for now"
 
 
@@ -110,7 +110,7 @@ def test_agent_wipes_database_after_confirmation(monkeypatch, tmp_path) -> None:
     first = AgentService().respond("Wipe your database.")
     second = AgentService().respond("yes")
 
-    assert "reply yes to proceed" in first.lower()
+    assert "say yes" in first.lower()
     assert second == "Database wiped."
     assert repository.list_notes() == []
     assert repository.list_reminders(include_sent=True) == []

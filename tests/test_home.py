@@ -108,12 +108,13 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=plan-copy-1"' in response.text
+    assert 'href="/static/home.css?v=working-response-1"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/essence_visualizer.js?v=default-hidden-1"' in response.text
     assert 'src="/static/home-state.js?v=default-hidden-1"' in response.text
     assert 'src="/static/home-plans.js?v=plan-copy-1"' in response.text
+    assert 'src="/static/home-chat.js?v=tool-activity-1"' in response.text
     assert 'src="/static/home.js?v=default-hidden-1"' in response.text
 
     assert "Enter to send" in response.text
@@ -174,7 +175,9 @@ def test_homepage_serves_static_assets() -> None:
     assert ".plan-copy-button" in css_text
     assert 'fetch("/api/improvement-plans")' in js_text
     assert 'getElementById("plan-copy-button")' in js_text
-    assert "copyActivePlan" in js_text
+    assert "startWorkingResponse" in js_text
+    assert "stopWorkingResponse" in js_text
+    assert ".response-headline.working" in css_text
 
     assert 'Waiting for wake phrase: "hey nano".' in js_text
 

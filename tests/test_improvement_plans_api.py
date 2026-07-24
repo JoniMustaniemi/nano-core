@@ -30,8 +30,12 @@ def test_improvement_plan_api_list_get_and_process(tmp_path, monkeypatch) -> Non
         assert detail.json()["body"].startswith("Summary")
 
         processed = client.post(f"/api/improvement-plans/{plan.id}/process")
-        assert processed.status_code == 200
-        assert processed.json()["status"] == "processed"
-        assert processed.json()["processed_at"] is not None
+        assert processed.status_code == 204
+        assert processed.content == b""
 
+        assert improvement_plans.get_plan(plan.id) is None
         assert improvement_plans.has_unprocessed_plan() is False
+
+        listed_after = client.get("/api/improvement-plans")
+        assert listed_after.status_code == 200
+        assert listed_after.json() == []

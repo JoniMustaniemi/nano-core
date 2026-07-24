@@ -21,7 +21,13 @@ class _StubClient:
         return '{"aligned": true, "problems": []}'
 
 
-def test_looks_like_refusal_detects_common_patterns() -> None:
+def test_wipe_confirmation_prompt_reflects_request_wording() -> None:
+    from app.assistant.rules.messages import wipe_confirmation_prompt
+
+    prompt = wipe_confirmation_prompt("Clear your memory.")
+    assert "clear your memory" in prompt.lower()
+    assert "say yes" in prompt.lower()
+    assert "you are asking me to do this" not in prompt.lower()
     assert looks_like_refusal("I'm afraid I can't assist with that.")
     assert looks_like_refusal("I cannot assist with destructive requests.")
     assert not looks_like_refusal("You want me to erase what I remember.")
@@ -106,8 +112,8 @@ def test_enforce_user_facing_answer_rewrites_confirmation_refusal() -> None:
     client = _StubClient(
         responses=[
             (
-                "You are asking me to wipe your database. "
-                "If this is truly your intention, reply yes to proceed or no to cancel."
+                "You want me to wipe your database. "
+                "Say yes to proceed, or no to cancel."
             )
         ]
     )
@@ -119,7 +125,7 @@ def test_enforce_user_facing_answer_rewrites_confirmation_refusal() -> None:
     )
 
     assert "afraid" not in content.lower()
-    assert "reply yes to proceed" in content.lower()
+    assert "say yes" in content.lower()
     assert len(client.messages) == 2
     assert "Problems to fix" in client.messages[0][1]["content"]
 
@@ -142,6 +148,6 @@ def test_enforce_user_facing_answer_uses_confirmation_fallback_after_failed_rewr
         "I'm afraid I can't assist with that. Reply yes to proceed or no to cancel.",
     )
 
-    assert content.startswith('You are asking me to do this: "Wipe your database."')
-    assert "reply yes to proceed" in content.lower()
+    assert content.startswith("You want me to wipe your database.")
+    assert "say yes" in content.lower()
     assert "afraid" not in content.lower()

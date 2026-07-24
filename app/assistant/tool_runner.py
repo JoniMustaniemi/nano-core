@@ -6,12 +6,14 @@ from typing import Any
 from app.assistant.agent_types import ToolResult
 from app.runtime.activity import activity
 from app.runtime.status_copy import (
+    RUNNING_TOOL_DETAIL,
     could_not_call_tool_title,
     failed_tool_title,
     running_tool_title,
     tool_error_title,
 )
 from app.tools import get_tool, list_tools
+from app.tools.registry import tool_announcement_for
 from app.tools.errors import ToolError
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
@@ -27,13 +29,20 @@ _STRUCTURED_FAILURE_SPOKEN: dict[str, str] = {
 
 
 class ToolRunner:
-    def execute(self, tool_name: str, args: dict[str, Any]) -> ToolResult:
+    def execute(
+        self,
+        tool_name: str,
+        args: dict[str, Any],
+        *,
+        announce: bool = True,
+    ) -> ToolResult:
         """
         Execute the requested operation.
 
         Args:
             tool_name: Registered tool name.
             args: Tool argument dictionary.
+            announce: When True, speak a short confirmation that work has started.
 
         Returns:
             ToolResult result.
@@ -52,6 +61,14 @@ class ToolRunner:
                 content=json.dumps({"ok": False, "error": error_message}),
                 ok=False,
             )
+
+        activity.working(
+            title=running_tool_title(tool_name),
+            detail=RUNNING_TOOL_DETAIL,
+            source="assistant.tool_runner",
+        )
+        if announce:
+            self.announce_message(tool_announcement_for(tool_name))
 
         try:
             content = tool.handler(args)
@@ -114,7 +131,7 @@ class ToolRunner:
         Returns:
             None.
         """
-        self.announce_message(running_tool_title(tool_name))
+        self.announce_message(tool_announcement_for(tool_name))
 
     def announce_message(self, message: str) -> None:
         """

@@ -251,6 +251,14 @@ body.controls-hidden .keyboard-panel {
   -webkit-text-fill-color: transparent;
 }
 
+.response-headline.working {
+  background-image: none;
+  -webkit-text-fill-color: var(--accent-soft);
+  color: var(--accent-soft);
+  letter-spacing: 0.14em;
+  min-height: 1.28em;
+}
+
 .activity-status {
   margin: 0;
   display: flex;

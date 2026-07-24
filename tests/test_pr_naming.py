@@ -4,10 +4,13 @@ import pytest
 
 from app.tools.pr_naming import (
     PrNamingService,
+    humanize_slug,
     is_valid_slug,
     looks_like_file_list_body,
     looks_like_llm_unavailable,
+    sanitize_pr_title,
     sanitize_slug,
+    title_looks_low_effort,
 )
 
 
@@ -20,6 +23,20 @@ class _NamingClient:
         response = self.responses[min(self.calls, len(self.responses) - 1)]
         self.calls += 1
         return response
+
+
+def test_title_looks_low_effort_detects_slug_copy() -> None:
+    assert title_looks_low_effort("fix_timer_cancel_bug", "fix_timer_cancel_bug") is True
+    assert title_looks_low_effort("Fix timer cancellation handling", "fix_timer_cancel_bug") is False
+
+
+def test_sanitize_pr_title_trims_and_caps_length() -> None:
+    long_title = "Improve pull request naming by reading diffs and generating human titles"
+    assert len(sanitize_pr_title(long_title)) <= 72
+
+
+def test_humanize_slug() -> None:
+    assert humanize_slug("fix_timer_bug") == "Fix timer bug"
 
 
 def test_sanitize_slug_normalizes_text() -> None:
@@ -78,6 +95,7 @@ def test_pr_naming_service_falls_back_when_llm_unavailable(monkeypatch: pytest.M
 
     assert naming.slug == "home"
     assert naming.branch == "feature/home"
+    assert naming.title == "Update home and home"
     assert client.calls == 1
 
 
@@ -88,7 +106,7 @@ def test_pr_naming_service_retries_file_list_body(monkeypatch: pytest.MonkeyPatc
             json.dumps(
                 {
                     "slug": "agent_router",
-                    "title": "agent_router",
+                    "title": "Add unified agent routing before planner fallback",
                     "commit_message": "agent_router",
                     "body": "app/assistant/agent_router.py: 14 ++\napp/assistant/orchestrator.py: 15 +",
                 }
@@ -96,7 +114,7 @@ def test_pr_naming_service_retries_file_list_body(monkeypatch: pytest.MonkeyPatc
             json.dumps(
                 {
                     "slug": "agent_router",
-                    "title": "agent_router",
+                    "title": "Add unified agent routing before planner fallback",
                     "commit_message": "agent_router",
                     "body": "Adds unified routing and response pipeline handling before planner fallback.",
                 }
@@ -116,6 +134,7 @@ def test_pr_naming_service_retries_file_list_body(monkeypatch: pytest.MonkeyPatc
     )
 
     assert naming.slug == "agent_router"
+    assert naming.title == "Add unified agent routing before planner fallback"
     assert "agent_router.py" not in naming.body
     assert client.calls == 2
 
@@ -127,7 +146,7 @@ def test_pr_naming_service_generates_valid_naming(monkeypatch: pytest.MonkeyPatc
             json.dumps(
                 {
                     "slug": "fix_timer_cancel_bug",
-                    "title": "fix_timer_cancel_bug",
+                    "title": "Fix timer cancellation handling",
                     "commit_message": "fix_timer_cancel_bug",
                     "body": "Fixes timer cancellation handling.",
                 }
@@ -148,7 +167,7 @@ def test_pr_naming_service_generates_valid_naming(monkeypatch: pytest.MonkeyPatc
 
     assert naming.slug == "fix_timer_cancel_bug"
     assert naming.branch == "feature/fix_timer_cancel_bug"
-    assert naming.title == "fix_timer_cancel_bug"
+    assert naming.title == "Fix timer cancellation handling"
 
 
 def test_pr_naming_service_retries_invalid_json(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -159,7 +178,7 @@ def test_pr_naming_service_retries_invalid_json(monkeypatch: pytest.MonkeyPatch)
             json.dumps(
                 {
                     "slug": "add_github_pr",
-                    "title": "add_github_pr",
+                    "title": "Add GitHub pull request workflow",
                     "commit_message": "add_github_pr",
                     "body": "Adds GitHub pull request support.",
                 }
@@ -171,6 +190,7 @@ def test_pr_naming_service_retries_invalid_json(monkeypatch: pytest.MonkeyPatch)
     naming = service.generate(client=client, context={"changed_files": [], "diff_stat": "", "diff_patch": ""})
 
     assert naming.slug == "add_github_pr"
+    assert naming.title == "Add GitHub pull request workflow"
     assert client.calls == 2
 
 
@@ -192,3 +212,4 @@ def test_pr_naming_service_falls_back_when_client_returns_none(
 
     assert naming.slug == "main"
     assert naming.branch == "feature/main"
+    assert naming.title == "Update main"

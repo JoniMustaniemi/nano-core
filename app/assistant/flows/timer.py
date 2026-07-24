@@ -21,8 +21,6 @@ from app.runtime.activity import activity
 from app.runtime.status_copy import (
     CANCELLED_TIMER_TITLE,
     NEEDS_DETAIL_TITLE,
-    SETTING_TIMER_DETAIL,
-    SETTING_TIMER_TITLE,
     TIMER_CANCELLED_PROMPT,
     TIMER_DURATION_PROMPT,
     TIMER_DURATION_RETRY_PROMPT,
@@ -202,12 +200,7 @@ class TimerInteractionHandler:
         Returns:
             Timer confirmation response source.
         """
-        activity.working(
-            title=SETTING_TIMER_TITLE,
-            detail=SETTING_TIMER_DETAIL,
-            source="assistant.flows.timer",
-        )
-        result = self.tool_runner.execute("start_timer", args)
+        result = self.tool_runner.execute("start_timer", args, announce=False)
         if not result.ok:
             pending_interactions.clear(conversation_id)
             activity.standby(
