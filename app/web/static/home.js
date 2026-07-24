@@ -1,21 +1,14 @@
 sendButton.addEventListener("click", sendMessage);
 commandsToggle.addEventListener("click", openCommandsDrawer);
+if (commandsToggleReveal) {
+  commandsToggleReveal.addEventListener("click", openCommandsDrawer);
+}
 commandsClose.addEventListener("click", closeCommandsDrawer);
 commandsBackdrop.addEventListener("click", closeCommandsDrawer);
 commandsPanel.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeCommandsDrawer();
   }
-});
-audioToggle.addEventListener("click", () => {
-  if (isBusy()) {
-    return;
-  }
-  if (listeningEnabled || recognitionStarting) {
-    stopVoiceListening();
-    return;
-  }
-  startVoiceListening();
 });
 keyboardToggle.addEventListener("click", () => {
   if (isBusy()) {
@@ -74,18 +67,16 @@ window.addEventListener("beforeunload", () => {
   if (mainEssence) {
     mainEssence.destroy();
   }
-  if (miniEssence) {
-    miniEssence.destroy();
-  }
 });
 
 window.addEventListener("load", () => {
   requestAnimationFrame(() => {
     initEssence();
+    applyControlsVisibility();
     void initVoiceVolumeControl();
     setAnswer("", { animate: false });
     setVoiceStatus("Voice on standby.");
-    updateListenButton();
+    syncVoiceListeningState();
     bootstrap();
   });
 });

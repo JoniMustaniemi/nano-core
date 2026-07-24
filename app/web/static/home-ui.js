@@ -2,7 +2,6 @@ function initEssence() {
   if (typeof window.initEssenceOrbs === "function") {
     window.initEssenceOrbs();
     mainEssence = window.mainEssence || null;
-    miniEssence = window.miniEssence || null;
   }
 }
 
@@ -16,9 +15,6 @@ function updateEssenceState() {
   }
   if (mainEssence) {
     mainEssence.setState(state);
-  }
-  if (miniEssence) {
-    miniEssence.setState(state);
   }
 }
 
@@ -179,20 +175,26 @@ function updateInputLock() {
   messageBox.disabled = locked;
   sendButton.disabled = locked;
   commandsToggle.disabled = locked;
+  if (commandsToggleReveal) {
+    commandsToggleReveal.disabled = locked;
+  }
   nanoControlsToggle.disabled = locked;
   keyboardToggle.disabled = locked;
   setCommandButtonsDisabled(locked);
-  if (!SpeechRecognitionCtor) {
-    audioToggle.disabled = true;
-  } else {
-    audioToggle.disabled = locked;
-  }
   document.body.classList.toggle("inputs-locked", locked);
 }
 
 function closeCommandDropdowns() {
   for (const dropdown of commandsList.querySelectorAll(".commands-dropdown")) {
     dropdown.removeAttribute("open");
+  }
+}
+
+function setCommandsExpanded(expanded) {
+  const value = expanded ? "true" : "false";
+  commandsToggle.setAttribute("aria-expanded", value);
+  if (commandsToggleReveal) {
+    commandsToggleReveal.setAttribute("aria-expanded", value);
   }
 }
 
@@ -203,15 +205,19 @@ function openCommandsDrawer() {
   closeCommandDropdowns();
   commandsDrawer.classList.add("open");
   commandsDrawer.setAttribute("aria-hidden", "false");
-  commandsToggle.setAttribute("aria-expanded", "true");
+  setCommandsExpanded(true);
   commandsClose.focus();
 }
 
 function closeCommandsDrawer() {
   commandsDrawer.classList.remove("open");
   commandsDrawer.setAttribute("aria-hidden", "true");
-  commandsToggle.setAttribute("aria-expanded", "false");
-  commandsToggle.focus();
+  setCommandsExpanded(false);
+  if (controlsHidden && commandsToggleReveal) {
+    commandsToggleReveal.focus();
+  } else {
+    commandsToggle.focus();
+  }
 }
 
 async function loadToolCommands() {
@@ -308,6 +314,9 @@ function applyControlsVisibility() {
   if (controlsRevealZone) {
     controlsRevealZone.hidden = !controlsHidden;
   }
+  if (commandsRevealZone) {
+    commandsRevealZone.hidden = !controlsHidden;
+  }
 }
 
 function setControlsHidden(hidden) {
@@ -324,17 +333,7 @@ function toggleControlsHidden() {
   setControlsHidden(!controlsHidden);
 }
 
-function updateListenButton() {
-  if (!SpeechRecognitionCtor) {
-    audioToggle.disabled = true;
-    audioToggle.classList.remove("active");
-    audioToggle.setAttribute("aria-pressed", "false");
-    renderState();
-    return;
-  }
-  audioToggle.disabled = false;
-  audioToggle.classList.toggle("active", listeningEnabled);
-  audioToggle.setAttribute("aria-pressed", listeningEnabled ? "true" : "false");
+function syncVoiceListeningState() {
   renderState();
 }
 

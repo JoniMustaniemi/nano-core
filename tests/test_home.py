@@ -61,11 +61,13 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="essence-canvas"' in response.text
 
-    assert 'id="essence-mini-canvas"' in response.text
-
     assert 'id="controls-reveal-zone"' in response.text
 
     assert 'id="controls-reveal"' in response.text
+
+    assert 'id="commands-reveal-zone"' in response.text
+
+    assert 'id="commands-toggle-reveal"' in response.text
 
     assert 'id="keyboard-toggle"' in response.text
 
@@ -75,8 +77,6 @@ def test_homepage_shows_standby_ui() -> None:
     assert 'class="footer-cluster"' in response.text
 
     assert 'id="nano-controls-toggle"' in response.text
-
-    assert 'id="audio-toggle"' in response.text
 
     assert 'id="commands-toggle"' in response.text
 
@@ -90,6 +90,7 @@ def test_homepage_shows_standby_ui() -> None:
     assert 'id="plans-list"' in response.text
     assert 'id="plans-tab-count"' in response.text
     assert 'id="plan-reader"' in response.text
+    assert 'id="plan-copy-button"' in response.text
 
     assert 'id="brains-clear"' in response.text
 
@@ -107,13 +108,13 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=controls-toggle-7"' in response.text
+    assert 'href="/static/home.css?v=plan-copy-1"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
-    assert 'src="/static/essence_visualizer.js?v=controls-toggle-7"' in response.text
-    assert 'src="/static/home-state.js?v=controls-toggle-3"' in response.text
-    assert 'src="/static/home-plans.js?v=procedural-orb-24"' in response.text
-    assert 'src="/static/home.js?v=controls-toggle-1"' in response.text
+    assert 'src="/static/essence_visualizer.js?v=default-hidden-1"' in response.text
+    assert 'src="/static/home-state.js?v=default-hidden-1"' in response.text
+    assert 'src="/static/home-plans.js?v=plan-copy-1"' in response.text
+    assert 'src="/static/home.js?v=default-hidden-1"' in response.text
 
     assert "Enter to send" in response.text
 
@@ -155,7 +156,13 @@ def test_homepage_serves_static_assets() -> None:
 
     assert ".controls-reveal" in css_text
 
+    assert ".commands-reveal-zone" in css_text
+
+    assert ".commands-reveal" in css_text
+
     assert "controls-hidden" in css_text
+
+    assert "body.controls-hidden .commands-drawer" not in css_text
 
     assert "@keyframes blink" in css_text
 
@@ -164,7 +171,10 @@ def test_homepage_serves_static_assets() -> None:
     assert 'mode: "agent"' in js_text
 
     assert ".plan-card" in css_text
+    assert ".plan-copy-button" in css_text
     assert 'fetch("/api/improvement-plans")' in js_text
+    assert 'getElementById("plan-copy-button")' in js_text
+    assert "copyActivePlan" in js_text
 
     assert 'Waiting for wake phrase: "hey nano".' in js_text
 
@@ -310,7 +320,9 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "openNanoSheet" in js_text
 
-    assert 'getElementById("audio-toggle")' in js_text
+    assert 'let controlsHidden = true;' in js_text
+
+    assert 'getElementById("commands-toggle-reveal")' in js_text
 
 
 

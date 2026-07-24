@@ -34,6 +34,14 @@ def test_extra_ui_commands_are_not_registered_tools() -> None:
         assert command.id not in registered
 
 
+def test_draft_improvement_plan_is_not_a_ui_command() -> None:
+    ui_tools = {tool.name for tool in list_ui_tool_commands()}
+    command_ids = {item["id"] for item in list_tool_commands()}
+
+    assert "draft_improvement_plan" not in ui_tools
+    assert "draft_improvement_plan" not in command_ids
+
+
 def test_get_tool_rule_matches_registry_metadata() -> None:
     tool = next(tool for tool in list_tools() if tool.name == "check_health")
     rule = get_tool_rule("check_health")

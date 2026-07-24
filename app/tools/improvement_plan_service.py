@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import re
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -12,6 +14,7 @@ from app.runtime.activity import activity
 from app.runtime.status_copy import (
     DRAFTING_IMPROVEMENT_PLAN_DETAIL,
     DRAFTING_IMPROVEMENT_PLAN_TITLE,
+    IMPROVEMENT_PLAN_FAILED_TITLE,
 )
 from app.tools.files import read_text_file
 from app.tools.self_improve_planning import (
@@ -27,6 +30,14 @@ IMPROVEMENT_PLAN_MAX_FILES = 1
 IMPROVEMENT_PLAN_COMPLETED_SOURCE = "tools.improvement_plan_service.completed"
 
 PLAN_TEMPERATURE = 0.2
+
+_SUMMARY_HEADER = re.compile(r"^[-*]?\s*summary\b\s*:?\s*$", re.IGNORECASE)
+_ASSESSMENT_MARKERS = (
+    "well-structured",
+    "follows best practices",
+    "is well organized",
+    "is well-organized",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,10 +127,22 @@ def _read_file_contents(paths: list[str], *, allowed: str, max_file_chars: int) 
     return file_contents
 
 
-def _build_plan_prompt(*, goal: str, file_contents: dict[str, str]) -> list[dict[str, str]]:
+def _build_plan_prompt(
+    *,
+    goal: str,
+    file_contents: dict[str, str],
+    passive: bool = False,
+) -> list[dict[str, str]]:
     sections = [f"Goal: {goal}", "", "Files reviewed:"]
     for path, content in file_contents.items():
         sections.extend([f"### {path}", content, ""])
+    section_lines = [
+        "- Summary (1-2 sentences about one improvement theme)\n",
+        "- Target file (one file path)\n",
+        "- Proposed change (2-4 short bullet steps, all about the same theme)\n",
+    ]
+    if not passive:
+        section_lines.append("- Risks (1-2 bullets)\n")
     return [
         {
             "role": "system",
@@ -128,11 +151,8 @@ def _build_plan_prompt(*, goal: str, file_contents: dict[str, str]) -> list[dict
                 "Write ONE plain-text plan about a single theme only. "
                 "Do not bundle unrelated ideas, roadmaps, or multi-area refactors. "
                 "Use these sections:\n"
-                "- Summary (1-2 sentences about one improvement theme)\n"
-                "- Target file (one file path)\n"
-                "- Proposed change (2-4 short bullet steps, all about the same theme)\n"
-                "- Risks (1-2 bullets)\n"
-                "Do not edit code. Do not use markdown fences. "
+                + "".join(section_lines)
+                + "Do not edit code. Do not use markdown fences. "
                 "Never list more than one target file."
             ),
         },
@@ -143,6 +163,41 @@ def _build_plan_prompt(*, goal: str, file_contents: dict[str, str]) -> list[dict
     ]
 
 
+def _goal_reads_like_assessment(goal: str) -> bool:
+    normalized = goal.strip().lower()
+    if normalized.startswith("the file is"):
+        return True
+    return any(marker in normalized for marker in _ASSESSMENT_MARKERS)
+
+
+def _summary_from_plan_body(body: str) -> str | None:
+    lines = body.splitlines()
+    collecting = False
+    summary_lines: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if not collecting:
+            if _SUMMARY_HEADER.match(stripped):
+                collecting = True
+            continue
+        if not stripped:
+            if summary_lines:
+                break
+            continue
+        if stripped.endswith(":") and len(stripped) < 40 and not stripped.startswith("-"):
+            break
+        if re.match(r"^[-*]?\s*(target file|proposed change|risks)\b", stripped, re.IGNORECASE):
+            break
+        summary_lines.append(stripped)
+    if not summary_lines:
+        return None
+    summary = " ".join(summary_lines)
+    summary = " ".join(summary.split())
+    if not summary:
+        return None
+    return summary[:96]
+
+
 def _brief_theme(*, goal: str, title: str) -> str:
     for candidate in (title, goal):
         cleaned = normalize_self_improve_goal(str(candidate))
@@ -151,13 +206,36 @@ def _brief_theme(*, goal: str, title: str) -> str:
     return "a codebase improvement"
 
 
-def _plan_title(*, goal: str, files: list[str]) -> str:
+def _plan_title(*, goal: str, files: list[str], body: str | None = None) -> str:
+    if body:
+        from_body = _summary_from_plan_body(body)
+        if from_body:
+            return from_body
     cleaned_goal = normalize_self_improve_goal(goal)
-    if cleaned_goal:
+    if cleaned_goal and not _goal_reads_like_assessment(cleaned_goal):
         return cleaned_goal[:96]
     if files:
-        return f"Improve {files[0]}"
+        return f"Improve {os.path.basename(files[0])}"
+    if cleaned_goal:
+        return cleaned_goal[:96]
     return "Improvement plan"
+
+
+def _finalize_draft_activity(result: ImprovementPlanResult, *, theme: str | None = None) -> None:
+    if result.step == "gate":
+        return
+    if result.ok:
+        activity.standby(
+            title="I saved an improvement plan.",
+            detail=f"Theme: {theme or 'a codebase improvement'}. Open the Plans tab to read it.",
+            source=IMPROVEMENT_PLAN_COMPLETED_SOURCE,
+        )
+        return
+    activity.standby(
+        title=IMPROVEMENT_PLAN_FAILED_TITLE,
+        detail=result.error or "Could not draft an improvement plan.",
+        source="tools.improvement_plan_service",
+    )
 
 
 class ImprovementPlanService:
@@ -170,6 +248,7 @@ class ImprovementPlanService:
         goal: str,
         preferred_files: list[str] | None = None,
         source_note_id: int | None = None,
+        passive: bool = False,
     ) -> ImprovementPlanResult:
         if improvement_plans.has_unprocessed_plan():
             return ImprovementPlanResult(
@@ -196,12 +275,14 @@ class ImprovementPlanService:
             max_files=IMPROVEMENT_PLAN_MAX_FILES,
         )
         if not files_to_read:
-            return ImprovementPlanResult(
+            result = ImprovementPlanResult(
                 ok=False,
                 step="select",
                 goal=goal,
                 error="No files selected.",
             )
+            _finalize_draft_activity(result)
+            return result
 
         file_contents = _read_file_contents(
             files_to_read,
@@ -209,14 +290,20 @@ class ImprovementPlanService:
             max_file_chars=settings.self_improve_max_file_chars,
         )
         if not file_contents:
-            return ImprovementPlanResult(
+            result = ImprovementPlanResult(
                 ok=False,
                 step="read",
                 goal=goal,
                 error="Could not read target files.",
             )
+            _finalize_draft_activity(result)
+            return result
 
-        messages = _build_plan_prompt(goal=goal, file_contents=file_contents)
+        messages = _build_plan_prompt(
+            goal=goal,
+            file_contents=file_contents,
+            passive=passive,
+        )
         raw = cast(
             str,
             client.complete(
@@ -226,34 +313,34 @@ class ImprovementPlanService:
             ),
         ).strip()
         if looks_like_llm_unavailable(raw) or not raw:
-            return ImprovementPlanResult(
+            result = ImprovementPlanResult(
                 ok=False,
                 step="draft",
                 goal=goal,
                 error="Could not draft an improvement plan.",
             )
+            _finalize_draft_activity(result)
+            return result
 
-        title = _plan_title(goal=goal, files=list(file_contents.keys()))
+        file_list = list(file_contents.keys())
+        title = _plan_title(goal=goal, files=file_list, body=raw)
         plan = improvement_plans.create_plan(
             title=title,
             goal=goal,
             body=raw,
-            files=list(file_contents.keys()),
+            files=file_list,
             source_note_id=source_note_id,
         )
         theme = _brief_theme(goal=goal, title=title)
-        activity.standby(
-            title="I saved an improvement plan.",
-            detail=f"Theme: {theme}. Open the Plans tab to read it.",
-            source=IMPROVEMENT_PLAN_COMPLETED_SOURCE,
-        )
-        return ImprovementPlanResult(
+        result = ImprovementPlanResult(
             ok=True,
             step="complete",
             plan_id=plan.id,
             title=plan.title,
             goal=goal,
         )
+        _finalize_draft_activity(result, theme=theme)
+        return result
 
     def draft_from_note(self, note: InternalNote, *, client: Any) -> ImprovementPlanResult:
         goal = internal_note_service.goal_from_internal_note(note)
@@ -263,6 +350,7 @@ class ImprovementPlanService:
             goal=goal,
             preferred_files=preferred_files or None,
             source_note_id=note.id,
+            passive=True,
         )
         if result.ok and note.id is not None:
             internal_note_service.mark_delivered(note.id)

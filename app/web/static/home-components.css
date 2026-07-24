@@ -19,7 +19,7 @@
   max-width: var(--content-max);
   height: var(--bottom-bar-h);
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
   padding: 0 clamp(12px, 3vw, 24px);
   border: 1px solid rgba(57, 255, 20, 0.12);
@@ -62,24 +62,6 @@
   border-color: rgba(57, 255, 20, 0.5);
   background: rgba(57, 255, 20, 0.14);
   box-shadow: 0 0 20px rgba(57, 255, 20, 0.2);
-}
-
-.bottom-bar-btn-center {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border-color: rgba(57, 255, 20, 0.25);
-  background: transparent;
-  overflow: visible;
-}
-
-#essence-mini-canvas {
-  width: 52px;
-  height: 52px;
-  display: block;
-  background: transparent;
-  border: none;
-  outline: none;
 }
 
 #nano-controls-toggle {
@@ -713,11 +695,6 @@ body.inputs-locked #keyboard-toggle:disabled {
     width: 56px;
     height: 56px;
   }
-
-  .bottom-bar-btn-center {
-    width: 60px;
-    height: 60px;
-  }
 }
 
 @media (min-width: 1400px) {
@@ -740,11 +717,6 @@ body.inputs-locked #keyboard-toggle:disabled {
   .bottom-bar-btn {
     width: 46px;
     height: 46px;
-  }
-
-  .bottom-bar-btn-center {
-    width: 50px;
-    height: 50px;
   }
 }
 
@@ -898,6 +870,41 @@ body.inputs-locked #keyboard-toggle:disabled {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.plan-copy-button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent-soft);
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.plan-copy-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.plan-copy-button:hover:not(:disabled) {
+  border-color: rgba(57, 255, 20, 0.36);
+  background: rgba(57, 255, 20, 0.08);
+  color: var(--accent);
+}
+
+.plan-copy-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .plan-reader-body {

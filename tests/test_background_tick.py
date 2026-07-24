@@ -136,3 +136,44 @@ def test_background_tick_skips_under_ten_minutes_idle(tmp_path, monkeypatch) -> 
     assert drafted["called"] is False
     assert improvement_plans.has_unprocessed_plan() is False
     get_settings.cache_clear()
+
+
+def test_background_tick_returns_to_standby_when_draft_fails(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'tick-fail.sqlite3'}")
+    create_db_and_tables()
+    get_settings.cache_clear()
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "main.py").write_text("value = 1\n", encoding="utf-8")
+
+    _record_due_note()
+    activity.reset()
+    proactive_store.reset()
+    pending_interactions.reset()
+    user_activity._last_activity_at = datetime.now(UTC) - timedelta(seconds=700)
+
+    class _FailingClient:
+        def complete(self, messages, **kwargs) -> str:
+            content = messages[-1]["content"]
+            if "Known files:" in content:
+                return '{"files_to_read": ["app/main.py"]}'
+            return ""
+
+    monkeypatch.setattr(
+        "app.proactive.background_tick.get_llm_client",
+        lambda: _FailingClient(),
+    )
+    monkeypatch.setattr(
+        "app.proactive.background_tick.user_activity.is_idle",
+        lambda _seconds: False,
+    )
+    monkeypatch.setattr(
+        "app.tools.self_improve_planning.file_selection_lines",
+        lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
+    )
+
+    run_proactive_background_tick()
+
+    assert activity.snapshot()["state"] == "standby"
+    assert improvement_plans.has_unprocessed_plan() is False
+    get_settings.cache_clear()

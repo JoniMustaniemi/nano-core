@@ -50,11 +50,6 @@ def run_proactive_background_tick() -> None:
   if note is None:
     return
 
-  activity.working(
-    title="I'm drafting an improvement plan.",
-    detail=internal_note_service.goal_from_internal_note(note),
-    source="proactive.background_tick",
-  )
   ImprovementPlanService().draft_from_note(note, client=get_llm_client())
 
 

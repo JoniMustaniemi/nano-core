@@ -59,8 +59,7 @@ body.controls-hidden .essence-zone {
 }
 
 body.controls-hidden .footer-cluster,
-body.controls-hidden .keyboard-panel,
-body.controls-hidden .commands-drawer {
+body.controls-hidden .keyboard-panel {
   display: none !important;
 }
 
@@ -121,6 +120,46 @@ body.controls-hidden .commands-drawer {
   color: var(--accent);
   border-color: rgba(57, 255, 20, 0.46);
   background: rgba(8, 12, 10, 0.96);
+}
+
+.commands-reveal-zone {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  width: min(42vw, 200px);
+  height: min(34vh, 150px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding:
+    max(16px, env(safe-area-inset-bottom, 0))
+    max(16px, env(safe-area-inset-right, 0));
+  pointer-events: auto;
+}
+
+.commands-reveal-zone[hidden] {
+  display: none;
+}
+
+.commands-reveal {
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.commands-reveal-zone:hover .commands-reveal,
+.commands-reveal:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.commands-reveal:hover,
+.commands-reveal:focus-visible {
+  transform: none;
 }
 
 .shell {
@@ -351,12 +390,7 @@ body[data-display-state="working"] .activity-cursor {
   color: var(--warning);
 }
 
-body[data-display-state="working"] .bottom-bar-btn-center {
-  box-shadow: 0 0 24px rgba(244, 193, 93, 0.35);
-}
-
-#essence-canvas,
-#essence-mini-canvas {
+#essence-canvas {
   width: 100%;
   height: 100%;
   display: block;
