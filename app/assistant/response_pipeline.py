@@ -11,7 +11,7 @@ from app.runtime.status_copy import (
     COMPOSING_DETAIL,
     COMPOSING_TITLE,
     STANDBY_DETAIL_WAITING,
-    STANDBY_TITLE,
+    choose_standby_greeting,
 )
 
 
@@ -54,7 +54,7 @@ def finalize_response(
         return content, source.speak
     finally:
         activity.standby(
-            title=STANDBY_TITLE,
-            detail=standby_detail,
+            title=choose_standby_greeting(),
+            detail=None,
             source=standby_source,
         )

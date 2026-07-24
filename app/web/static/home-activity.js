@@ -3,13 +3,23 @@ function applyProactiveSnapshot(proactive) {
     return;
   }
   if (proactive.waiting_for_presence && proactive.prompt) {
-    setAnswer(proactive.prompt);
-    void playVoice(proactive.prompt, { resumeListening: false });
+    void enterPresenceListenMode(proactive.prompt);
     return;
   }
   if (proactive.dismissal) {
-    setAnswer(proactive.dismissal);
-    void playVoice(proactive.dismissal, { resumeListening: false });
+    if (proactive.dismissal === lastHandledDismissal) {
+      return;
+    }
+    lastHandledDismissal = proactive.dismissal;
+    void handlePresenceDismissal(proactive.dismissal);
+    return;
+  }
+  if (lastHandledDismissal && !proactive.dismissal) {
+    lastHandledDismissal = null;
+  }
+  if (waitingForPresence) {
+    exitPresenceListenMode();
+    returnToWakeDetection();
   }
 }
 
@@ -17,10 +27,80 @@ function resetStandbySnapshot() {
   currentActivitySnapshot = {
     ...currentActivitySnapshot,
     state: "standby",
-    headline: STANDBY_HEADLINE,
-    detail: STANDBY_DETAIL_DEFAULT,
+    headline: currentStandbyGreeting || STANDBY_HEADLINE,
+    detail: null,
   };
   renderState();
+  void refreshStandbyGreeting();
+}
+
+async function refreshStandbyGreeting(options = {}) {
+  try {
+    const response = await fetch("/api/greeting");
+    if (!response.ok) {
+      return;
+    }
+    const payload = await response.json();
+    const greeting = (payload.greeting || "").trim();
+    if (!greeting) {
+      return;
+    }
+    currentStandbyGreeting = greeting;
+    if (
+      currentActivitySnapshot.state === "standby" &&
+      !resolveListeningIntent() &&
+      !hasCustomStandbyActivityCopy()
+    ) {
+      currentActivitySnapshot = {
+        ...currentActivitySnapshot,
+        headline: greeting,
+        detail: null,
+      };
+    }
+    renderState();
+    const speakOnce = options.speakOnce === true;
+    const shouldSpeak =
+      speakOnce &&
+      voiceAvailable &&
+      !window.sessionStorage.getItem(GREETING_SPOKEN_KEY);
+    if (shouldSpeak) {
+      try {
+        window.sessionStorage.setItem(GREETING_SPOKEN_KEY, "1");
+        await playVoice(greeting, { pauseRecognition: true });
+      } catch (_error) {
+        window.sessionStorage.removeItem(GREETING_SPOKEN_KEY);
+        setAnswer(greeting, { animate: false });
+      }
+      return;
+    }
+    setAnswer(greeting, { animate: false });
+  } catch (_error) {
+    return;
+  }
+}
+
+function applyPendingSnapshot(pending, proactive) {
+  if (!pending || typeof pending !== "object") {
+    if (!waitingForPresence) {
+      waitingForFollowUp = false;
+    }
+    clearAnswerTimeoutTimer();
+    answerTimeoutPending = false;
+    return;
+  }
+  const kind = pending.kind;
+  if (!kind) {
+    if (!waitingForPresence) {
+      waitingForFollowUp = false;
+    }
+    clearAnswerTimeoutTimer();
+    answerTimeoutPending = false;
+    return;
+  }
+  if (kind === "presence_check") {
+    return;
+  }
+  ensureDirectAnswerListening(pendingListenStatus(kind));
 }
 
 function applyStatusSnapshot(snapshot) {
@@ -36,7 +116,15 @@ function applyStatusSnapshot(snapshot) {
       ? (snapshot.detail ?? STANDBY_DETAIL_DEFAULT)
       : (snapshot.detail ?? currentActivitySnapshot.detail),
   };
+  if (
+    nextState === "standby" &&
+    snapshot.headline &&
+    snapshot.headline !== STANDBY_HEADLINE
+  ) {
+    currentStandbyGreeting = String(snapshot.headline);
+  }
   applyProactiveSnapshot(snapshot.proactive);
+  applyPendingSnapshot(snapshot.pending, snapshot.proactive);
   renderState();
 }
 
@@ -67,7 +155,7 @@ function applyActivityEvent(event) {
     event.source === "tools.improvement_plan_service.completed"
   ) {
     const message = formatImprovementPlanCompletedMessage(event);
-    setAnswer(message, { animate: false });
+    setAnswer(message, { animate: false, deferClearUntilSpeech: voiceAvailable && !requestInFlight });
     if (voiceAvailable && !requestInFlight) {
       void playVoice(message, { resumeListening: false });
     }
@@ -77,7 +165,7 @@ function applyActivityEvent(event) {
   if (event.kind === "log" && event.source === "runtime.long_task_progress") {
     const message = formatProgressAnnouncement(event);
     if (message && !speakingActive) {
-      setAnswer(message, { animate: false });
+      setAnswer(message, { animate: false, deferClearUntilSpeech: voiceAvailable });
       if (voiceAvailable) {
         void playVoice(message, { resumeListening: false });
       }
@@ -128,6 +216,18 @@ async function fetchProactiveStatus() {
     }
     const proactive = await response.json();
     applyProactiveSnapshot(proactive);
+  } catch (_error) {
+    return;
+  }
+}
+
+async function acknowledgePresenceDismissal() {
+  try {
+    const response = await fetch("/api/proactive/dismiss", { method: "POST" });
+    if (!response.ok) {
+      return;
+    }
+    lastHandledDismissal = null;
   } catch (_error) {
     return;
   }
@@ -232,7 +332,7 @@ async function bootstrap() {
       }
     }
     applyVoiceVolume();
-    await announceBootMessage(snapshot);
+    await refreshStandbyGreeting({ speakOnce: true });
     const commands = await loadToolCommands();
     renderToolCommands(commands);
     await loadPlans();

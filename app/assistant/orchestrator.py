@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.assistant.agent_router import AgentRouter, RouteDecision
+from app.assistant.agent_rules import is_self_improve_follow_up
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
 from app.assistant.flows.planner import AgentPlanner
@@ -18,10 +19,15 @@ from app.assistant.tool_runner import ToolRunner
 from app.config import get_settings
 from app.llm.factory import get_llm_client
 from app.llm.protocol import LLMClient
-from app.memory import repository
+from app.memory import improvement_plans, repository
 from app.runtime import activity
 from app.runtime.status_copy import RECEIVED_TITLE, route_acknowledgment
 from app.runtime.user_activity import user_activity
+
+_PLAN_ONLY_REPLY = (
+    "Self-improvement only saves a text plan in the Plans tab. "
+    "I do not create branches, edit code, or open pull requests from those plans."
+)
 
 
 class AgentOrchestrator:
@@ -89,6 +95,13 @@ class AgentOrchestrator:
         settings = get_settings()
         user_activity.touch()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
+        if improvement_plans.has_unprocessed_plan() and is_self_improve_follow_up(message):
+            repository.add_chat_message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=_PLAN_ONLY_REPLY,
+            )
+            return _PLAN_ONLY_REPLY, True
         history = repository.list_chat_messages(
             conversation_id=conversation_id,
             limit=settings.chat_history_limit,

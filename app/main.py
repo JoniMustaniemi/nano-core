@@ -15,7 +15,7 @@ from app.api.voice import router as voice_router
 from app.config import get_settings
 from app.memory.db import create_db_and_tables
 from app.runtime.activity import activity
-from app.runtime.status_copy import BOOT_DETAIL, BOOT_SOURCE, BOOT_TITLE
+from app.runtime.status_copy import BOOT_DETAIL, BOOT_SOURCE, BOOT_TITLE, choose_standby_greeting
 from app.scheduler.jobs import register_jobs, scheduler
 from app.web.home import router as home_router
 
@@ -26,10 +26,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     create_db_and_tables()
     register_jobs()
     scheduler.start()
-    activity.standby(
+    activity.log(
         title=BOOT_TITLE,
         detail=BOOT_DETAIL,
         source=BOOT_SOURCE,
+    )
+    activity.standby(
+        title=choose_standby_greeting(),
+        detail=None,
+        source="system.idle",
     )
     yield
     scheduler.shutdown(wait=False)

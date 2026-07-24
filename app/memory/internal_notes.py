@@ -53,7 +53,7 @@ def list_due_internal_notes(
         return list(session.exec(statement))
 
 
-def list_pending_self_improvement_notes(*, limit: int = 1) -> list[InternalNote]:
+def list_pending_self_improvement_notes(*, limit: int = 50) -> list[InternalNote]:
     statement = (
         select(InternalNote)
         .where(InternalNote.status == "pending")

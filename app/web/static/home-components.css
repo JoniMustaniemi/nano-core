@@ -829,6 +829,12 @@ body.inputs-locked #keyboard-toggle:disabled {
   border: 1px solid rgba(57, 255, 20, 0.22);
 }
 
+.plan-card-status.queued {
+  color: #d8f7ff;
+  background: rgba(120, 214, 255, 0.12);
+  border: 1px solid rgba(120, 214, 255, 0.22);
+}
+
 .plan-card-status.processed {
   color: rgba(107, 143, 114, 0.95);
   background: rgba(255, 255, 255, 0.03);

@@ -32,5 +32,6 @@ def test_storage_snapshot_exposes_saved_records() -> None:
     payload = storage.json()
     assert payload["chat_messages"][0]["content"] == "hello"
     assert payload["internal_notes"][0]["title"] == "Improve timers"
+    assert payload["improvement_plans"] == []
     assert "notes" not in payload
     assert "reminders" not in payload

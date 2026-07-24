@@ -9,6 +9,29 @@ STANDBY_DETAIL_CONFIRMATION = "Awaiting your confirmation."
 STANDBY_DETAIL_PRESENCE = "Awaiting your response."
 STANDBY_DETAIL_READY = "Ready for your next task."
 
+STANDBY_GREETINGS = (
+    "What can I do for you today?",
+    "Ready when you are.",
+    "What's on your mind?",
+    "I'm here if you need something.",
+    "Say the word.",
+    "Standing by.",
+    "What would you like?",
+    "Your move.",
+    "I'm awake. What's the plan?",
+    "Need anything?",
+    "At your service.",
+    "What's next?",
+    "Go ahead — I'm ready.",
+    "Anything I can help with?",
+    "The floor is yours.",
+)
+
+
+def choose_standby_greeting() -> str:
+    return random.choice(STANDBY_GREETINGS)
+
+
 BOOT_TITLE = "Booting complete."
 BOOT_DETAIL = "I'm ready and awake."
 BOOT_SOURCE = "system.boot"

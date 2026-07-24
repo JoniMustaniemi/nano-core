@@ -18,39 +18,6 @@ function updateEssenceState() {
   }
 }
 
-function formatBootMessage(snapshot) {
-  const headline = (snapshot.headline || "").trim();
-  const detail = (snapshot.detail || "").trim();
-  if (!headline) {
-    return "";
-  }
-  if (detail && detail !== headline && !headline.includes(detail)) {
-    return `${headline} ${detail}`;
-  }
-  return headline;
-}
-
-function snapshotHasBootEvent(snapshot) {
-  return Array.isArray(snapshot.events) && snapshot.events.some(
-    (event) => event.source === "system.boot"
-  );
-}
-
-async function announceBootMessage(snapshot) {
-  if (bootAnnouncementPlayed || !snapshotHasBootEvent(snapshot)) {
-    return;
-  }
-  const message = formatBootMessage(snapshot);
-  if (!message) {
-    return;
-  }
-  bootAnnouncementPlayed = true;
-  setAnswer(message, { animate: false });
-  if (voiceAvailable) {
-    await playVoice(message);
-  }
-}
-
 function formatBusyWakeMessage(snapshot) {
   const headline = (snapshot.headline || "I'm working on something.").trim();
   const detail = (snapshot.detail || "").trim();
@@ -151,7 +118,7 @@ function setCommandButtonsDisabled(disabled) {
 }
 
 function isBusy() {
-  if (listeningForCommand) {
+  if (listeningForCommand || waitingForPresence || waitingForFollowUp) {
     return false;
   }
   return requestInFlight || wakeAcknowledging;
@@ -361,45 +328,107 @@ function setVoiceStatus(text) {
   renderState();
 }
 
+function resolveListeningIntent() {
+  if (waitingForPresence) {
+    return "presence";
+  }
+  if (waitingForFollowUp) {
+    return "follow_up";
+  }
+  if (listeningForCommand) {
+    return "command";
+  }
+  if (listeningEnabled || recognitionStarting || recognitionRunning) {
+    return "wake_armed";
+  }
+  return null;
+}
+
 function isListeningStateActive() {
-  return (
-    listeningEnabled ||
-    recognitionStarting ||
-    recognitionRunning ||
-    listeningForCommand ||
-    wakeAcknowledging
-  );
+  const intent = resolveListeningIntent();
+  return intent === "presence" || intent === "follow_up" || intent === "command";
+}
+
+function isWaitingForUserAnswer() {
+  return waitingForPresence || waitingForFollowUp || isListeningStateActive();
+}
+
+function isWaitingForAnswerActivity() {
+  return waitingForPresence || waitingForFollowUp;
+}
+
+function shouldDeferAnswerClear(options = {}) {
+  return Boolean(options.deferClearUntilSpeech || speakingActive);
 }
 
 function resolveActivityHeadline() {
   const displayState = getDisplayState();
+  const intent = resolveListeningIntent();
   let headline = (currentActivitySnapshot.headline || "").trim();
-  const detail = (currentActivitySnapshot.detail || "").trim();
+  let detail = (currentActivitySnapshot.detail || "").trim();
 
   if (displayState === "working") {
     if (!headline || headline === STANDBY_HEADLINE) {
       headline = detail || WORKING_DETAIL_DEFAULT;
     }
+  } else if (isWaitingForAnswerActivity()) {
+    headline = WAITING_FOR_ANSWER_HEADLINE;
+    detail = "";
+  } else if (intent === "wake_armed") {
+    headline = WAKE_ARMED_HEADLINE;
+    detail = WAKE_ARMED_DETAIL;
+  } else if (intent === "command") {
+    headline = COMMAND_LISTEN_HEADLINE;
+    detail = "";
   } else if (displayState === "listening") {
     if (!headline || headline === STANDBY_HEADLINE) {
       headline = LISTENING_HEADLINE_DEFAULT;
     }
   } else if (!headline) {
-    headline = STANDBY_HEADLINE;
+    headline = currentStandbyGreeting || STANDBY_HEADLINE;
   }
 
   if (detail && detail !== headline && !headline.includes(detail)) {
+    if (headline === STANDBY_HEADLINE && detail === STANDBY_DETAIL_DEFAULT) {
+      return currentStandbyGreeting || STANDBY_HEADLINE;
+    }
     return `${headline} — ${detail}`;
   }
-  return headline;
+  if (headline && headline !== STANDBY_HEADLINE) {
+    return headline;
+  }
+  return currentStandbyGreeting || STANDBY_HEADLINE;
 }
 
 function isDefaultStandbyHeadline(headline) {
   if (!headline || headline === STANDBY_HEADLINE) {
     return true;
   }
+  if (currentStandbyGreeting && headline === currentStandbyGreeting) {
+    return true;
+  }
   const standbyWithDetail = `${STANDBY_HEADLINE} — ${STANDBY_DETAIL_DEFAULT}`;
   return headline === standbyWithDetail;
+}
+
+function isIdleStandbyGreeting(headline) {
+  const cleaned = (headline || "").trim();
+  return Boolean(cleaned && currentStandbyGreeting && cleaned === currentStandbyGreeting);
+}
+
+function hasCustomStandbyActivityCopy() {
+  if (currentActivitySnapshot.state !== "standby") {
+    return false;
+  }
+  const headline = (currentActivitySnapshot.headline || "").trim();
+  const detail = (currentActivitySnapshot.detail || "").trim();
+  if (isIdleStandbyGreeting(headline)) {
+    return false;
+  }
+  if (!headline || headline === STANDBY_HEADLINE) {
+    return Boolean(detail && detail !== STANDBY_DETAIL_DEFAULT);
+  }
+  return true;
 }
 
 function cancelStatusReveal() {
@@ -434,7 +463,45 @@ function revealStatusRolling(content, onComplete) {
   step();
 }
 
+function shouldShowActivityStatus() {
+  return getDisplayState() === "working" || isWaitingForAnswerActivity();
+}
+
+function isBaseAnswerContent(content) {
+  return (content || "").trim() === IDLE_RESPONSE;
+}
+
+function restoreBaseAnswer() {
+  setAnswer(IDLE_RESPONSE, {
+    animate: false,
+    bypassSpeechGuard: true,
+    isBaseState: true,
+  });
+}
+
+function hasVisibleAnswerContent() {
+  if (answerOutput.classList.contains("working")) {
+    return false;
+  }
+  return hasScheduledAnswerContent();
+}
+
+function clearActivityStatusDisplay() {
+  cancelStatusReveal();
+  lastRenderedStatusText = "";
+  activityStatusText.textContent = "";
+  activityStatus.hidden = true;
+}
+
 function renderActivityStatus(options = {}) {
+  if (!shouldShowActivityStatus()) {
+    clearActivityStatusDisplay();
+    clearStatusClearTimer();
+    statusClearPending = false;
+    return;
+  }
+
+  activityStatus.hidden = false;
   const animate = options.animate !== false;
   const headline = resolveActivityHeadline();
   const displayState = getDisplayState();
@@ -454,18 +521,16 @@ function renderActivityStatus(options = {}) {
     }
   }
 
-  if (displayState === "standby" && !isDefaultStandbyHeadline(headline)) {
+  if (displayState === "working") {
     scheduleStatusClear();
     return;
   }
-  if (displayState !== "standby") {
-    clearStatusClearTimer();
-    statusClearPending = false;
-  }
+  clearStatusClearTimer();
+  statusClearPending = false;
 }
 
 function shouldDeferStatusClear() {
-  return isWorkingOnTask() || listeningForCommand || wakeAcknowledging;
+  return isListeningStateActive() || wakeAcknowledging;
 }
 
 function resetActivityStatusIfIdle() {
@@ -474,7 +539,21 @@ function resetActivityStatusIfIdle() {
     return;
   }
   statusClearPending = false;
-  resetStandbySnapshot();
+  if (getDisplayState() === "working") {
+    currentActivitySnapshot = {
+      ...currentActivitySnapshot,
+      detail: null,
+    };
+    renderActivityStatus({ animate: false });
+    return;
+  }
+  const hadCustomCopy = hasCustomStandbyActivityCopy();
+  if (hadCustomCopy) {
+    resetStandbySnapshot();
+    void acknowledgePresenceDismissal();
+    return;
+  }
+  clearActivityStatusDisplay();
 }
 
 function startWorkingResponse() {
@@ -511,6 +590,7 @@ function stopWorkingResponse({ restore = true } = {}) {
     workingDotsTimer = null;
   }
   if (!answerOutput.classList.contains("working")) {
+    savedResponseBeforeWorking = null;
     return;
   }
   answerOutput.classList.remove("working");
@@ -525,7 +605,9 @@ function stopWorkingResponse({ restore = true } = {}) {
     savedResponseBeforeWorking = null;
     return;
   }
-  setAnswer("", { animate: false });
+  if (!hasScheduledAnswerContent()) {
+    restoreBaseAnswer();
+  }
 }
 
 function renderState() {
@@ -535,7 +617,7 @@ function renderState() {
   applyControlsVisibility();
   renderActivityStatus();
   if (displayState === "working") {
-    if (!(suppressWorkingResponse && !requestInFlight)) {
+    if (!suppressWorkingResponse && !hasVisibleAnswerContent()) {
       startWorkingResponse();
     }
   } else {
@@ -548,6 +630,7 @@ function renderState() {
 
 function resetVoiceListeningMode() {
   listeningForCommand = false;
+  waitingForFollowUp = false;
 }
 
 function normalizeWakeText(text) {
@@ -745,6 +828,10 @@ function clearStatusClearTimer() {
 }
 
 function scheduleStatusClear() {
+  if (speakingActive) {
+    statusClearPending = true;
+    return;
+  }
   clearStatusClearTimer();
   statusClearPending = false;
   statusClearTimer = window.setTimeout(() => {
@@ -757,7 +844,47 @@ function scheduleStatusClear() {
   }, ANSWER_CLEAR_DELAY_MS);
 }
 
+function clearAnswerTimeoutTimer() {
+  if (answerTimeoutTimer !== null) {
+    window.clearTimeout(answerTimeoutTimer);
+    answerTimeoutTimer = null;
+  }
+}
+
+function scheduleAnswerTimeout() {
+  if (!isWaitingForUserAnswer()) {
+    clearAnswerTimeoutTimer();
+    answerTimeoutPending = false;
+    return;
+  }
+  if (speakingActive) {
+    answerTimeoutPending = true;
+    return;
+  }
+  clearAnswerTimeoutTimer();
+  answerTimeoutPending = false;
+  answerTimeoutTimer = window.setTimeout(() => {
+    answerTimeoutTimer = null;
+    if (speakingActive || requestInFlight) {
+      answerTimeoutPending = true;
+      return;
+    }
+    if (!isWaitingForUserAnswer()) {
+      return;
+    }
+    void submitDefaultNoAnswer();
+  }, ANSWER_CLEAR_DELAY_MS);
+}
+
 function scheduleAnswerClear() {
+  if (isWaitingForUserAnswer()) {
+    answerClearPending = false;
+    return;
+  }
+  if (speakingActive) {
+    answerClearPending = true;
+    return;
+  }
   clearAnswerClearTimer();
   answerClearPending = false;
   answerClearTimer = window.setTimeout(() => {
@@ -766,26 +893,50 @@ function scheduleAnswerClear() {
       answerClearPending = true;
       return;
     }
-    setAnswer("", { animate: false, bypassSpeechGuard: true });
+    if (isWaitingForUserAnswer()) {
+      return;
+    }
+    restoreBaseAnswer();
   }, ANSWER_CLEAR_DELAY_MS);
 }
 
 function resumeStatusClearIfPending() {
-  if (!statusClearPending) {
+  if (speakingActive || shouldDeferStatusClear()) {
+    statusClearPending = true;
     return;
   }
-  if (speakingActive || shouldDeferStatusClear()) {
+  if (
+    !statusClearPending &&
+    getDisplayState() !== "working" &&
+    !hasCustomStandbyActivityCopy()
+  ) {
     return;
   }
   statusClearPending = false;
-  resetActivityStatusIfIdle();
+  scheduleStatusClear();
+}
+
+function hasScheduledAnswerContent() {
+  const content = (answerOutput.textContent || "").trim();
+  return Boolean(content && !isBaseAnswerContent(content));
 }
 
 function resumeAnswerClearAfterSpeech() {
   resumeStatusClearIfPending();
-  if (!answerClearPending) {
+  if (isWaitingForUserAnswer()) {
+    answerClearPending = false;
+    if (speakingActive) {
+      answerTimeoutPending = true;
+      return;
+    }
+    scheduleAnswerTimeout();
     return;
   }
+  if (!hasScheduledAnswerContent()) {
+    answerClearPending = false;
+    return;
+  }
+  answerClearPending = false;
   scheduleAnswerClear();
 }
 
@@ -793,6 +944,7 @@ function setAnswer(text, options = {}) {
   const content = text.trim();
   const animate = options.animate !== false;
   const bypassSpeechGuard = options.bypassSpeechGuard === true;
+  const isBaseState = options.isBaseState === true || isBaseAnswerContent(content);
 
   if (!content && speakingActive && !bypassSpeechGuard) {
     answerClearPending = true;
@@ -804,19 +956,30 @@ function setAnswer(text, options = {}) {
     stopWorkingResponse({ restore: false });
   }
 
-  clearAnswerClearTimer();
-  answerClearPending = false;
+  if (!isWaitingForUserAnswer()) {
+    clearAnswerClearTimer();
+    answerClearPending = false;
+  }
   cancelAnswerReveal();
   if (!content) {
-    answerOutput.textContent = IDLE_RESPONSE;
+    answerOutput.textContent = "";
     answerOutput.classList.add("empty");
     applyResponseTypography(IDLE_RESPONSE.length);
+    renderActivityStatus();
     return;
   }
   answerOutput.classList.remove("empty");
   applyResponseTypography(content.length);
 
   const finish = () => {
+    renderActivityStatus();
+    if (isBaseState || isWaitingForUserAnswer()) {
+      return;
+    }
+    if (shouldDeferAnswerClear(options)) {
+      answerClearPending = true;
+      return;
+    }
     scheduleAnswerClear();
   };
 

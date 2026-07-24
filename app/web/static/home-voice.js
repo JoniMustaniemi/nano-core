@@ -125,6 +125,10 @@ function ensureRecognition() {
       if (isBusy()) {
         return;
       }
+      if (waitingForPresence) {
+        waitingForPresence = false;
+      }
+      waitingForFollowUp = false;
       resetVoiceListeningMode();
       setVoiceStatus(`Heard command: ${transcript}`);
       await sendRecognizedMessage(transcript);
@@ -167,6 +171,14 @@ function ensureRecognition() {
       return;
     }
     if (error === "no-speech") {
+      if (waitingForPresence || waitingForFollowUp) {
+        setVoiceStatus(
+          waitingForPresence
+            ? "Still waiting. Reply yes or no if you are there."
+            : "Still waiting for your answer."
+        );
+        return;
+      }
       if (listeningForCommand) {
         setVoiceStatus("I heard the wake phrase, but not the command.");
         resetVoiceListeningMode();
@@ -186,6 +198,19 @@ function ensureRecognition() {
       return;
     }
     if (wakeAcknowledging) {
+      return;
+    }
+    if (isWaitingForUserAnswer() && microphoneReady) {
+      listeningEnabled = true;
+      listeningForCommand = true;
+      try {
+        recognition.start();
+        recognitionStarting = true;
+        setVoiceStatus(directAnswerListenStatus());
+      } catch (error) {
+        pendingGestureStart = true;
+        setVoiceStatus("Microphone is connected. Press Start Listening to reply.");
+      }
       return;
     }
     if (listeningEnabled) {
@@ -362,7 +387,7 @@ async function acknowledgeBusyWake() {
     if (!message) {
       return;
     }
-    setAnswer(message);
+    setAnswer(message, { deferClearUntilSpeech: true });
     replyStatus.textContent = "Still working on the current task.";
     setVoiceStatus("Wake phrase detected while working.");
     await playVoice(message, { pauseRecognition: true });
@@ -385,13 +410,14 @@ async function acknowledgeWakePhrase() {
   setVoiceStatus("Wake phrase detected.");
   try {
     const wakeReply = await requestWakeAcknowledgement();
-    setAnswer(wakeReply);
+    setAnswer(wakeReply, { deferClearUntilSpeech: true });
     replyStatus.textContent = "I'm listening.";
     await playVoice(wakeReply);
   } catch (error) {
     replyStatus.textContent = error.message;
   } finally {
     wakeAcknowledging = false;
+    waitingForFollowUp = false;
     listeningForCommand = true;
     renderState();
     if (microphoneReady) {
@@ -468,6 +494,17 @@ function stopVoiceLevelMonitor() {
 }
 
 async function playVoice(text, options = {}) {
+  const content = (text || "").trim();
+  if (content) {
+    setAnswer(content, {
+      animate: false,
+      deferClearUntilSpeech: Boolean(voiceAvailable),
+    });
+  }
+  if (!voiceAvailable || !content) {
+    resumeAnswerClearAfterSpeech();
+    return;
+  }
   const playback = voicePlaybackQueue.then(() => playVoiceNow(text, options));
   voicePlaybackQueue = playback.catch(() => undefined);
   return playback;
@@ -569,16 +606,104 @@ function answerNeedsVoiceFollowUp(text) {
   );
 }
 
-function armVoiceFollowUp(text) {
+const PRESENCE_LISTEN_STATUS = "Are you there? Reply yes or no.";
+
+function pendingListenStatus(kind) {
+  const labels = {
+    timer_duration: "How long should the timer run? Reply with a duration.",
+    wipe_confirmation: "Reply yes to proceed or no to cancel.",
+    note_name: "What should I name the note?",
+    note_content: "What should the note say?",
+    note_selection: "Which note did you mean?",
+  };
+  return labels[kind] || "Listening for your answer.";
+}
+
+function directAnswerListenStatus() {
+  if (waitingForPresence) {
+    return PRESENCE_LISTEN_STATUS;
+  }
+  return "Listening for your answer.";
+}
+
+function ensureDirectAnswerListening(statusText) {
   listeningForCommand = true;
-  setVoiceStatus(text);
-  if (microphoneReady && !listeningEnabled && !recognitionStarting) {
+  if (!waitingForPresence) {
+    waitingForFollowUp = true;
+  }
+  setVoiceStatus(statusText || directAnswerListenStatus());
+  if (microphoneReady) {
     startVoiceListening("resume", true);
+  }
+  renderState();
+  if (!speakingActive) {
+    scheduleAnswerTimeout();
+  } else {
+    answerTimeoutPending = true;
   }
 }
 
-function returnToWakeDetection() {
+async function enterPresenceListenMode(prompt) {
+  const text = (prompt || "Are you there?").trim();
+  waitingForFollowUp = false;
+  if (waitingForPresence) {
+    if (!listeningForCommand && microphoneReady) {
+      ensureDirectAnswerListening(PRESENCE_LISTEN_STATUS);
+      return;
+    }
+    return;
+  }
+
+  waitingForPresence = true;
+  setAnswer(text, { animate: false, deferClearUntilSpeech: Boolean(voiceAvailable && text) });
+  renderState();
+  try {
+    if (voiceAvailable && text) {
+      await playVoice(text, { pauseRecognition: true });
+    }
+  } finally {
+    if (!waitingForPresence) {
+      return;
+    }
+    ensureDirectAnswerListening(PRESENCE_LISTEN_STATUS);
+  }
+}
+
+function exitPresenceListenMode() {
+  if (!waitingForPresence) {
+    return;
+  }
+  waitingForPresence = false;
   resetVoiceListeningMode();
+  renderState();
+}
+
+async function handlePresenceDismissal(message) {
+  const text = (message || "").trim();
+  exitPresenceListenMode();
+  if (text) {
+    setAnswer(text, {
+      animate: false,
+      deferClearUntilSpeech: Boolean(voiceAvailable),
+    });
+    if (voiceAvailable) {
+      await playVoice(text, { pauseRecognition: true });
+    }
+  }
+  returnToWakeDetection();
+}
+
+function armVoiceFollowUp(text) {
+  ensureDirectAnswerListening(text || "Listening for your answer.");
+}
+
+function returnToWakeDetection() {
+  if (isWaitingForUserAnswer()) {
+    ensureDirectAnswerListening();
+    return;
+  }
+  resetVoiceListeningMode();
+  waitingForFollowUp = false;
   if (microphoneReady && !listeningEnabled && !recognitionStarting) {
     startVoiceListening("resume");
     return;

@@ -1,5 +1,10 @@
 from app.assistant.agent_router import AgentRouter
-from app.assistant.rules.intents import extract_self_improve_goal, is_self_improve_request
+from app.assistant.orchestrator import AgentOrchestrator
+from app.assistant.rules.intents import (
+    extract_self_improve_goal,
+    is_self_improve_follow_up,
+    is_self_improve_request,
+)
 from app.intents.self_improve import normalize_self_improve_goal
 
 
@@ -51,3 +56,30 @@ def test_wipe_confirmation_ignores_clear_inside_other_words() -> None:
 
     assert not needs_wipe_confirmation("Improve yourself by making timer messages clearer.")
     assert needs_wipe_confirmation("Clear your memory.")
+
+
+def test_self_improve_follow_up_detects_plan_implementation_requests() -> None:
+    assert is_self_improve_follow_up("go ahead")
+    assert is_self_improve_follow_up("Implement the plan")
+    assert not is_self_improve_follow_up("What time is it?")
+
+
+def test_orchestrator_blocks_plan_implementation_when_plan_is_waiting(
+    monkeypatch, tmp_path
+) -> None:
+    from app.memory import improvement_plans
+    from app.memory.db import create_db_and_tables
+
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.sqlite3'}")
+    create_db_and_tables()
+    improvement_plans.create_plan(
+        title="Clearer timer messages",
+        goal="clearer timer messages",
+        body="Summary\nImprove timer copy.",
+        files=["app/runtime/status_copy.py"],
+    )
+
+    content, _speak = AgentOrchestrator().respond("Go ahead.", conversation_id="default")
+
+    assert "only saves a text plan" in content.lower()
+    assert "do not create branches" in content.lower()

@@ -77,7 +77,7 @@ window.addEventListener("load", () => {
     initEssence();
     applyControlsVisibility();
     void initVoiceVolumeControl();
-    setAnswer("", { animate: false });
+    restoreBaseAnswer();
     setVoiceStatus("Voice on standby.");
     syncVoiceListeningState();
     bootstrap();
