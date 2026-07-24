@@ -14,10 +14,8 @@ from app.runtime.status_copy import (
     COULD_NOT_FINISH_TITLE,
     PLANNING_ACTION_DETAIL,
     PLANNING_ACTION_TITLE,
-    RUNNING_TOOL_DETAIL,
     failed_tool_title,
     ran_tool_title,
-    running_tool_title,
 )
 
 
@@ -140,13 +138,6 @@ class AgentPlanner:
                 )
                 continue
 
-            activity.working(
-                title=running_tool_title(tool_name),
-                detail=RUNNING_TOOL_DETAIL,
-                source="assistant.flows.planner",
-            )
-            if tool_name != "draft_improvement_plan":
-                self.tool_runner.announce_call(tool_name)
             result = self.tool_runner.execute(tool_name, args)
             executed_tools[signature] = result
             if result.ok:

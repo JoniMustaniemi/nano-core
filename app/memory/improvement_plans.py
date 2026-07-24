@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
 
 from sqlmodel import Session, col, select
 
@@ -68,15 +67,11 @@ def create_plan(
         return plan
 
 
-def mark_processed(plan_id: int, *, processed_at: datetime | None = None) -> ImprovementPlan | None:
-    current = processed_at or datetime.now(UTC)
+def delete_plan(plan_id: int) -> bool:
     with Session(db.engine) as session:
         plan = session.get(ImprovementPlan, plan_id)
         if plan is None:
-            return None
-        plan.status = "processed"
-        plan.processed_at = current
-        session.add(plan)
+            return False
+        session.delete(plan)
         session.commit()
-        session.refresh(plan)
-        return plan
+        return True

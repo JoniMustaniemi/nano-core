@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.assistant.agent_rules import wipe_confirmation_prompt
+from app.assistant.agent_rules import confirmation_followup, wipe_confirmation_prompt
 from app.assistant.prompts import (
     COMPOSE_HINTS,
     RESPONSE_COMPOSER_PROMPT,
@@ -77,7 +77,7 @@ class ResponseComposer:
         if not draft or looks_like_refusal(draft):
             return wipe_confirmation_prompt(source.user_message)
         cleaned = draft.replace("\n", " ").strip().rstrip(". ")
-        return f"{cleaned}. Reply yes to proceed or no to cancel."
+        return f"{cleaned}. {confirmation_followup(source.user_message)}"
 
     def _compose_with_hint(self, client: LLMClient, source: ResponseSource) -> str:
         """

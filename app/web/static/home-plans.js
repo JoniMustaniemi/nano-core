@@ -13,11 +13,34 @@ function isPlanReaderOpen() {
   return activePlanId !== null && planReader && !planReader.hidden;
 }
 
+let planCopyResetTimer = null;
+
+function updatePlanCopyButton() {
+  if (!planCopyButton) {
+    return;
+  }
+  const hasBody = Boolean(planReaderBody?.textContent?.trim());
+  planCopyButton.disabled = !isPlanReaderOpen() || !hasBody;
+}
+
+function resetPlanCopyButtonLabel() {
+  if (!planCopyButton) {
+    return;
+  }
+  planCopyButton.setAttribute("aria-label", "Copy plan");
+}
+
 function closePlanReader() {
   activePlanId = null;
   planReader.hidden = true;
   plansList.hidden = false;
   nanoPanelPlans.classList.remove("reading");
+  if (planCopyResetTimer) {
+    clearTimeout(planCopyResetTimer);
+    planCopyResetTimer = null;
+  }
+  resetPlanCopyButtonLabel();
+  updatePlanCopyButton();
 }
 
 function openPlanReader(plan) {
@@ -29,6 +52,8 @@ function openPlanReader(plan) {
   plansList.hidden = true;
   planReader.hidden = false;
   nanoPanelPlans.classList.add("reading");
+  resetPlanCopyButtonLabel();
+  updatePlanCopyButton();
 }
 
 async function openPlanById(planId) {
@@ -140,6 +165,38 @@ async function processActivePlan() {
   await loadPlans();
 }
 
+async function copyActivePlan() {
+  if (!planReaderBody?.textContent?.trim() || !planCopyButton) {
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(planReaderBody.textContent);
+    planCopyButton.setAttribute("aria-label", "Copied");
+    if (planCopyResetTimer) {
+      clearTimeout(planCopyResetTimer);
+    }
+    planCopyResetTimer = setTimeout(() => {
+      resetPlanCopyButtonLabel();
+      planCopyResetTimer = null;
+    }, 1500);
+  } catch (_error) {
+    planCopyButton.setAttribute("aria-label", "Copy failed");
+    if (planCopyResetTimer) {
+      clearTimeout(planCopyResetTimer);
+    }
+    planCopyResetTimer = setTimeout(() => {
+      resetPlanCopyButtonLabel();
+      planCopyResetTimer = null;
+    }, 1500);
+  }
+}
+
 planProcessButton.addEventListener("click", () => {
   void processActivePlan();
 });
+
+if (planCopyButton) {
+  planCopyButton.addEventListener("click", () => {
+    void copyActivePlan();
+  });
+}

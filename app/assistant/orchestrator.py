@@ -142,9 +142,11 @@ class AgentOrchestrator:
             detail=ack_detail,
             source="assistant.orchestrator.route",
         )
-        if decision.mode != "planner" and ack_title != RECEIVED_TITLE:
-            if not (decision.mode == "tool" and decision.tool_name == "draft_improvement_plan"):
-                self.tool_runner.announce_message(ack_title)
+        if (
+            decision.mode not in {"planner", "tool"}
+            and ack_title != RECEIVED_TITLE
+        ):
+            self.tool_runner.announce_message(ack_title)
         return self._dispatch(
             decision=decision,
             client=client,

@@ -63,9 +63,7 @@ def read_improvement_plan(plan_id: int) -> ImprovementPlanDetail:
     return _to_detail(plan)
 
 
-@router.post("/improvement-plans/{plan_id}/process", response_model=ImprovementPlanDetail)
-def process_improvement_plan(plan_id: int) -> ImprovementPlanDetail:
-    plan = improvement_plans.mark_processed(plan_id)
-    if plan is None:
+@router.post("/improvement-plans/{plan_id}/process", status_code=204)
+def process_improvement_plan(plan_id: int) -> None:
+    if not improvement_plans.delete_plan(plan_id):
         raise HTTPException(status_code=404, detail="Improvement plan not found.")
-    return _to_detail(plan)

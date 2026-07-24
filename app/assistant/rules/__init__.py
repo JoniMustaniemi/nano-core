@@ -17,6 +17,7 @@ from app.assistant.rules.intents import (
     tool_matches_request,
 )
 from app.assistant.rules.messages import (
+    confirmation_followup,
     is_confirmation_message,
     is_presence_confirmation,
     is_rejection_message,
@@ -47,6 +48,7 @@ from app.intents.self_improve import is_vague_self_improve_goal
 __all__ = [
     "ToolIntentRule",
     "build_tool_rules",
+    "confirmation_followup",
     "get_tool_rule",
     "duration_args_from_message",
     "extract_json",

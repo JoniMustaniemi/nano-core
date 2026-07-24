@@ -58,9 +58,5 @@ register_tool(
         handler=_draft_improvement_plan,
         announcement="Drafting an improvement plan.",
         keywords=("improve yourself", "fix yourself", "your code", "draft plan"),
-        ui_label="Draft improvement plan",
-        ui_message="Make timer messages clearer.",
-        ui_category="Self-improvement",
-        ui_description="Draft a readable text plan for a self-improvement idea.",
     )
 )

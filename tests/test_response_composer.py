@@ -92,7 +92,8 @@ def test_compose_wipe_confirmation_includes_yes_no_prompt() -> None:
 
     content = composer.compose(client, source)
 
-    assert "reply yes to proceed or no to cancel" in content.lower()
+    assert "say yes" in content.lower()
+    assert "no" in content.lower()
 
 
 def test_compose_wipe_confirmation_uses_fallback_for_refusal_draft() -> None:
@@ -106,9 +107,9 @@ def test_compose_wipe_confirmation_uses_fallback_for_refusal_draft() -> None:
 
     content = composer.compose(client, source)
 
-    assert "reply yes to proceed or no to cancel" in content.lower()
+    assert "say yes" in content.lower()
     assert "afraid" not in content.lower()
-    assert 'You are asking me to do this: "Wipe your database."' in content
+    assert "wipe your database" in content.lower()
 
 
 def test_compose_improvement_plan_success_strips_meta_goal_phrasing() -> None:

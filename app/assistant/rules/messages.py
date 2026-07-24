@@ -136,6 +136,41 @@ def is_rejection_message(message: str) -> bool:
     }
 
 
+_CONFIRMATION_CLOSERS: tuple[str, ...] = (
+    "Say yes to proceed, or no to cancel.",
+    "Reply yes if you want me to go ahead, or no to stop.",
+    "If that's what you want, say yes; otherwise say no.",
+)
+
+
+def confirmation_followup(seed: str) -> str:
+    """
+    Return a varied yes/no confirmation instruction.
+
+    Args:
+        seed: Stable text used to pick a phrasing variant.
+
+    Returns:
+        Confirmation follow-up sentence.
+    """
+    if not seed:
+        return _CONFIRMATION_CLOSERS[0]
+    index = sum(ord(char) for char in seed) % len(_CONFIRMATION_CLOSERS)
+    return _CONFIRMATION_CLOSERS[index]
+
+
+def _confirmation_lead(subject: str) -> str:
+    cleaned = subject.strip().rstrip(".!?")
+    if not cleaned:
+        return "You want me to wipe what I am keeping."
+    lowered = cleaned.lower()
+    if lowered.startswith(("wipe ", "erase ", "delete ", "clear ", "remove ")):
+        return f"You want me to {lowered}."
+    if lowered.startswith(("don't ", "do not ")):
+        return f"You're asking me to {lowered}."
+    return f"Just confirming - you want me to {lowered}."
+
+
 def wipe_confirmation_prompt(message: str) -> str:
     """
     Wipe confirmation prompt.
@@ -147,10 +182,7 @@ def wipe_confirmation_prompt(message: str) -> str:
         Generated or formatted string value.
     """
     subject = normalize_wipe_request(message)
-    return (
-        f'You are asking me to do this: "{subject}". '
-        "If this is truly your intention, reply yes to proceed or no to cancel."
-    )
+    return f"{_confirmation_lead(subject)} {confirmation_followup(subject)}"
 
 
 def normalize_wipe_request(message: str) -> str:
@@ -180,4 +212,11 @@ def is_wipe_confirmation_prompt(message: str) -> bool:
         True when the condition is met; otherwise false.
     """
     lowered = message.lower()
-    return "reply yes to proceed or no to cancel" in lowered
+    legacy_phrase = "reply yes to proceed or no to cancel"
+    if legacy_phrase in lowered:
+        return True
+    return (
+        "say yes" in lowered
+        and "no" in lowered
+        and any(marker in lowered for marker in ("proceed", "cancel", "go ahead", "stop"))
+    )

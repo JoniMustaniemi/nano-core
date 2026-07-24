@@ -95,7 +95,7 @@ function ensureRecognition() {
         ? "Wake phrase detected. Listening for your command."
         : 'Waiting for wake phrase: "hey nano".'
     );
-    updateListenButton();
+    syncVoiceListeningState();
   };
 
   recognition.onresult = async (event) => {
@@ -161,7 +161,7 @@ function ensureRecognition() {
       listeningEnabled = false;
       recognitionStarting = false;
       resetVoiceListeningMode();
-      updateListenButton();
+      syncVoiceListeningState();
       replyStatus.textContent = "Microphone access was denied.";
       setVoiceStatus("Microphone access was denied.");
       return;
@@ -202,7 +202,7 @@ function ensureRecognition() {
     }
     resetVoiceListeningMode();
     setVoiceStatus("Voice on standby.");
-    updateListenButton();
+    syncVoiceListeningState();
   };
 
   return recognition;
@@ -242,7 +242,7 @@ function startVoiceListening(mode = "manual", preserveCommandMode = false) {
   if (!SpeechRecognitionCtor) {
     replyStatus.textContent = "This browser does not support voice listening.";
     setVoiceStatus("This browser does not support voice listening.");
-    updateListenButton();
+    syncVoiceListeningState();
     return;
   }
   if (!microphoneReady) {
@@ -258,7 +258,7 @@ function startVoiceListening(mode = "manual", preserveCommandMode = false) {
   if (!preserveCommandMode) {
     resetVoiceListeningMode();
   }
-  updateListenButton();
+  syncVoiceListeningState();
   if (recognitionRunning || recognitionStarting) {
     setVoiceStatus(
       listeningForCommand
@@ -274,7 +274,7 @@ function startVoiceListening(mode = "manual", preserveCommandMode = false) {
   } catch (error) {
     listeningEnabled = false;
     recognitionStarting = false;
-    updateListenButton();
+    syncVoiceListeningState();
     if (mode === "auto") {
       pendingGestureStart = true;
       setVoiceStatus(
@@ -292,7 +292,7 @@ function stopVoiceListening() {
   recognitionRunning = false;
   resetVoiceListeningMode();
   wakeAcknowledging = false;
-  updateListenButton();
+  syncVoiceListeningState();
   if (recognition) {
     recognition.stop();
   }
@@ -303,13 +303,13 @@ async function connectMicrophoneOnStartup() {
   if (!SpeechRecognitionCtor) {
     replyStatus.textContent = "This browser does not support voice listening.";
     setVoiceStatus("This browser does not support voice listening.");
-    updateListenButton();
+    syncVoiceListeningState();
     return;
   }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     replyStatus.textContent = "Microphone access is not available in this browser.";
     setVoiceStatus("Microphone access is not available in this browser.");
-    updateListenButton();
+    syncVoiceListeningState();
     return;
   }
   try {
@@ -320,7 +320,7 @@ async function connectMicrophoneOnStartup() {
   } catch (error) {
     replyStatus.textContent = "Microphone access was not granted.";
     setVoiceStatus("Microphone access was not granted.");
-    updateListenButton();
+    syncVoiceListeningState();
   }
 }
 
@@ -447,9 +447,6 @@ function measureVoiceLevel() {
 function pushVoiceLevelToEssence(level) {
   if (mainEssence) {
     mainEssence.setAudioLevel(level);
-  }
-  if (miniEssence) {
-    miniEssence.setAudioLevel(level);
   }
 }
 

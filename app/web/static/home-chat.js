@@ -27,26 +27,28 @@ async function sendRecognizedMessage(message) {
   await sendMessage();
 }
 
-async function acknowledgeRequest(source) {
+async function acknowledgeRequest(source, commandHint) {
+  const commandLabel = (commandHint?.label || "").trim();
   currentActivitySnapshot = {
     ...currentActivitySnapshot,
     state: "working",
-    headline: "",
-    detail: RECEIVED_DETAIL,
+    headline: commandLabel ? "On it." : "",
+    detail: commandLabel || RECEIVED_DETAIL,
   };
+  suppressWorkingResponse = false;
   renderState();
   if (source === "voice") {
     pauseRecognitionForSpeech();
   }
 }
 
-async function submitMessage(message, source) {
+async function submitMessage(message, source, commandHint) {
   if (tryHandleUiCommand(message)) {
     await completeUiCommand(source);
     return;
   }
   requestInFlight = true;
-  await acknowledgeRequest(source);
+  await acknowledgeRequest(source, commandHint);
   replyStatus.textContent = source === "voice" ? "Sending voice command..." : "Sending...";
   let answerText = "";
   let shouldSpeak = true;

@@ -5,7 +5,12 @@ from types import SimpleNamespace
 
 from app.memory import improvement_plans
 from app.memory.db import create_db_and_tables
-from app.tools.improvement_plan_service import ImprovementPlanService, _plan_title
+from app.tools.improvement_plan_service import (
+    ImprovementPlanService,
+    _build_plan_prompt,
+    _plan_title,
+    _summary_from_plan_body,
+)
 from app.tools.self_improve_planning import fallback_files_for_goal
 
 
@@ -27,6 +32,52 @@ def test_plan_title_strips_draft_plan_meta_phrasing() -> None:
         files=["app/assistant/rules/messages.py"],
     )
     assert title == "clearer timer messages"
+
+
+def test_plan_title_prefers_summary_from_body() -> None:
+    body = (
+        "Summary\n"
+        "Improve CLI structure with consistent Typer sub-apps.\n\n"
+        "Target file\n"
+        "app/cli.py"
+    )
+    title = _plan_title(
+        goal="The file is well-structured and follows best practices for a CLI application.",
+        files=["app/cli.py"],
+        body=body,
+    )
+    assert title == "Improve CLI structure with consistent Typer sub-apps."
+
+
+def test_plan_title_falls_back_when_goal_reads_like_assessment() -> None:
+    title = _plan_title(
+        goal="The file is well-structured and follows best practices.",
+        files=["app/cli.py"],
+    )
+    assert title == "Improve cli.py"
+
+
+def test_summary_from_plan_body_parses_header() -> None:
+    body = "Summary\nImprove startup logging.\n\nTarget file\napp/main.py"
+    assert _summary_from_plan_body(body) == "Improve startup logging."
+
+
+def test_passive_plan_prompt_omits_risks() -> None:
+    messages = _build_plan_prompt(
+        goal="clearer logs",
+        file_contents={"app/main.py": "value = 1"},
+        passive=True,
+    )
+    assert "Risks" not in messages[0]["content"]
+
+
+def test_active_plan_prompt_includes_risks() -> None:
+    messages = _build_plan_prompt(
+        goal="clearer logs",
+        file_contents={"app/main.py": "value = 1"},
+        passive=False,
+    )
+    assert "Risks" in messages[0]["content"]
 
 
 def test_has_unprocessed_plan_blocks_second_draft(monkeypatch, tmp_path) -> None:
@@ -162,3 +213,36 @@ def test_draft_service_announces_brief_completion_without_progress_reporter(
     assert standby_calls[0]["source"] == "tools.improvement_plan_service.completed"
     assert "Theme:" in standby_calls[0]["detail"]
     assert "Plans tab" in standby_calls[0]["detail"]
+
+
+def test_draft_service_returns_to_standby_on_select_failure(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'select-fail.sqlite3'}")
+    create_db_and_tables()
+
+    standby_calls: list[dict[str, str]] = []
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return '{"files_to_read": []}'
+
+    monkeypatch.setattr(
+        "app.tools.self_improve_planning.file_selection_lines",
+        lambda goal, limit=40: [],
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_service._select_files",
+        lambda *args, **kwargs: [],
+    )
+    monkeypatch.setattr("app.config.get_settings", lambda: _settings())
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_service.activity.standby",
+        lambda **kwargs: standby_calls.append(kwargs) or None,
+    )
+
+    result = ImprovementPlanService().draft(client=_Client(), goal="clearer startup logs")
+
+    assert result.ok is False
+    assert result.step == "select"
+    assert len(standby_calls) == 1
+    assert standby_calls[0]["title"] == "I could not draft an improvement plan."

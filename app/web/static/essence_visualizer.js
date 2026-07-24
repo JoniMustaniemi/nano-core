@@ -538,25 +538,15 @@ function initEssenceOrbs() {
     return;
   }
 
-  const canvases = [
-    { node: document.getElementById("essence-canvas"), mini: false, key: "main" },
-    { node: document.getElementById("essence-mini-canvas"), mini: true, key: "mini" },
-  ];
+  const canvas = document.getElementById("essence-canvas");
+  if (!canvas) {
+    return;
+  }
 
-  for (const entry of canvases) {
-    if (!entry.node) {
-      continue;
-    }
-    try {
-      const essence = new EssenceVisualizer(entry.node, { mini: entry.mini });
-      if (entry.key === "main") {
-        window.mainEssence = essence;
-      } else {
-        window.miniEssence = essence;
-      }
-    } catch (error) {
-      console.error(`Failed to initialize ${entry.key} essence orb:`, error);
-    }
+  try {
+    window.mainEssence = new EssenceVisualizer(canvas, { mini: false });
+  } catch (error) {
+    console.error("Failed to initialize main essence orb:", error);
   }
 }
 

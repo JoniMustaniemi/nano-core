@@ -11,6 +11,68 @@ def _silence_voice(monkeypatch) -> None:
     )
 
 
+def test_tool_runner_announces_and_sets_working_before_handler(monkeypatch) -> None:
+    working: list[dict[str, str]] = []
+    announced: list[str] = []
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.activity.working",
+        lambda **kwargs: working.append(kwargs),
+    )
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.GladosVoiceService.announce",
+        lambda self, text: announced.append(text),
+    )
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.tool_announcement_for",
+        lambda name: "Checking health.",
+    )
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.get_tool",
+        lambda name: SimpleNamespace(
+            name=name,
+            handler=lambda _args: '{"ok": true}',
+        ),
+    )
+
+    runner = ToolRunner()
+    result = runner.execute("check_health", {})
+
+    assert result.ok is True
+    assert working == [
+        {
+            "title": "I'm running a health check.",
+            "detail": "Give me a moment.",
+            "source": "assistant.tool_runner",
+        }
+    ]
+    assert announced == ["Checking health"]
+
+
+def test_tool_runner_can_skip_announcement(monkeypatch) -> None:
+    announced: list[str] = []
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.activity.working",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.GladosVoiceService.announce",
+        lambda self, text: announced.append(text),
+    )
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.get_tool",
+        lambda name: SimpleNamespace(
+            name=name,
+            handler=lambda _args: '{"ok": true}',
+            announcement="Checking health.",
+        ),
+    )
+
+    runner = ToolRunner()
+    runner.execute("check_health", {}, announce=False)
+
+    assert announced == []
+
+
 def test_tool_runner_unknown_tool_returns_error_result(monkeypatch) -> None:
     runner = ToolRunner()
     _silence_voice(monkeypatch)
@@ -90,6 +152,9 @@ def test_tool_runner_treats_structured_ok_false_as_failure(monkeypatch) -> None:
     result = runner.execute("draft_improvement_plan", {})
 
     assert result.ok is False
-    assert announced == ["I could not draft the improvement plan."]
+    assert announced == [
+        "Drafting an improvement plan",
+        "I could not draft the improvement plan.",
+    ]
     assert reported
     assert reported[0]["title"] == "I could not draft an improvement plan."

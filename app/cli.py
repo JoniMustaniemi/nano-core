@@ -17,7 +17,18 @@ app.add_typer(reminders_app, name="reminders")
 
 
 def start() -> None:
-    """Start Nano with default local dev settings."""
+    """
+    Start Nano with default local dev settings.
+
+    This is the setuptools entry point for the ``start-nano`` command. It binds
+    to 127.0.0.1:8000 with auto-reload enabled.
+    """
+    start_dev()
+
+
+@app.command("start-cmd")
+def start_cmd() -> None:
+    """Start Nano locally with default dev settings (same as start-nano entry point)."""
     start_dev()
 
 
@@ -69,7 +80,7 @@ def start_dev(
 
 @notes_app.command("add")
 def note_add(
-    content: str,
+    content: str = typer.Argument(..., help="Note text to store."),
     name: str = typer.Option("Untitled note", "--name", "-n", help="Name for the note."),
 ) -> None:
     """Store a note in the local database."""
@@ -85,7 +96,10 @@ def note_list() -> None:
 
 
 @reminders_app.command("add")
-def reminder_add(content: str, due_at: str) -> None:
+def reminder_add(
+    content: str = typer.Argument(..., help="Reminder text to store."),
+    due_at: str = typer.Argument(..., help="Due time in ISO 8601 format."),
+) -> None:
     """Store a reminder in the local database."""
     reminder_due_at = datetime.fromisoformat(due_at)
     reminder = add_reminder(content, reminder_due_at)
