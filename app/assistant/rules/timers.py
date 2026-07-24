@@ -132,7 +132,8 @@ def _has_timer_cancel_keyword(lowered_message: str) -> bool:
         True when the condition is met; otherwise false.
     """
     return any(
-        re.search(rf"\b{re.escape(keyword)}\b", lowered_message) for keyword in TIMER_CANCEL_KEYWORDS
+        re.search(rf"\b{re.escape(keyword)}\b", lowered_message)
+        for keyword in TIMER_CANCEL_KEYWORDS
     )
 
 

@@ -16,7 +16,6 @@ _FILE_LABELS: dict[str, str] = {
     "app/assistant/rules/messages.py": "the message helpers",
     "app/runtime/status_copy.py": "the status messages",
     "app/assistant/flows/timer.py": "the timer flow",
-    "app/assistant/flows/note.py": "the note flow",
 }
 
 

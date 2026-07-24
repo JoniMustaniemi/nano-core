@@ -51,4 +51,3 @@ def reset_pending_interactions() -> None:
 def disable_uvicorn_reload_in_tests(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep dev-server reload env from blocking self-improve in unrelated tests."""
     monkeypatch.delenv("NANO_UVICORN_RELOAD", raising=False)
-

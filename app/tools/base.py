@@ -30,4 +30,8 @@ class ToolSpec:
 
     @property
     def has_ui_command(self) -> bool:
-        return self.ui_label is not None and self.ui_message is not None and self.ui_category is not None
+        return (
+            self.ui_label is not None
+            and self.ui_message is not None
+            and self.ui_category is not None
+        )

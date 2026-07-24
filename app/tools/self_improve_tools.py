@@ -23,7 +23,9 @@ def _merge_preferred_files(*file_groups: list[str]) -> list[str]:
 
 def _draft_improvement_plan(args: dict[str, Any]) -> str:
     explicit_goal = str(args.get("goal", "")).strip()
-    goal, internal_note_id, note_files = internal_note_service.resolve_self_improve_goal(explicit_goal)
+    goal, internal_note_id, note_files = internal_note_service.resolve_self_improve_goal(
+        explicit_goal
+    )
     preferred_files = _merge_preferred_files(note_files, proactive_store.get_last_files())
     result = ImprovementPlanService().draft(
         client=get_llm_client(),

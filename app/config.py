@@ -24,8 +24,7 @@ class Settings(BaseSettings):
     voice_glados_repo_path: str = "./vendor/GLaDOS-TTS"
     voice_sample_rate: int = Field(default=22050, ge=8000)
     chat_history_limit: int = Field(default=12, ge=0)
-    note_context_limit: int = Field(default=5, ge=0)
-    reminder_poll_interval_seconds: int = Field(default=30, ge=5)
+    timer_poll_interval_seconds: int = Field(default=30, ge=5)
     health_check_interval_seconds: int = Field(default=1800, ge=60)
     health_test_failure_enabled: bool = False
     health_test_failure_detail: str = "Intentional health-check failure for testing."

@@ -13,10 +13,12 @@ _LLM_UNAVAILABLE_MARKERS = (
 SELECT_JSON_HINT = '{"files_to_read": ["app/..."]}'
 GOAL_FILE_HINTS: tuple[tuple[tuple[str, ...], str], ...] = (
     (("timer", "timers"), "app/assistant/flows/timer.py"),
-    (("timer", "timers", "message", "messages", "status", "wording", "clearer", "copy"), "app/runtime/status_copy.py"),
+    (
+        ("timer", "timers", "message", "messages", "status", "wording", "clearer", "copy"),
+        "app/runtime/status_copy.py",
+    ),
     (("wake", "greeting", "ack"), "app/runtime/status_copy.py"),
-    (("message", "messages", "confirmation", "wipe", "note"), "app/assistant/rules/messages.py"),
-    (("note", "notes"), "app/assistant/flows/note.py"),
+    (("message", "messages", "confirmation", "wipe"), "app/assistant/rules/messages.py"),
     (("health",), "app/health/checks.py"),
     (("pull request", "pr", "github"), "app/tools/pr_service.py"),
 )
@@ -80,9 +82,7 @@ def file_selection_lines(goal: str, *, limit: int = 40) -> list[str]:
     keywords = [word.lower() for word in goal.split() if len(word) > 3]
     if keywords:
         matched = [
-            path
-            for path in all_paths
-            if any(keyword in path.lower() for keyword in keywords)
+            path for path in all_paths if any(keyword in path.lower() for keyword in keywords)
         ]
         if matched:
             return [f"- {path}: (not yet scanned)" for path in matched[:limit]]

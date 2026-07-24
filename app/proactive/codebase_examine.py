@@ -10,7 +10,7 @@ __all__ = ["CodebaseCrawlService", "CodebaseExamineService", "walk_app_files"]
 
 
 class CodebaseExamineService(CodebaseCrawlService):
-  """Backward-compatible alias for the slow codebase crawl."""
+    """Backward-compatible alias for the slow codebase crawl."""
 
-  def run(self, *, client: Any) -> ProactiveOffer | None:
-    return self.scan_next_file(client=client)
+    def run(self, *, client: Any) -> ProactiveOffer | None:
+        return self.scan_next_file(client=client)

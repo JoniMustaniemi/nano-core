@@ -7,9 +7,7 @@ from app.intents.self_improve import (  # noqa: F401
     normalize_self_improve_goal,
 )
 
-DIRECT_ANSWER_TRIGGERS: tuple[str, ...] = (
-    "help",
-)
+DIRECT_ANSWER_TRIGGERS: tuple[str, ...] = ("help",)
 
 CAPABILITY_QUESTION_TRIGGERS: tuple[str, ...] = (
     "what can you do",
@@ -64,28 +62,6 @@ WIPE_TARGET_TRIGGERS: tuple[str, ...] = (
     "your self",
 )
 
-NOTE_REQUEST_PATTERNS: tuple[str, ...] = (
-    r"\badd\s+(?:a\s+)?note\b",
-    r"\bsave\s+(?:a\s+)?note\b",
-    r"\bwrite\s+(?:this\s+)?down\b",
-    r"\bremember\s+(?:this|that)?\b",
-)
-
-NOTE_LIST_PATTERNS: tuple[str, ...] = (
-    r"\b(?:list|show|read|what(?:'s| is)?)\s+(?:my\s+)?notes\b",
-    r"\bwhat\s+(?:do\s+you\s+)?remember\b",
-    r"\bwhat\s+have\s+you\s+(?:remembered|saved)\b",
-)
-
-NOTE_LOOKUP_PATTERNS: tuple[str, ...] = (
-    r"\bwhat(?:'s| is| was| were)\s+(?:my|the)\b",
-    r"\bwhat\s+did\s+i\s+(?:save|write|note|remember)\b",
-    r"\bwhat\s+was\s+(?:the\s+)?\w+",
-    r"\bdo\s+you\s+remember\b",
-    r"\bfind\s+(?:my\s+)?note\b",
-    r"\bsearch\s+(?:my\s+)?notes\b",
-)
-
 INTERNAL_NOTE_LIST_PATTERNS: tuple[str, ...] = (
     r"\b(?:list|show|tell(?: me)?(?: about)?|read|what(?:'s| are)?)\b.*\binternal notes?\b",
     r"\binternal notes?\b.*\b(?:list|show|tell|read|what)\b",
@@ -112,6 +88,7 @@ SELF_IMPROVE_PATTERNS: tuple[str, ...] = (
 SELF_IMPROVE_FOLLOW_UP_PATTERNS: tuple[str, ...] = (
     r"^\s*(?:do it|go ahead|proceed|yes do it)\s*\.?$",
 )
+
 
 def _contains_term(lowered_message: str, term: str) -> bool:
     if " " in term:
@@ -215,48 +192,6 @@ def is_health_check_request(message: str) -> bool:
     return any(re.search(pattern, lowered) for pattern in explicit_patterns)
 
 
-def is_note_add_request(message: str) -> bool:
-    """
-    Return whether note add request.
-
-    Args:
-        message: User message or prompt text.
-
-    Returns:
-        True when the condition is met; otherwise false.
-    """
-    lowered = " ".join(message.lower().split())
-    return any(re.search(pattern, lowered) for pattern in NOTE_REQUEST_PATTERNS)
-
-
-def is_note_list_request(message: str) -> bool:
-    """
-    Return whether note list request.
-
-    Args:
-        message: User message or prompt text.
-
-    Returns:
-        True when the condition is met; otherwise false.
-    """
-    lowered = " ".join(message.lower().split())
-    return any(re.search(pattern, lowered) for pattern in NOTE_LIST_PATTERNS)
-
-
-def is_note_lookup_request(message: str) -> bool:
-    """
-    Return whether note lookup request.
-
-    Args:
-        message: User message or prompt text.
-
-    Returns:
-        True when the condition is met; otherwise false.
-    """
-    lowered = " ".join(message.lower().split())
-    return any(re.search(pattern, lowered) for pattern in NOTE_LOOKUP_PATTERNS)
-
-
 def is_internal_note_list_request(message: str) -> bool:
     """
     Return whether the user is asking about Nano's internal follow-up notes.
@@ -323,10 +258,6 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_pull_request_request(message)
     if tool_name == "draft_improvement_plan":
         return is_self_improve_request(message)
-    if tool_name == "add_note":
-        return is_note_add_request(message)
-    if tool_name == "list_notes":
-        return is_note_list_request(message)
     if tool_name == "list_internal_notes":
         return is_internal_note_list_request(message)
     return any(keyword in lowered for keyword in rule.keywords)

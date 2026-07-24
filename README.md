@@ -10,8 +10,8 @@ installable assistant hardware like Raspberry Pi longer term.
 ## What Nano can do
 
 - **Conversation** — answer questions and chat when no tool is needed
-- **Notes and memory** — save, list, and look up notes; review internal follow-up notes
-- **Reminders and timers** — schedule reminders; start, check, and cancel timers
+- **Memory** — review internal follow-up notes; wipe stored data after confirmation
+- **Timers** — start, check, and cancel countdown timers
 - **Files and workspace** — read, write, and list files; run small Python scripts locally
 - **Health checks** — diagnose database, voice, and model issues in plain language
 - **GitHub pull requests** — inspect your changes, run lint and verification, name the work,

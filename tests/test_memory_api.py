@@ -1,36 +1,11 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
 from app.main import app
-
-
-def test_notes_and_reminders_round_trip() -> None:
-    """
-    Verify that notes and reminders round trip.
-
-    Returns:
-        None.
-    """
-    due_at = (datetime.now(UTC) + timedelta(minutes=5)).isoformat()
-
-    with TestClient(app) as client:
-        note_response = client.post(
-            "/api/notes",
-            json={"name": "Shopping", "content": "buy milk"},
-        )
-        reminder_response = client.post(
-            "/api/reminders",
-            json={"content": "stretch", "due_at": due_at},
-        )
-        notes = client.get("/api/notes")
-        reminders = client.get("/api/reminders")
-
-    assert note_response.status_code == 200
-    assert reminder_response.status_code == 200
-    assert notes.json()[0]["name"] == "Shopping"
-    assert notes.json()[0]["content"] == "buy milk"
-    assert reminders.json()[0]["content"] == "stretch"
+from app.memory import repository
+from app.memory.internal_note_service import InternalNoteService
+from app.proactive.types import ProactiveOffer
 
 
 def test_storage_snapshot_exposes_saved_records() -> None:
@@ -40,20 +15,22 @@ def test_storage_snapshot_exposes_saved_records() -> None:
     Returns:
         None.
     """
-    due_at = (datetime.now(UTC) + timedelta(minutes=5)).isoformat()
+    repository.add_chat_message(conversation_id="default", role="user", content="hello")
+    offer = ProactiveOffer(
+        kind="self_improvement_suggestion",
+        title="Improve timers",
+        summary="Make timer errors clearer.",
+        payload={"goal": "clearer timer errors"},
+        created_at=datetime.now(UTC),
+    )
+    InternalNoteService().record_from_offer(offer, next_attempt_at=datetime.now(UTC))
 
     with TestClient(app) as client:
-        client.post("/api/notes", json={"content": "buy milk"})
-        client.post(
-            "/api/reminders",
-            json={"content": "stretch", "due_at": due_at},
-        )
         storage = client.get("/api/storage")
 
     assert storage.status_code == 200
     payload = storage.json()
-    assert payload["notes"][0]["name"] == "Untitled note"
-    assert payload["notes"][0]["content"] == "buy milk"
-    assert payload["reminders"][0]["content"] == "stretch"
-    assert payload["chat_messages"] == []
-    assert payload["internal_notes"] == []
+    assert payload["chat_messages"][0]["content"] == "hello"
+    assert payload["internal_notes"][0]["title"] == "Improve timers"
+    assert "notes" not in payload
+    assert "reminders" not in payload

@@ -123,7 +123,7 @@ class InternalNoteService:
 
         base = settings.internal_note_retry_interval_seconds
         max_interval = settings.internal_note_retry_max_interval_seconds
-        delay = min(base * (2 ** note.attempt_count), max_interval)
+        delay = min(base * (2**note.attempt_count), max_interval)
         next_attempt_at = datetime.now(UTC) + timedelta(seconds=delay)
         internal_notes.reschedule_internal_note(note.id or 0, next_attempt_at=next_attempt_at)
         internal_notes.mark_internal_note_attempted(note.id or 0)

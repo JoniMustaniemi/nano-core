@@ -21,7 +21,7 @@ _EXTRA_CAPABILITIES: tuple[CapabilityItem, ...] = (
     CapabilityItem(
         name="memory_wipe",
         description=(
-            "clear all stored notes, reminders, chat history, internal notes, "
+            "clear chat history, internal notes, improvement plans, "
             "and codebase memory after explicit confirmation."
         ),
     ),
@@ -29,12 +29,12 @@ _EXTRA_CAPABILITIES: tuple[CapabilityItem, ...] = (
 
 _CAPABILITY_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
-        "Notes and memory",
-        ("add_note", "list_notes", "list_internal_notes", "memory_wipe", "conversation"),
+        "Memory",
+        ("list_internal_notes", "memory_wipe", "conversation"),
     ),
     (
-        "Reminders and timers",
-        ("add_reminder", "list_reminders", "start_timer", "list_timers", "cancel_timers"),
+        "Timers",
+        ("start_timer", "list_timers", "cancel_timers"),
     ),
     (
         "Files and code",
@@ -55,8 +55,7 @@ def list_capability_items() -> list[CapabilityItem]:
         Sorted capability items from registered tools plus built-in interactions.
     """
     tool_items = [
-        CapabilityItem(name=tool.name, description=tool.description)
-        for tool in list_tools()
+        CapabilityItem(name=tool.name, description=tool.description) for tool in list_tools()
     ]
     return sorted([*tool_items, *_EXTRA_CAPABILITIES], key=lambda item: item.name)
 

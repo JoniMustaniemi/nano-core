@@ -80,10 +80,7 @@ def polish_user_facing_answer(
         {"role": "system", "content": POLISH_SYSTEM_PROMPT},
         {
             "role": "user",
-            "content": (
-                f"User question: {source.user_message}\n\n"
-                f"Draft reply:\n{content}"
-            ),
+            "content": (f"User question: {source.user_message}\n\nDraft reply:\n{content}"),
         },
     ]
     polished = client.complete(messages=messages).strip()

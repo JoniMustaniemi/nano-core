@@ -5,7 +5,6 @@ from typing import Any
 from app.assistant.agent_router import AgentRouter, RouteDecision
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
-from app.assistant.flows.note import NoteInteractionHandler
 from app.assistant.flows.planner import AgentPlanner
 from app.assistant.flows.presence_gate import PresenceGateHandler, presence_gate
 from app.assistant.flows.timer import TimerInteractionHandler
@@ -39,7 +38,6 @@ class AgentOrchestrator:
         answer_executor: AnswerExecutor | None = None,
         tool_executor: ToolExecutor | None = None,
         chat_flow: AgentChatFlow | None = None,
-        note_handler: NoteInteractionHandler | None = None,
         timer_handler: TimerInteractionHandler | None = None,
         wipe_handler: WipeInteractionHandler | None = None,
         presence_handler: PresenceGateHandler | None = None,
@@ -55,7 +53,6 @@ class AgentOrchestrator:
             answer_executor: Answer executor value.
             tool_executor: Tool executor value.
             chat_flow: Chat flow value.
-            note_handler: Note handler value.
             timer_handler: Timer handler value.
             wipe_handler: Wipe handler value.
             planner: Agent planner value.
@@ -66,7 +63,6 @@ class AgentOrchestrator:
         self.answer_executor = answer_executor or AnswerExecutor()
         self.tool_executor = tool_executor or ToolExecutor(tool_runner=self.tool_runner)
         self.chat_flow = chat_flow or AgentChatFlow()
-        self.note_handler = note_handler or NoteInteractionHandler()
         self.timer_handler = timer_handler or TimerInteractionHandler(
             tool_runner=self.tool_runner,
             tool_executor=self.tool_executor,
@@ -142,10 +138,7 @@ class AgentOrchestrator:
             detail=ack_detail,
             source="assistant.orchestrator.route",
         )
-        if (
-            decision.mode not in {"planner", "tool"}
-            and ack_title != RECEIVED_TITLE
-        ):
+        if decision.mode not in {"planner", "tool"} and ack_title != RECEIVED_TITLE:
             self.tool_runner.announce_message(ack_title)
         return self._dispatch(
             decision=decision,
@@ -253,15 +246,6 @@ class AgentOrchestrator:
             if timer_source is not None:
                 return timer_source
 
-        if decision.interaction == "note":
-            note_source = self.note_handler.handle_direct_request(
-                message=message,
-                conversation_id=conversation_id,
-                user_message=user_message,
-            )
-            if note_source is not None:
-                return note_source
-
         return self.answer_executor.draft(
             client=client,
             message=message,
@@ -294,7 +278,6 @@ class AgentOrchestrator:
 
         handlers = (
             self.timer_handler,
-            self.note_handler,
             self.wipe_handler,
         )
         for handler in handlers:

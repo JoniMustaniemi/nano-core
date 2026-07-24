@@ -210,8 +210,10 @@ def collect_change_context() -> dict[str, Any]:
     changed_files = [line.strip() for line in name_status.splitlines() if line.strip()]
 
     recent_commits = _stdout_or_empty("log", "--oneline", "-5")
-    unpushed = run_git("log", "@{u}..HEAD", "--oneline") if _has_upstream() else run_git(
-        "log", "--oneline", "-5"
+    unpushed = (
+        run_git("log", "@{u}..HEAD", "--oneline")
+        if _has_upstream()
+        else run_git("log", "--oneline", "-5")
     )
     unpushed_commits = [line.strip() for line in unpushed.stdout.splitlines() if line.strip()]
 

@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 import app.memory.db as db
 from app.config import get_settings
-from app.memory.models import Note
+from app.memory.models import ChatMessage
 from app.voice.service import GladosVoiceService
 
 
@@ -45,7 +45,7 @@ def _database_health_check() -> HealthCheckResult:
     """
     try:
         with Session(db.engine) as session:
-            list(session.exec(select(Note).limit(1)))
+            list(session.exec(select(ChatMessage).limit(1)))
     except Exception as exc:
         return HealthCheckResult(
             name="database",

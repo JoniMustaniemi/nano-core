@@ -51,7 +51,9 @@ def _to_detail(plan: ImprovementPlan) -> ImprovementPlanDetail:
 
 
 @router.get("/improvement-plans", response_model=list[ImprovementPlanSummary])
-def read_improvement_plans(limit: int = Query(default=20, ge=1, le=100)) -> list[ImprovementPlanSummary]:
+def read_improvement_plans(
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[ImprovementPlanSummary]:
     return [_to_summary(plan) for plan in improvement_plans.list_plans(limit=limit)]
 
 

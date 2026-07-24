@@ -123,7 +123,9 @@ def test_ensure_unique_branch_slug_uses_random_suffix_when_dated_branch_exists(
             (),
             {
                 "now": staticmethod(
-                    lambda tz=None: __import__("datetime").datetime(2026, 7, 24, tzinfo=__import__("datetime").UTC)
+                    lambda tz=None: __import__("datetime").datetime(
+                        2026, 7, 24, tzinfo=__import__("datetime").UTC
+                    )
                 )
             },
         ),

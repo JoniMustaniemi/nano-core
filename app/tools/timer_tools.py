@@ -5,6 +5,7 @@ from typing import Any
 
 from app.duration import parse_duration_to_seconds
 from app.memory import repository
+from app.memory.models import Timer
 from app.tools.base import ToolSpec
 from app.tools.errors import ToolError
 from app.tools.registry import register_tool
@@ -26,9 +27,9 @@ def _start_timer(args: dict[str, Any]) -> str:
 
     label = str(args.get("label", "")).strip() or "Timer"
     due_at = datetime.now(UTC) + timedelta(seconds=duration_seconds)
-    reminder = repository.add_reminder(f"[timer] {label}", due_at)
+    timer = repository.add_timer(label, due_at)
     return (
-        f"started timer {reminder.id}: {label} "
+        f"started timer {timer.id}: {label} "
         f"for {duration_seconds} seconds, due at {due_at.isoformat()}"
     )
 
@@ -78,21 +79,20 @@ def _list_timers(args: dict[str, Any]) -> str:
         Generated or formatted string value.
     """
     del args
-    timers = _active_timer_reminders()
+    timers = _active_timers()
     if not timers:
         return "No active timers."
 
     now = datetime.now(UTC)
     if len(timers) == 1:
         timer = timers[0]
-        label = _timer_label(timer.content)
         remaining = _timer_remaining_text(timer.due_at, now)
-        if label == "Timer":
+        if timer.label == "Timer":
             return f"You have one timer active and it has {remaining} remaining."
-        return f"You have one timer active. {label} has {remaining} remaining."
+        return f"You have one timer active. {timer.label} has {remaining} remaining."
 
     count = len(timers)
-    lines = [_format_active_timer(timer.content, timer.due_at, now) for timer in timers]
+    lines = [_format_active_timer(timer.label, timer.due_at, now) for timer in timers]
     return f"You have {count} timers active:\n" + "\n".join(lines)
 
 
@@ -108,11 +108,11 @@ def _cancel_timers(args: dict[str, Any]) -> str:
     """
     timer_id = args.get("timer_id")
     label = str(args.get("label", "")).strip().lower()
-    timers = _active_timer_reminders()
+    timers = _active_timers()
     selected = [
         timer
         for timer in timers
-        if _timer_matches_cancel_request(timer.id, timer.content, timer_id, label)
+        if _timer_matches_cancel_request(timer.id, timer.label, timer_id, label)
     ]
 
     if not selected:
@@ -123,8 +123,8 @@ def _cancel_timers(args: dict[str, Any]) -> str:
     labels: list[str] = []
     for timer in selected:
         if timer.id is not None:
-            repository.delete_reminder(timer.id)
-        labels.append(_timer_label(timer.content))
+            repository.delete_timer(timer.id)
+        labels.append(timer.label)
 
     count = len(selected)
     noun = "timer" if count == 1 else "timers"
@@ -133,21 +133,19 @@ def _cancel_timers(args: dict[str, Any]) -> str:
     return f"Cancelled {count} {noun}: {', '.join(labels)}."
 
 
-def _active_timer_reminders() -> list[Any]:
+def _active_timers() -> list[Timer]:
     """
-    Return reminders that represent active timers.
+    Return active timers.
 
     Returns:
         List of matching records or values.
     """
-    reminders = repository.list_reminders()
-    timers = [reminder for reminder in reminders if reminder.content.startswith("[timer] ")]
-    return sorted(timers, key=lambda reminder: reminder.due_at)
+    return sorted(repository.list_timers(), key=lambda timer: timer.due_at)
 
 
 def _timer_matches_cancel_request(
     timer_id: int | None,
-    content: str,
+    timer_label: str,
     requested_id: Any,
     requested_label: str,
 ) -> bool:
@@ -156,7 +154,7 @@ def _timer_matches_cancel_request(
 
     Args:
         timer_id: Timer id value.
-        content: Text content to persist or return.
+        timer_label: Timer label value.
         requested_id: Requested id value.
         requested_label: Requested label value.
 
@@ -171,11 +169,11 @@ def _timer_matches_cancel_request(
                 return True
         except (TypeError, ValueError):
             return False
-    return bool(requested_label and _timer_label(content).lower() == requested_label)
+    return bool(requested_label and timer_label.lower() == requested_label)
 
 
 def _format_active_timer(
-    content: str,
+    label: str,
     due_at: datetime,
     now: datetime,
 ) -> str:
@@ -183,15 +181,15 @@ def _format_active_timer(
     Format active timer.
 
     Args:
-        content: Text content to persist or return.
-        due_at: Reminder or timer due timestamp.
+        label: Timer label.
+        due_at: Timer due timestamp.
         now: Current timestamp used for time-based filtering.
 
     Returns:
         Generated or formatted string value.
     """
     remaining = _timer_remaining_text(due_at, now)
-    return f"{_timer_label(content)} has {remaining} remaining."
+    return f"{label} has {remaining} remaining."
 
 
 def _timer_remaining_text(due_at: datetime, now: datetime) -> str:
@@ -199,7 +197,7 @@ def _timer_remaining_text(due_at: datetime, now: datetime) -> str:
     Format the remaining time for an active timer.
 
     Args:
-        due_at: Reminder or timer due timestamp.
+        due_at: Timer due timestamp.
         now: Current timestamp used for time-based filtering.
 
     Returns:
@@ -209,19 +207,6 @@ def _timer_remaining_text(due_at: datetime, now: datetime) -> str:
         due_at = due_at.replace(tzinfo=UTC)
     remaining_seconds = max(0, int((due_at - now).total_seconds()))
     return _humanize_remaining_time(remaining_seconds)
-
-
-def _timer_label(content: str) -> str:
-    """
-    Extract the display label from timer reminder content.
-
-    Args:
-        content: Text content to persist or return.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    return content.removeprefix("[timer] ").strip() or "Timer"
 
 
 def _humanize_remaining_time(total_seconds: int) -> str:

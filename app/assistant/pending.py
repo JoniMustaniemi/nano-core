@@ -5,9 +5,6 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 PendingKind = Literal[
-    "note_content",
-    "note_name",
-    "note_selection",
     "timer_duration",
     "wipe_confirmation",
     "presence_check",

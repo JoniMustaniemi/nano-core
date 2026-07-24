@@ -30,5 +30,7 @@ class AgentService:
         content, _speak = self.respond_with_voice(message, conversation_id=conversation_id)
         return content
 
-    def respond_with_voice(self, message: str, conversation_id: str = "default") -> tuple[str, bool]:
+    def respond_with_voice(
+        self, message: str, conversation_id: str = "default"
+    ) -> tuple[str, bool]:
         return self.orchestrator.respond(message, conversation_id=conversation_id)

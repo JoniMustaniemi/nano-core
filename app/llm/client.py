@@ -108,9 +108,7 @@ class LocalLLMClient:
     ) -> tuple[int, float]:
         settings = get_settings()
         resolved_max_tokens = max_tokens if max_tokens is not None else settings.llm_max_tokens
-        resolved_temperature = (
-            temperature if temperature is not None else settings.llm_temperature
-        )
+        resolved_temperature = temperature if temperature is not None else settings.llm_temperature
         return resolved_max_tokens, resolved_temperature
 
     def _unavailable_message(self) -> str:

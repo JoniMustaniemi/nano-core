@@ -6,95 +6,144 @@ from app.tools import FLOW_OWNED_TOOLS, get_tool, list_tools, render_tool_prompt
 
 def test_tool_registry_loads_builtin_tool_modules() -> None:
     """
+
     Verify that tool registry loads builtin tool modules.
 
+
+
     Returns:
+
         None.
+
     """
+
     tool_names = {tool.name for tool in list_tools()}
 
     assert "run_python" in tool_names
+
     assert "read_file" in tool_names
-    assert "add_note" in tool_names
-    assert "add_reminder" in tool_names
+
     assert "start_timer" in tool_names
+
     assert "check_health" in tool_names
+
     assert "create_pull_request" in tool_names
+
     assert "list_internal_notes" in tool_names
 
 
 def test_tool_prompt_lists_registered_tools() -> None:
     """
+
     Verify that tool prompt lists registered tools.
 
+
+
     Returns:
+
         None.
+
     """
+
     prompt = render_tool_prompt()
 
     assert "Available tools:" in prompt
+
     assert "- run_python(code, timeout_seconds):" in prompt
+
     assert '{"type":"tool_call","tool":"tool_name","args":{"key":"value"}}' in prompt
 
 
 def test_tool_prompt_excludes_flow_owned_tools() -> None:
     """
+
     Verify that planner prompts omit tools owned by interaction flows.
 
+
+
     Returns:
+
         None.
+
     """
+
     prompt = render_tool_prompt(exclude=FLOW_OWNED_TOOLS)
 
     assert "Available tools:" in prompt
+
     assert "- run_python(code, timeout_seconds):" in prompt
-    assert "add_note" not in prompt
+
     assert "start_timer" not in prompt
 
 
 def test_get_tool_returns_registered_handler() -> None:
     """
+
     Verify that get tool returns registered handler.
 
+
+
     Returns:
+
         None.
+
     """
-    tool = get_tool("list_notes")
+
+    tool = get_tool("list_internal_notes")
 
     assert tool is not None
-    assert tool.name == "list_notes"
+
+    assert tool.name == "list_internal_notes"
 
 
-def test_timer_tool_creates_timer_reminder() -> None:
+def test_timer_tool_creates_timer_record() -> None:
     """
-    Verify that timer tool creates timer reminder.
+
+    Verify that timer tool creates a timer record.
+
+
 
     Returns:
+
         None.
+
     """
+
     tool = get_tool("start_timer")
 
     assert tool is not None
+
     result = tool.handler({"duration_seconds": 30, "label": "Tea"})
-    reminders = repository.list_reminders()
+
+    timers = repository.list_timers()
 
     assert "started timer" in result
-    assert reminders[0].content == "[timer] Tea"
+    assert timers[0].label == "Tea"
 
 
 def test_health_tool_returns_structured_json(monkeypatch) -> None:
     """
+
     Verify that health tool returns structured json.
 
+
+
     Args:
+
         monkeypatch: Pytest monkeypatch fixture.
 
+
+
     Returns:
+
         None.
+
     """
+
     tool = get_tool("check_health")
 
     assert tool is not None
+
     monkeypatch.setattr(
         "app.tools.health_tools.run_health_checks",
         lambda: [
@@ -114,5 +163,7 @@ def test_health_tool_returns_structured_json(monkeypatch) -> None:
     payload = json.loads(tool.handler({}))
 
     assert payload["overall"] == "error"
+
     assert payload["checks"][0]["name"] == "database"
+
     assert payload["checks"][1]["status"] == "error"

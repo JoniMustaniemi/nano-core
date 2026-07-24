@@ -13,14 +13,16 @@ _IMPROVE_SELF_PREFIX = re.compile(
     re.IGNORECASE,
 )
 
-VAGUE_SELF_IMPROVE_GOALS = frozenset({
-    "",
-    "general improvement",
-    "improve yourself",
-    "fix yourself",
-    "update yourself",
-    "modify yourself",
-})
+VAGUE_SELF_IMPROVE_GOALS = frozenset(
+    {
+        "",
+        "general improvement",
+        "improve yourself",
+        "fix yourself",
+        "update yourself",
+        "modify yourself",
+    }
+)
 
 
 def normalize_self_improve_goal(goal: str) -> str:

@@ -31,7 +31,6 @@ def _load_home_css(client: TestClient) -> str:
 
 
 def test_homepage_shows_standby_ui() -> None:
-
     """
 
     Verify that homepage shows standby ui.
@@ -45,10 +44,7 @@ def test_homepage_shows_standby_ui() -> None:
     """
 
     with TestClient(app) as client:
-
         response = client.get("/")
-
-
 
     assert response.status_code == 200
 
@@ -125,9 +121,7 @@ def test_homepage_shows_standby_ui() -> None:
     assert "Voice settings" in response.text or 'aria-label="Voice settings"' in response.text
 
 
-
 def test_homepage_serves_static_assets() -> None:
-
     """
 
     Verify that homepage serves static assets.
@@ -246,7 +240,7 @@ def test_homepage_serves_static_assets() -> None:
 
     assert 'state: "working"' not in submit_block
 
-    assert 'headline === STANDBY_HEADLINE' in js_text
+    assert "headline === STANDBY_HEADLINE" in js_text
 
     assert "commands-drawer" in css_text
 
@@ -264,9 +258,9 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "applyActivityEvent" in js_text
 
-    completion_block = js_text.split(
-        'event.source === "tools.improvement_plan_service.completed"'
-    )[1].split("if (event.kind === \"log\" && event.source === \"runtime.long_task_progress\")")[0]
+    completion_block = js_text.split('event.source === "tools.improvement_plan_service.completed"')[
+        1
+    ].split('if (event.kind === "log" && event.source === "runtime.long_task_progress")')[0]
     assert "void loadPlans();" in completion_block
     assert "return;" not in completion_block
 
@@ -278,7 +272,7 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "formatProgressAnnouncement" in js_text
 
-    assert 'playVoice(message, { resumeListening: false })' in js_text
+    assert "playVoice(message, { resumeListening: false })" in js_text
 
     assert "applyStatusSnapshot" in js_text
 
@@ -351,16 +345,12 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "await playVoice(spokenAck" in js_text
 
-    assert 'let controlsHidden = true;' in js_text
+    assert "let controlsHidden = true;" in js_text
 
     assert 'getElementById("commands-toggle-reveal")' in js_text
 
 
-
-
-
 def test_tool_commands_endpoint_lists_quick_actions() -> None:
-
     """
 
     Verify that tool commands endpoint returns UI quick actions.
@@ -374,10 +364,7 @@ def test_tool_commands_endpoint_lists_quick_actions() -> None:
     """
 
     with TestClient(app) as client:
-
         response = client.get("/api/tool-commands")
-
-
 
     assert response.status_code == 200
 
@@ -393,14 +380,10 @@ def test_tool_commands_endpoint_lists_quick_actions() -> None:
 
     assert any(item["id"] == "toggle_controls" for item in payload)
 
-    assert any(item["message"] == "List my notes." for item in payload)
-
-
-
+    assert any(item["message"] == "Tell me about your internal notes." for item in payload)
 
 
 def test_status_endpoint_starts_in_standby() -> None:
-
     """
 
     Verify that status endpoint starts in standby.
@@ -414,10 +397,7 @@ def test_status_endpoint_starts_in_standby() -> None:
     """
 
     with TestClient(app) as client:
-
         response = client.get("/api/status")
-
-
 
     assert response.status_code == 200
 
@@ -430,4 +410,3 @@ def test_status_endpoint_starts_in_standby() -> None:
     assert payload["detail"] == "I'm ready and awake."
 
     assert any(event["source"] == "system.boot" for event in payload["events"])
-

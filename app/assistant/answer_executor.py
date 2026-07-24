@@ -139,10 +139,7 @@ class AnswerExecutor:
             {"role": "system", "content": IDENTITY_ANSWER_PROMPT},
             {
                 "role": "user",
-                "content": (
-                    f"User question: {message}\n\n"
-                    f"Factual payload:\n{payload}"
-                ),
+                "content": (f"User question: {message}\n\nFactual payload:\n{payload}"),
             },
         ]
         content = client.complete(messages=messages).strip()
