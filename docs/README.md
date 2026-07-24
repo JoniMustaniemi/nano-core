@@ -34,7 +34,7 @@ confirming a destructive wipe. Others are handled in a single step.
 | Local memory | SQLite database for notes, reminders, chat history, internal notes, and improvement plans |
 | Tools | Registered actions: notes, timers, files, health, GitHub PRs, improvement-plan drafting, and more |
 | Voice | Optional spoken replies and wake-phrase listening with `"hey nano"` |
-| Background services | Reminder/timer polling, health checks, idle codebase review, and passive improvement-plan drafting |
+| Background services | Reminder/timer polling, health checks, idle codebase review, and proactive improvement-plan outreach |
 
 ## Capabilities
 
@@ -77,10 +77,12 @@ Nano can review its own codebase and draft improvement plans for you to read and
 
 - **Background review** — when idle, scans one source file at a time and records
   improvement ideas as internal notes
-- **Passive drafting** — when idle long enough and no plan is already waiting,
-  drafts a readable plan from the top due self-improvement note
-- **One plan at a time** — if an unprocessed plan exists, drafting is skipped until
-  you mark it processed in the UI
+- **Proactive outreach** — when idle long enough and no plan is already waiting,
+  asks **"Are you there?"** before interrupting you; if you confirm, drafts a
+  readable plan from the top due self-improvement note and points you to the
+  Plans tab; if you decline or do not respond, the topic is saved for later
+- **One plan at a time** — if an unprocessed plan exists, outreach and drafting
+  are skipped until you mark it processed in the UI
 - **Manual drafting** — you can also ask Nano to draft a plan, for example
   “improve yourself”; the same one-plan gate applies
 - **Plans tab** — open the nano sheet → **Plans** to read a plan and mark it
@@ -105,7 +107,7 @@ Plan content is stored in the `ImprovementPlan` table and exposed via
 Nano separates what you see from what happens behind the scenes. The web
 interface talks to an assistant layer that coordinates tools, local memory, the
 AI model, and optional voice output. Background services handle scheduled
-reminders, health monitoring, idle codebase review, and improvement-plan drafting.
+reminders, health monitoring, idle codebase review, and proactive improvement-plan outreach.
 
 ```mermaid
 flowchart LR

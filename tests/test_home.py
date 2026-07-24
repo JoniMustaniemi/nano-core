@@ -306,6 +306,10 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "scheduleStatusClear" in js_text
 
+    assert "shouldDeferStatusClear" in js_text
+
+    assert "resumeStatusClearIfPending" in js_text
+
     assert "resetActivityStatusIfIdle" in js_text
 
     assert "statusClearTimer" in js_text
