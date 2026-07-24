@@ -236,7 +236,7 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "useServerCopy" in js_text
 
-    submit_block = js_text.split("async function submitMessage(message, source)")[1]
+    submit_block = js_text.split("async function submitMessage(message, source, commandHint)")[1]
 
     submit_block = submit_block.split("renderState();")[0]
 
