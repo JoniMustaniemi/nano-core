@@ -9,6 +9,7 @@ from typing import Any
 from app.runtime.activity import activity
 
 LONG_TASK_PROGRESS_INTERVAL_SECONDS = 120
+PR_TASK_PROGRESS_INTERVAL_SECONDS = 15
 LONG_TASK_PROGRESS_SOURCE = "runtime.long_task_progress"
 _PROGRESS_POLL_SECONDS = 5
 
@@ -64,6 +65,9 @@ def _attempt_phrase(attempt: int) -> str:
 
 
 def format_progress_update(progress: LongTaskProgress) -> ProgressAnnouncement:
+    if progress.task_name == "pull request":
+        return _format_pr_progress_update(progress)
+
     task = progress.task_name or "this task"
     prefix = f"I'm still working on {task}."
 
@@ -121,6 +125,27 @@ def format_progress_update(progress: LongTaskProgress) -> ProgressAnnouncement:
     )
 
 
+def _format_pr_progress_update(progress: LongTaskProgress) -> ProgressAnnouncement:
+    prefix = "I'm still verifying the project."
+    if progress.step == "lint":
+        return ProgressAnnouncement(
+            title="I'm verifying the project.",
+            detail="Running lint checks.",
+            spoken=f"{prefix} Running lint checks.",
+        )
+    if progress.step == "verify":
+        return ProgressAnnouncement(
+            title="I'm verifying the project.",
+            detail="Running the full test suite. This can take a few minutes.",
+            spoken=f"{prefix} Running the full test suite. This can take a few minutes.",
+        )
+    return ProgressAnnouncement(
+        title="I'm verifying the project.",
+        detail="Running preflight checks.",
+        spoken=f"{prefix} Running preflight checks.",
+    )
+
+
 class LongTaskProgressReporter:
     """Emit periodic activity updates for long-running work without blocking it."""
 
@@ -131,6 +156,7 @@ class LongTaskProgressReporter:
         goal: str = "",
         interval_seconds: int = LONG_TASK_PROGRESS_INTERVAL_SECONDS,
         poll_seconds: float = _PROGRESS_POLL_SECONDS,
+        announce_on_start: bool = False,
         source: str = LONG_TASK_PROGRESS_SOURCE,
         log_fn: Any = activity.log,
         time_fn: Any = time.monotonic,
@@ -139,6 +165,7 @@ class LongTaskProgressReporter:
         self._task_name = task_name
         self._interval_seconds = interval_seconds
         self._poll_seconds = poll_seconds
+        self._announce_on_start = announce_on_start
         self._source = source
         self._log_fn = log_fn
         self._time_fn = time_fn
@@ -153,6 +180,8 @@ class LongTaskProgressReporter:
         self._last_announced_at = self._time_fn()
         self._thread = Thread(target=self._run, name="long-task-progress", daemon=True)
         self._thread.start()
+        if self._announce_on_start:
+            self._announce()
         return self
 
     def __exit__(self, *_args: object) -> None:

@@ -25,7 +25,9 @@ def test_resolve_verify_command_detects_pytest(
 
     command = pr_verify.resolve_verify_command()
 
-    assert command == [sys.executable, "-m", "pytest", "-q"]
+    assert command[:4] == [sys.executable, "-m", "pytest", "-q"]
+    assert command[4].startswith("--basetemp=")
+    assert "nano-pr-pytest" in command[4]
 
 
 def test_resolve_verify_command_uses_config_override(

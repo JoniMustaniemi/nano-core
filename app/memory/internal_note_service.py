@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from app.config import get_settings
 from app.intents.self_improve import is_vague_self_improve_goal, normalize_self_improve_goal
-from app.memory import internal_notes
+from app.memory import improvement_plans, internal_notes
 from app.memory.models import InternalNote
 from app.proactive.types import ProactiveOffer
 from app.runtime.activity import activity
@@ -18,12 +18,23 @@ from app.runtime.status_copy import (
 class InternalNoteService:
     """High-level API for Nano's private follow-up notes."""
 
+    def has_active_plan_pipeline(self) -> bool:
+        if improvement_plans.has_unprocessed_plan():
+            return True
+        return internal_notes.has_pending_self_improvement_note()
+
     def record_from_offer(
         self,
         offer: ProactiveOffer,
         *,
         next_attempt_at: datetime | None = None,
-    ) -> InternalNote:
+    ) -> InternalNote | None:
+        if (
+            offer.kind == "self_improvement_suggestion"
+            and internal_notes.has_pending_self_improvement_note()
+        ):
+            return None
+
         settings = get_settings()
         scheduled_at = next_attempt_at or datetime.now(UTC) + timedelta(
             seconds=settings.internal_note_retry_interval_seconds
@@ -48,7 +59,7 @@ class InternalNoteService:
         *,
         reason: str,
         note_id: int | None = None,
-    ) -> InternalNote:
+    ) -> InternalNote | None:
         if note_id is not None:
             existing = internal_notes.get_internal_note(note_id)
             if existing is not None:

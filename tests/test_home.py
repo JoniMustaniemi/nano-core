@@ -111,10 +111,10 @@ def test_homepage_shows_standby_ui() -> None:
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/essence_visualizer.js?v=idle-essence-3"' in response.text
     assert 'src="/static/home-state.js?v=waiting-for-answer-1"' in response.text
-    assert 'src="/static/home-plans.js?v=plans-queue-1"' in response.text
+    assert 'src="/static/home-plans.js?v=plans-process-1"' in response.text
     assert 'src="/static/home-ui.js?v=waiting-for-answer-1"' in response.text
     assert 'src="/static/home-voice.js?v=default-no-answer-1"' in response.text
-    assert 'src="/static/home-activity.js?v=default-no-answer-1"' in response.text
+    assert 'src="/static/home-activity.js?v=pr-failure-recovery-1"' in response.text
     assert 'src="/static/home-chat.js?v=default-no-answer-1"' in response.text
     assert 'src="/static/home.js?v=working-controls-1"' in response.text
 

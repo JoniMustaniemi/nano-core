@@ -114,7 +114,7 @@ def _suggestion_summary(note: InternalNote) -> ImprovementPlanSummary:
         id=note.id,
         title=note.title,
         goal=_goal_from_note(note),
-        status="queued",
+        status="waiting",
         kind="suggestion",
         files=_files_from_note(note),
         created_at=note.created_at.isoformat(),
@@ -134,10 +134,11 @@ def _suggestion_detail(note: InternalNote) -> ImprovementPlanDetail:
 
 def _merged_plans(*, limit: int) -> list[ImprovementPlanSummary]:
     drafted = [_to_summary(plan) for plan in improvement_plans.list_plans(limit=limit)]
-    suggestions = [
-        _suggestion_summary(note)
-        for note in internal_notes.list_pending_self_improvement_notes(limit=limit)
-    ]
+    suggestions: list[ImprovementPlanSummary] = []
+    if not improvement_plans.has_unprocessed_plan():
+        pending = internal_notes.list_pending_self_improvement_notes(limit=1)
+        if pending:
+            suggestions = [_suggestion_summary(pending[0])]
     merged = drafted + suggestions
     merged.sort(key=lambda item: item.created_at, reverse=True)
     return merged[:limit]
@@ -164,6 +165,12 @@ def read_improvement_plan(plan_id: int) -> ImprovementPlanDetail:
     if plan is None:
         raise HTTPException(status_code=404, detail="Improvement plan not found.")
     return _to_detail(plan)
+
+
+@router.post("/improvement-plans/suggestions/{note_id}/process", status_code=204)
+def process_improvement_suggestion(note_id: int) -> None:
+    if not internal_notes.delete_self_improvement_suggestion(note_id):
+        raise HTTPException(status_code=404, detail="Improvement suggestion not found.")
 
 
 @router.post("/improvement-plans/{plan_id}/process", status_code=204)
