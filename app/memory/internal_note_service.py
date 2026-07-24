@@ -59,7 +59,7 @@ class InternalNoteService:
         *,
         reason: str,
         note_id: int | None = None,
-    ) -> InternalNote:
+    ) -> InternalNote | None:
         if note_id is not None:
             existing = internal_notes.get_internal_note(note_id)
             if existing is not None:
