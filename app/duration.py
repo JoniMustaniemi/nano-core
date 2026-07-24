@@ -6,11 +6,30 @@ _DIGIT_DURATION_PATTERN = re.compile(
     r"\b(\d+)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours)\b"
 )
 _WORD_DURATION_PATTERN = re.compile(
-    r"\b((?:an?|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+    r"\b((?:\ban?\b|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
     r"thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|"
     r"fifty|sixty|seventy|eighty|ninety|hundred|and|-|\s)+)\s*"
     r"(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours)\b"
 )
+_UNIT_ONLY_PATTERN = re.compile(r"\b(s|m|h)\b")
+
+_UNIT_ALIASES: dict[str, str] = {
+    "s": "seconds",
+    "sec": "seconds",
+    "secs": "seconds",
+    "second": "seconds",
+    "seconds": "seconds",
+    "m": "minutes",
+    "min": "minutes",
+    "mins": "minutes",
+    "minute": "minutes",
+    "minutes": "minutes",
+    "h": "hours",
+    "hr": "hours",
+    "hrs": "hours",
+    "hour": "hours",
+    "hours": "hours",
+}
 
 _SMALL_NUMBER_WORDS: dict[str, int] = {
     "zero": 0,
@@ -82,16 +101,24 @@ def parse_duration_phrase(message: str) -> tuple[int, str] | None:
 
     digit_match = _DIGIT_DURATION_PATTERN.search(lowered)
     if digit_match is not None:
-        return int(digit_match.group(1)), _normalize_unit(digit_match.group(2))
+        unit = _normalize_unit(digit_match.group(2))
+        if unit is not None:
+            return int(digit_match.group(1)), unit
 
     word_match = _WORD_DURATION_PATTERN.search(lowered)
-    if word_match is None:
-        return None
+    if word_match is not None:
+        value = _words_to_number(word_match.group(1))
+        unit = _normalize_unit(word_match.group(2))
+        if value is not None and unit is not None:
+            return value, unit
 
-    value = _words_to_number(word_match.group(1))
-    if value is None:
-        return None
-    return value, _normalize_unit(word_match.group(2))
+    unit_only_match = _UNIT_ONLY_PATTERN.search(lowered)
+    if unit_only_match is not None:
+        unit = _normalize_unit(unit_only_match.group(1))
+        if unit is not None:
+            return 1, unit
+
+    return None
 
 
 def parse_duration_to_seconds(raw: str) -> int:
@@ -116,7 +143,7 @@ def parse_duration_to_seconds(raw: str) -> int:
     return value * 3600
 
 
-def _normalize_unit(unit: str) -> str:
+def _normalize_unit(unit: str) -> str | None:
     """
     Normalize unit.
 
@@ -126,11 +153,7 @@ def _normalize_unit(unit: str) -> str:
     Returns:
         Generated or formatted string value.
     """
-    if unit.startswith("s"):
-        return "seconds"
-    if unit.startswith("m"):
-        return "minutes"
-    return "hours"
+    return _UNIT_ALIASES.get(unit)
 
 
 def _words_to_number(raw: str) -> int | None:
@@ -170,4 +193,4 @@ def _words_to_number(raw: str) -> int | None:
         return None
 
     total += current
-    return total if total > 0 else None
+    return total
