@@ -63,6 +63,13 @@ body.controls-hidden .keyboard-panel {
   display: none !important;
 }
 
+body[data-display-state="working"] .footer-cluster,
+body[data-display-state="working"] .keyboard-panel,
+body[data-display-state="working"] .controls-reveal-zone,
+body[data-display-state="working"] .commands-reveal-zone {
+  display: none !important;
+}
+
 .controls-reveal-zone {
   position: fixed;
   left: 0;

@@ -108,14 +108,14 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=status-roll-1"' in response.text
+    assert 'href="/static/home.css?v=working-controls-1"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/essence_visualizer.js?v=default-hidden-1"' in response.text
-    assert 'src="/static/home-state.js?v=status-roll-1"' in response.text
+    assert 'src="/static/home-state.js?v=request-ack-1"' in response.text
     assert 'src="/static/home-plans.js?v=plan-copy-1"' in response.text
-    assert 'src="/static/home-chat.js?v=tool-activity-1"' in response.text
-    assert 'src="/static/home.js?v=default-hidden-1"' in response.text
+    assert 'src="/static/home-chat.js?v=request-ack-1"' in response.text
+    assert 'src="/static/home.js?v=working-controls-1"' in response.text
 
     assert "Enter to send" in response.text
 
@@ -286,7 +286,11 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "syncRuntimeStatus" in js_text
 
-    assert "inputs-locked" in css_text
+    assert 'body[data-display-state="working"] .footer-cluster' in css_text
+
+    assert "shouldSuppressControlsChrome" in js_text
+
+    assert "shouldShowControlsRevealZones" in js_text
 
     assert "isBusy()" in js_text
 
@@ -342,6 +346,10 @@ def test_homepage_serves_static_assets() -> None:
     assert "toggleKeyboardPanel" in js_text
 
     assert "openNanoSheet" in js_text
+
+    assert "RECEIVED_TITLE" in js_text
+
+    assert "await playVoice(spokenAck" in js_text
 
     assert 'let controlsHidden = true;' in js_text
 

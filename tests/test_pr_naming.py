@@ -10,6 +10,7 @@ from app.tools.pr_naming import (
     looks_like_llm_unavailable,
     sanitize_pr_title,
     sanitize_slug,
+    slug_looks_generic,
     title_looks_low_effort,
 )
 
@@ -23,6 +24,102 @@ class _NamingClient:
         response = self.responses[min(self.calls, len(self.responses) - 1)]
         self.calls += 1
         return response
+
+
+def test_slug_looks_generic_rejects_start_nano_patterns() -> None:
+    context = {
+        "current_branch": "feature/start_nano_2_2_2",
+        "recent_commits": "f689441 start_nano_2_2_2",
+        "unpushed_commits": ["504802b start_nano_2_2_2_0724"],
+    }
+
+    assert slug_looks_generic("start_nano", context)
+    assert slug_looks_generic("start_nano_2_2_2", context)
+    assert slug_looks_generic("start_nano_2_2_2_0724", context)
+    assert not slug_looks_generic("identity_request_ack", context)
+
+
+def test_pr_naming_service_retries_generic_slug(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.tools.pr_naming.ensure_unique_branch_slug", lambda slug: slug)
+    client = _NamingClient(
+        [
+            json.dumps(
+                {
+                    "slug": "start_nano_2_2_2",
+                    "title": "Start nano iteration",
+                    "commit_message": "start_nano_2_2_2",
+                    "body": "Another start nano branch.",
+                }
+            ),
+            json.dumps(
+                {
+                    "slug": "identity_request_ack",
+                    "title": "Acknowledge identity questions before answering",
+                    "commit_message": "identity_request_ack",
+                    "body": "Adds immediate acknowledgement for identity requests.",
+                }
+            ),
+        ]
+    )
+    service = PrNamingService()
+
+    naming = service.generate(
+        client=client,
+        context={
+            "changed_files": ["app/web/static/home-chat.js", "app/assistant/rules/intents.py"],
+            "diff_stat": "2 files changed",
+            "diff_patch": "diff",
+            "unpushed_commits": ["504802b start_nano_2_2_2_0724"],
+            "recent_commits": "f689441 start_nano_2_2_2",
+            "current_branch": "feature/start_nano_2_2_2",
+        },
+    )
+
+    assert naming.slug == "identity_request_ack"
+    assert client.calls == 2
+
+
+def test_pr_naming_service_falls_back_to_meaningful_slug_for_generic_llm_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.tools.pr_naming.ensure_unique_branch_slug", lambda slug: slug)
+    client = _NamingClient(
+        [
+            json.dumps(
+                {
+                    "slug": "start_nano",
+                    "title": "Start nano",
+                    "commit_message": "start_nano",
+                    "body": "Generic placeholder.",
+                }
+            ),
+            json.dumps(
+                {
+                    "slug": "start_nano_2",
+                    "title": "Start nano again",
+                    "commit_message": "start_nano_2",
+                    "body": "Still generic.",
+                }
+            ),
+        ]
+    )
+    service = PrNamingService()
+
+    naming = service.generate(
+        client=client,
+        context={
+            "changed_files": ["app/web/static/home-chat.js", "app/assistant/rules/intents.py"],
+            "diff_stat": "2 files changed",
+            "diff_patch": "diff",
+            "unpushed_commits": [],
+            "recent_commits": "",
+            "current_branch": "main",
+        },
+    )
+
+    assert naming.slug == "home_chat_rules_intents"
+    assert naming.slug != "start_nano"
+    assert client.calls == 2
 
 
 def test_title_looks_low_effort_detects_slug_copy() -> None:
@@ -93,8 +190,8 @@ def test_pr_naming_service_falls_back_when_llm_unavailable(monkeypatch: pytest.M
         },
     )
 
-    assert naming.slug == "home"
-    assert naming.branch == "feature/home"
+    assert naming.slug == "web_home"
+    assert naming.branch == "feature/web_home"
     assert naming.title == "Update home and home"
     assert client.calls == 1
 
@@ -210,6 +307,6 @@ def test_pr_naming_service_falls_back_when_client_returns_none(
         context={"changed_files": ["app/main.py"], "diff_stat": "", "diff_patch": ""},
     )
 
-    assert naming.slug == "main"
-    assert naming.branch == "feature/main"
+    assert naming.slug == "code_update"
+    assert naming.branch == "feature/code_update"
     assert naming.title == "Update main"

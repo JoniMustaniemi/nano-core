@@ -22,6 +22,9 @@ def test_is_identity_question_detects_intro_requests() -> None:
     assert is_identity_question("Who are you?")
     assert is_identity_question("Please introduce yourself.")
     assert is_identity_question("What are you?")
+    assert is_identity_question("Tell me about yourself.")
+    assert is_identity_question("Hey nano, tell me about himself.")
+    assert is_identity_question("Who is Nano?")
     assert not is_identity_question("What can you do?")
 
 

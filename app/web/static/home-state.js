@@ -72,6 +72,7 @@ const STANDBY_HEADLINE = "I'm in standby.";
 const STANDBY_DETAIL_DEFAULT = "Awaiting your input.";
 const LISTENING_HEADLINE_DEFAULT = "I'm listening.";
 const WORKING_DETAIL_DEFAULT = "Give me a moment.";
+const RECEIVED_TITLE = "On it.";
 const RECEIVED_DETAIL = "Give me a moment.";
 let bootAnnouncementPlayed = false;
 let lastActivityEventId = 0;

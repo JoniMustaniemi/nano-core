@@ -10,6 +10,39 @@ from app.tools.git_github import ensure_unique_branch_slug
 
 _SLUG_PATTERN = re.compile(r"^[a-z0-9_]{3,48}$")
 _TITLE_MAX_LEN = 72
+_GENERIC_SLUGS = frozenset(
+    {
+        "nano",
+        "start",
+        "start_nano",
+        "code_update",
+        "update",
+        "changes",
+        "change",
+        "main",
+        "app",
+        "improvements",
+        "general",
+        "wip",
+        "work",
+        "fix",
+        "feature",
+    }
+)
+_GENERIC_PATH_PARTS = frozenset(
+    {
+        "app",
+        "static",
+        "templates",
+        "tests",
+        "test",
+        "init",
+        "utils",
+        "common",
+        "src",
+    }
+)
+_START_NANO_SLUG_PATTERN = re.compile(r"^start_nano(?:_\d+)*$")
 _FILE_LINE_PATTERN = re.compile(
     r"^[\s\-•*]*(?:[\w./@-]+/)?[\w./@-]+\.[a-z0-9]+:\s*[\d\s+\-|]+$",
     re.IGNORECASE,
@@ -68,6 +101,7 @@ class PrNamingService:
                 naming is not None
                 and not looks_like_file_list_body(naming.body)
                 and not title_looks_low_effort(naming.title, naming.slug)
+                and not slug_looks_generic(naming.slug, context)
             ):
                 return naming
             messages.extend(
@@ -78,6 +112,8 @@ class PrNamingService:
                         "content": _correction_message(
                             naming=naming,
                             invalid_json=naming is None,
+                            generic_slug=naming is not None
+                            and slug_looks_generic(naming.slug, context),
                         ),
                     },
                 ]
@@ -95,7 +131,9 @@ class PrNamingService:
 
         naming = _parse_naming(raw, context=context, use_fallback_body=True)
         if naming is not None and not looks_like_file_list_body(naming.body):
-            if title_looks_low_effort(naming.title, naming.slug):
+            if slug_looks_generic(naming.slug, context):
+                naming = _build_fallback_naming(context)
+            elif title_looks_low_effort(naming.title, naming.slug):
                 return _replace_title(naming, _fallback_title(naming.slug, context))
             return naming
 
@@ -107,6 +145,9 @@ _SYSTEM_PROMPT = (
     "Return JSON only with keys slug, title, commit_message, body. "
     "slug must be lowercase snake_case (a-z, 0-9, underscores), 3 to 48 characters, "
     "and suitable for a feature branch name. "
+    "Name the branch after the specific behavior, fix, or feature in the diff. "
+    "Never reuse commit messages, the current branch name, project codenames, or generic "
+    "placeholders such as nano, start_nano, start, update, changes, or improvements. "
     "title must be a separate human-readable pull request title in sentence case: "
     "an imperative phrase up to 72 characters that summarizes the main outcome "
     "(for example: 'Add animated working indicator to the home response zone'). "
@@ -244,6 +285,52 @@ def title_looks_low_effort(title: str, slug: str) -> bool:
     return False
 
 
+def _commit_subjects(context: dict[str, Any] | None) -> set[str]:
+    if not context:
+        return set()
+    subjects: set[str] = set()
+    recent = str(context.get("recent_commits", "")).splitlines()
+    for line in [*context.get("unpushed_commits", []), *recent]:
+        cleaned = line.strip()
+        if not cleaned:
+            continue
+        subject = cleaned.split(" ", 1)[-1] if " " in cleaned else cleaned
+        slug = sanitize_slug(subject)
+        if slug:
+            subjects.add(slug)
+    return subjects
+
+
+def slug_looks_generic(slug: str, context: dict[str, Any] | None = None) -> bool:
+    """
+    Return whether a slug looks copied from commit history or generic placeholders.
+
+    Args:
+        slug: Candidate branch slug.
+        context: Optional git change context.
+
+    Returns:
+        True when the slug should be regenerated.
+    """
+    if slug in _GENERIC_SLUGS:
+        return True
+    if _START_NANO_SLUG_PATTERN.fullmatch(slug):
+        return True
+    if slug.startswith("start_nano_"):
+        return True
+
+    if context:
+        current_branch = str(context.get("current_branch", ""))
+        if current_branch.startswith("feature/"):
+            branch_slug = sanitize_slug(current_branch.removeprefix("feature/"))
+            if branch_slug and (slug == branch_slug or slug.startswith(f"{branch_slug}_")):
+                return True
+        for subject in _commit_subjects(context):
+            if slug == subject or slug.startswith(f"{subject}_"):
+                return True
+    return False
+
+
 def is_valid_slug(slug: str) -> bool:
     """
     Return whether a slug matches naming rules.
@@ -264,15 +351,19 @@ def _build_user_prompt(context: dict[str, Any]) -> str:
     unpushed_text = "\n".join(f"- {line}" for line in unpushed) or "- (none)"
     recent_commits = context.get("recent_commits", "")
     staged_stat = context.get("staged_stat", "")
+    current_branch = context.get("current_branch", "")
     return (
         "Name this change for a git feature branch and pull request.\n"
         "Read the diff patch carefully and infer the primary behavior or UX change.\n"
+        "The branch slug must describe that specific change, not the project name or prior commits.\n"
         "The pull request title must describe that outcome in plain language.\n"
         "The pull request body must explain the change in prose, not repeat the file list below.\n\n"
+        f"Current branch: {current_branch or '(unknown)'}\n\n"
         f"Changed files:\n{files_text}\n\n"
         f"Diff stat:\n{context.get('diff_stat', '') or '(empty)'}\n\n"
         f"Staged diff stat:\n{staged_stat or '(empty)'}\n\n"
         f"Diff patch:\n{context.get('diff_patch', '') or '(empty)'}\n\n"
+        "Recent commits and unpushed commits are background only. Do not reuse them for slug or title.\n"
         f"Recent commits:\n{recent_commits or '(none)'}\n\n"
         f"Recent unpushed commits:\n{unpushed_text}"
     )
@@ -298,13 +389,25 @@ def _build_title_prompt(context: dict[str, Any], slug: str) -> str:
     )
 
 
-def _correction_message(*, naming: PrNaming | None, invalid_json: bool) -> str:
+def _correction_message(
+    *,
+    naming: PrNaming | None,
+    invalid_json: bool,
+    generic_slug: bool = False,
+) -> str:
     if invalid_json:
         return (
             "Your previous response was invalid. Return JSON only with keys "
             "slug, title, commit_message, body. slug must be lowercase snake_case "
             "between 3 and 48 characters. title must be a separate human-readable "
             "imperative phrase in sentence case, not snake_case."
+        )
+    if generic_slug:
+        return (
+            "Your JSON was valid, but slug looks generic or copied from commit history. "
+            "Rewrite slug as a specific behavior-focused snake_case name derived from the diff. "
+            "Do not use nano, start_nano, update, changes, or prior commit subjects. "
+            "Keep title, commit_message, and body unless body lists files or diff stats."
         )
     if naming is not None and title_looks_low_effort(naming.title, naming.slug):
         return (
@@ -341,6 +444,33 @@ def _generate_prose_title(*, client: Any, context: dict[str, Any], slug: str) ->
     return sanitize_pr_title(raw)
 
 
+def _path_slug_fragment(path: str) -> str:
+    posix = PurePosixPath(path)
+    stem = sanitize_slug(posix.stem)
+    parent = sanitize_slug(posix.parent.name)
+    if not stem or stem in _GENERIC_SLUGS:
+        return ""
+    if stem in _GENERIC_PATH_PARTS:
+        if parent and parent not in _GENERIC_PATH_PARTS and parent not in _GENERIC_SLUGS:
+            return sanitize_slug(f"{parent}_{stem}")
+        return ""
+    if parent and parent not in _GENERIC_PATH_PARTS and parent not in _GENERIC_SLUGS and parent not in stem:
+        return sanitize_slug(f"{parent}_{stem}")
+    return stem
+
+
+def _merge_slug_fragments(fragments: list[str]) -> str:
+    if not fragments:
+        return "code_update"
+    unique: list[str] = []
+    for fragment in fragments:
+        if any(fragment != other and fragment in other for other in fragments):
+            continue
+        if fragment not in unique:
+            unique.append(fragment)
+    return sanitize_slug("_".join(unique[:2]) if unique else "code_update")
+
+
 def _derive_slug_from_context(context: dict[str, Any]) -> str:
     changed_files = context.get("changed_files", [])
     app_files = [
@@ -351,14 +481,16 @@ def _derive_slug_from_context(context: dict[str, Any]) -> str:
     non_test = [path for path in changed_files if not path.startswith("tests/")]
     candidates = app_files or non_test or changed_files
 
-    stems: list[str] = []
-    for path in candidates[:3]:
-        stem = sanitize_slug(PurePosixPath(path).stem)
-        if stem and stem not in stems:
-            stems.append(stem)
+    fragments: list[str] = []
+    for path in candidates[:4]:
+        fragment = _path_slug_fragment(path)
+        if fragment and fragment not in fragments:
+            fragments.append(fragment)
 
-    slug = sanitize_slug("_".join(stems) if stems else "code_update")
-    if not is_valid_slug(slug):
+    slug = _merge_slug_fragments(fragments)
+    if slug_looks_generic(slug, context) and fragments:
+        slug = _merge_slug_fragments([fragments[0]])
+    if slug_looks_generic(slug, context) or not is_valid_slug(slug):
         return "code_update"
     return slug
 
@@ -439,7 +571,7 @@ def _parse_naming(
         return None
 
     slug = sanitize_slug(str(payload.get("slug", "")))
-    if not is_valid_slug(slug):
+    if not is_valid_slug(slug) or slug_looks_generic(slug, context):
         return None
 
     raw_title = str(payload.get("title", "")).strip()

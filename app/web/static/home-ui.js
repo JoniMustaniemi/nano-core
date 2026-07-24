@@ -170,8 +170,16 @@ function getDisplayState() {
   return "standby";
 }
 
+function shouldSuppressControlsChrome() {
+  return controlsHidden || getDisplayState() === "working";
+}
+
+function shouldShowControlsRevealZones() {
+  return controlsHidden && getDisplayState() !== "working";
+}
+
 function updateInputLock() {
-  const locked = isBusy();
+  const locked = getDisplayState() === "working";
   messageBox.disabled = locked;
   sendButton.disabled = locked;
   commandsToggle.disabled = locked;
@@ -199,7 +207,7 @@ function setCommandsExpanded(expanded) {
 }
 
 function openCommandsDrawer() {
-  if (isBusy()) {
+  if (getDisplayState() === "working") {
     return;
   }
   closeCommandDropdowns();
@@ -289,6 +297,9 @@ function tryHandleUiCommand(message) {
     return true;
   }
   if (action === "show") {
+    if (getDisplayState() === "working") {
+      return false;
+    }
     setControlsHidden(false);
     return true;
   }
@@ -310,16 +321,24 @@ async function completeUiCommand(source) {
 }
 
 function applyControlsVisibility() {
-  document.body.classList.toggle("controls-hidden", controlsHidden);
+  document.body.classList.toggle("controls-hidden", shouldSuppressControlsChrome());
   if (controlsRevealZone) {
-    controlsRevealZone.hidden = !controlsHidden;
+    controlsRevealZone.hidden = !shouldShowControlsRevealZones();
   }
   if (commandsRevealZone) {
-    commandsRevealZone.hidden = !controlsHidden;
+    commandsRevealZone.hidden = !shouldShowControlsRevealZones();
+  }
+  if (getDisplayState() === "working") {
+    closeKeyboardPanel();
+    closeCommandsDrawer();
+    closeNanoSheet();
   }
 }
 
 function setControlsHidden(hidden) {
+  if (!hidden && getDisplayState() === "working") {
+    return;
+  }
   controlsHidden = hidden;
   if (controlsHidden) {
     closeKeyboardPanel();
@@ -513,6 +532,7 @@ function renderState() {
   const displayState = getDisplayState();
   stateLine.textContent = displayState;
   document.body.dataset.displayState = displayState;
+  applyControlsVisibility();
   renderActivityStatus();
   if (displayState === "working") {
     if (!(suppressWorkingResponse && !requestInFlight)) {
@@ -588,7 +608,7 @@ function extractWakeCommand(text) {
 }
 
 function openKeyboardPanel() {
-  if (isBusy()) {
+  if (getDisplayState() === "working") {
     return;
   }
   keyboardOpen = true;
@@ -639,7 +659,7 @@ function setNanoTab(tab) {
 }
 
 function openNanoSheet(tab = "brains") {
-  if (isBusy()) {
+  if (getDisplayState() === "working") {
     return;
   }
   nanoSheetOpen = true;

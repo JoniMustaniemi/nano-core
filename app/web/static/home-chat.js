@@ -32,13 +32,17 @@ async function acknowledgeRequest(source, commandHint) {
   currentActivitySnapshot = {
     ...currentActivitySnapshot,
     state: "working",
-    headline: commandLabel ? "On it." : "",
+    headline: RECEIVED_TITLE,
     detail: commandLabel || RECEIVED_DETAIL,
   };
   suppressWorkingResponse = false;
   renderState();
   if (source === "voice") {
     pauseRecognitionForSpeech();
+    if (voiceAvailable) {
+      const spokenAck = commandLabel ? `${RECEIVED_TITLE} ${commandLabel}.` : RECEIVED_TITLE;
+      await playVoice(spokenAck, { pauseRecognition: true });
+    }
   }
 }
 
