@@ -59,9 +59,9 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert "What can I do for you today?" in response.text
 
-    assert 'id="globe-canvas"' in response.text
+    assert 'id="essence-canvas"' in response.text
 
-    assert 'id="globe-mini-canvas"' in response.text
+    assert 'id="essence-mini-canvas"' in response.text
 
     assert 'id="keyboard-toggle"' in response.text
 
@@ -103,10 +103,10 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=procedural-orb-24"' in response.text
+    assert 'href="/static/home.css?v=aurora-core-2"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
-    assert 'src="/static/globe_visualizer.js?v=procedural-orb-15"' in response.text
+    assert 'src="/static/essence_visualizer.js?v=aurora-core-6"' in response.text
     assert 'src="/static/home-state.js?v=procedural-orb-24"' in response.text
     assert 'src="/static/home-plans.js?v=procedural-orb-24"' in response.text
     assert 'src="/static/home.js?v=procedural-orb-19"' in response.text
@@ -137,7 +137,7 @@ def test_homepage_serves_static_assets() -> None:
     with TestClient(app) as client:
         css_text = _load_home_css(client)
         js_text = _load_home_js(client)
-        globe_js_response = client.get("/static/globe_visualizer.js")
+        essence_js_response = client.get("/static/essence_visualizer.js")
 
     assert ".nano-sheet" in css_text
 
@@ -145,7 +145,7 @@ def test_homepage_serves_static_assets() -> None:
 
     assert ".footer-cluster" in css_text
 
-    assert ".globe-zone" in css_text
+    assert ".essence-zone" in css_text
 
     assert "@keyframes blink" in css_text
 
@@ -283,11 +283,11 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "if (isWorkingOnTask())" in js_text
 
-    assert "GlobeVisualizer" in globe_js_response.text
+    assert "EssenceVisualizer" in essence_js_response.text
 
-    assert "GLOBE_STATES" in globe_js_response.text
+    assert "ESSENCE_STATES" in essence_js_response.text
 
-    assert "orbitingRings3D" in globe_js_response.text
+    assert "auroraBands" in essence_js_response.text
     assert "measureVoiceLevel" in js_text
 
     assert "toggleKeyboardPanel" in js_text

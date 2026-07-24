@@ -1,12 +1,12 @@
-function initGlobes() {
+function initEssence() {
   if (typeof window.initEssenceOrbs === "function") {
     window.initEssenceOrbs();
-    mainGlobe = window.mainGlobe || null;
-    miniGlobe = window.miniGlobe || null;
+    mainEssence = window.mainEssence || null;
+    miniEssence = window.miniEssence || null;
   }
 }
 
-function updateGlobeState() {
+function updateEssenceState() {
   let state = getDisplayState();
   if (speakingActive) {
     state = "speaking";
@@ -14,11 +14,11 @@ function updateGlobeState() {
   if (stateLine.textContent === "reconnecting") {
     state = "reconnecting";
   }
-  if (mainGlobe) {
-    mainGlobe.setState(state);
+  if (mainEssence) {
+    mainEssence.setState(state);
   }
-  if (miniGlobe) {
-    miniGlobe.setState(state);
+  if (miniEssence) {
+    miniEssence.setState(state);
   }
 }
 
@@ -293,7 +293,7 @@ function renderState() {
   stateLine.textContent = displayState;
   document.body.dataset.displayState = displayState;
   renderActivityStatus();
-  updateGlobeState();
+  updateEssenceState();
   updateInputLock();
 }
 
