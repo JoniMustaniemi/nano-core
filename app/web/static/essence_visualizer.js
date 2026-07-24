@@ -81,6 +81,22 @@ function shaderParamsForState(state) {
   };
 }
 
+const REST_BREATH_CYCLE = 5.6;
+
+function computeRestBreath(time) {
+  const phase = (time % REST_BREATH_CYCLE) / REST_BREATH_CYCLE;
+  if (phase < 0.36) {
+    const t = phase / 0.36;
+    return t * t * (3 - 2 * t);
+  }
+  if (phase < 0.44) {
+    return 1;
+  }
+  const t = (phase - 0.44) / 0.56;
+  const eased = t * t * (3 - 2 * t);
+  return 1 - eased;
+}
+
 function lerpRgb(current, target, blend) {
   const t = Math.max(0, Math.min(1, blend));
   return current.map((value, index) => value + (target[index] - value) * t);
@@ -123,6 +139,7 @@ uniform float u_energy_time;
 uniform float u_energy_strength;
 uniform float u_glow;
 uniform float u_radius_scale;
+uniform float u_breath;
 
 varying vec2 vUv;
 
@@ -179,33 +196,15 @@ float coreRadiance(float z, float audio) {
   return pow(z, 2.2) * (0.55 + audio * 0.22);
 }
 
-float restBreath(float time) {
-  const float CYCLE = 5.6;
-  float phase = mod(time, CYCLE) / CYCLE;
-  float lift;
-
-  if (phase < 0.36) {
-    float t = phase / 0.36;
-    lift = t * t * (3.0 - 2.0 * t);
-  } else if (phase < 0.44) {
-    lift = 1.0;
-  } else {
-    float t = (phase - 0.44) / 0.56;
-    t = t * t * (3.0 - 2.0 * t);
-    lift = 1.0 - t;
-  }
-
-  return lift;
-}
-
 void main() {
   vec2 p = vUv * 2.0 - 1.0;
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
   p.x *= aspect;
 
-  float breathe = restBreath(u_time);
+  float breathe = u_breath;
+  float breathGlow = 0.94 + breathe * 0.06;
   float audioExpansion = u_audio_level * 0.028;
-  float radius = u_radius_scale + audioExpansion + breathe * 0.0018;
+  float radius = u_radius_scale + audioExpansion + breathe * u_radius_scale * 0.0036;
 
   vec2 sphereUv = p / radius;
   float radiusSquared = dot(sphereUv, sphereUv);
@@ -216,7 +215,7 @@ void main() {
   float haloBloom = exp(-max(screenDistance - 0.78, 0.0) * 1.9);
   float outerHaze = exp(-max(screenDistance - 1.0, 0.0) * 1.35);
   float bloomStrength = (atmosphereOuter * 0.55 + haloBloom * 0.75 + outerHaze * 0.45);
-  bloomStrength *= u_glow * (0.5 + u_audio_level * 0.28);
+  bloomStrength *= u_glow * breathGlow * (0.5 + u_audio_level * 0.28);
 
   float edgeFeather = smoothstep(1.18, 0.62, screenDistance);
   float spherePresence = atmosphereInner * edgeFeather;
@@ -267,40 +266,23 @@ uniform vec3 u_secondary_color;
 uniform vec3 u_accent_color;
 uniform float u_glow;
 uniform float u_radius_scale;
+uniform float u_breath;
 
 varying vec2 vUv;
-
-float restBreath(float time) {
-  const float CYCLE = 5.6;
-  float phase = mod(time, CYCLE) / CYCLE;
-  float lift;
-
-  if (phase < 0.36) {
-    float t = phase / 0.36;
-    lift = t * t * (3.0 - 2.0 * t);
-  } else if (phase < 0.44) {
-    lift = 1.0;
-  } else {
-    float t = (phase - 0.44) / 0.56;
-    t = t * t * (3.0 - 2.0 * t);
-    lift = 1.0 - t;
-  }
-
-  return lift;
-}
 
 void main() {
   vec2 p = vUv * 2.0 - 1.0;
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
   p.x *= aspect;
 
-  float breathe = restBreath(u_time);
-  float radius = u_radius_scale * 1.42 + u_audio_level * 0.035 + breathe * 0.0026;
+  float breathe = u_breath;
+  float breathGlow = 0.94 + breathe * 0.06;
+  float radius = u_radius_scale * 1.42 + u_audio_level * 0.035 + breathe * u_radius_scale * 0.0052;
   float dist = length(p / radius);
 
   float inner = exp(-dist * dist * 1.6);
   float outer = exp(-max(dist - 0.6, 0.0) * 1.4);
-  float strength = (inner * 0.35 + outer * 0.65) * u_glow * (0.4 + u_audio_level * 0.22);
+  float strength = (inner * 0.35 + outer * 0.65) * u_glow * breathGlow * (0.4 + u_audio_level * 0.22);
 
   vec3 bloomColor = mix(u_secondary_color, u_accent_color, 0.55);
   gl_FragColor = vec4(bloomColor * strength, strength * 0.7);
@@ -316,6 +298,7 @@ function createBloomUniforms(params) {
     u_accent_color: { value: new THREE.Vector3(...params.accentColor) },
     u_glow: { value: params.glow },
     u_radius_scale: { value: params.radiusScale },
+    u_breath: { value: 0 },
   };
 }
 
@@ -331,6 +314,7 @@ function createOrbUniforms(params) {
     u_energy_strength: { value: params.energyStrength },
     u_glow: { value: params.glow },
     u_radius_scale: { value: params.radiusScale },
+    u_breath: { value: 0 },
   };
 }
 
@@ -520,8 +504,11 @@ class EssenceVisualizer {
     this.uniforms.u_time.value = this.time;
     this.uniforms.u_energy_time.value = this.energyTime;
     this.uniforms.u_audio_level.value = this.audioLevel;
+    const breath = computeRestBreath(this.time);
+    this.uniforms.u_breath.value = breath;
     this.bloomUniforms.u_time.value = this.time;
     this.bloomUniforms.u_audio_level.value = this.audioLevel;
+    this.bloomUniforms.u_breath.value = breath;
     this._applyUniforms(this.current);
 
     this.renderer.render(this.scene, this.camera);

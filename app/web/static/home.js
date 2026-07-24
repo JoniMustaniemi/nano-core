@@ -53,6 +53,16 @@ messageBox.addEventListener("keydown", (event) => {
   }
 });
 brainsClearButton.addEventListener("click", clearActivityLog);
+if (controlsRevealButton) {
+  controlsRevealButton.addEventListener("click", () => {
+    setControlsHidden(false);
+  });
+}
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && controlsHidden) {
+    setControlsHidden(false);
+  }
+});
 window.addEventListener("pointerdown", maybeStartListeningAfterGesture, { passive: true });
 window.addEventListener("keydown", maybeStartListeningAfterGesture);
 window.addEventListener("beforeunload", () => {

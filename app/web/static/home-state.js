@@ -39,6 +39,8 @@ const planReaderBody = document.getElementById("plan-reader-body");
 const planProcessButton = document.getElementById("plan-process-button");
 const essenceCanvas = document.getElementById("essence-canvas");
 const essenceMiniCanvas = document.getElementById("essence-mini-canvas");
+const controlsRevealZone = document.getElementById("controls-reveal-zone");
+const controlsRevealButton = document.getElementById("controls-reveal");
 
 let currentVoiceUrl = null;
 let voicePlaybackQueue = Promise.resolve();
@@ -85,6 +87,7 @@ let nanoSheetOpen = false;
 let activeNanoTab = "brains";
 let activePlanId = null;
 let speakingActive = false;
+let controlsHidden = false;
 
 let mainEssence = null;
 let miniEssence = null;

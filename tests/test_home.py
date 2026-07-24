@@ -63,6 +63,10 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="essence-mini-canvas"' in response.text
 
+    assert 'id="controls-reveal-zone"' in response.text
+
+    assert 'id="controls-reveal"' in response.text
+
     assert 'id="keyboard-toggle"' in response.text
 
     assert "Use Keyboard" in response.text
@@ -103,13 +107,13 @@ def test_homepage_shows_standby_ui() -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=aurora-core-2"' in response.text
+    assert 'href="/static/home.css?v=controls-toggle-3"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
-    assert 'src="/static/essence_visualizer.js?v=aurora-core-6"' in response.text
-    assert 'src="/static/home-state.js?v=procedural-orb-24"' in response.text
+    assert 'src="/static/essence_visualizer.js?v=aurora-core-7"' in response.text
+    assert 'src="/static/home-state.js?v=controls-toggle-3"' in response.text
     assert 'src="/static/home-plans.js?v=procedural-orb-24"' in response.text
-    assert 'src="/static/home.js?v=procedural-orb-19"' in response.text
+    assert 'src="/static/home.js?v=controls-toggle-1"' in response.text
 
     assert "Enter to send" in response.text
 
@@ -146,6 +150,12 @@ def test_homepage_serves_static_assets() -> None:
     assert ".footer-cluster" in css_text
 
     assert ".essence-zone" in css_text
+
+    assert ".controls-reveal-zone" in css_text
+
+    assert ".controls-reveal" in css_text
+
+    assert "controls-hidden" in css_text
 
     assert "@keyframes blink" in css_text
 
@@ -224,6 +234,12 @@ def test_homepage_serves_static_assets() -> None:
     assert "commands-drawer" in css_text
 
     assert ".voice-volume" in css_text
+
+    assert "matchControlsUiCommand" in js_text
+
+    assert "completeUiCommand" in js_text
+
+    assert "toggleControlsHidden" in js_text
 
     assert 'fetch("/api/tool-commands")' in js_text
 
@@ -331,6 +347,8 @@ def test_tool_commands_endpoint_lists_quick_actions() -> None:
     assert any(item["id"] == "check_health" for item in payload)
 
     assert any(item["id"] == "wipe_data" for item in payload)
+
+    assert any(item["id"] == "toggle_controls" for item in payload)
 
     assert any(item["message"] == "List my notes." for item in payload)
 
