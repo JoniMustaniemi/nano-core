@@ -29,8 +29,7 @@ class _CapabilityEchoThenAnswerClient:
         if self.calls == 1:
             return (
                 "I'm Nano, a private local assistant. I can execute local Python code, "
-                "read and write text files, list files, add notes, list notes, add "
-                "reminders, and list reminders."
+                "read and write text files, list files, add notes, and list notes."
             )
         return (
             "Rocks form in different ways, including igneous, sedimentary, and "
@@ -159,12 +158,13 @@ def test_chat_mode_retries_when_model_echoes_capabilities(monkeypatch) -> None:
     """
     client = _CapabilityEchoThenAnswerClient()
 
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
+    monkeypatch.setattr(
+        "app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client)
+    )
     monkeypatch.setattr(
         "app.assistant.service.get_settings",
         lambda: SimpleNamespace(
             chat_history_limit=12,
-            note_context_limit=5,
         ),
     )
 
@@ -186,12 +186,13 @@ def test_chat_mode_rewrites_third_person_self_reference(monkeypatch) -> None:
     """
     client = _ThirdPersonChatClient()
 
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
+    monkeypatch.setattr(
+        "app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client)
+    )
     monkeypatch.setattr(
         "app.assistant.service.get_settings",
         lambda: SimpleNamespace(
             chat_history_limit=12,
-            note_context_limit=5,
         ),
     )
 
@@ -213,12 +214,13 @@ def test_chat_mode_handles_unknown_fact_with_personality(monkeypatch) -> None:
     """
     client = _UnknownPersonChatClient()
 
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
+    monkeypatch.setattr(
+        "app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client)
+    )
     monkeypatch.setattr(
         "app.assistant.service.get_settings",
         lambda: SimpleNamespace(
             chat_history_limit=12,
-            note_context_limit=5,
         ),
     )
 
@@ -244,20 +246,20 @@ def test_chat_mode_rewrites_apology_disclaimer(monkeypatch) -> None:
     """
     client = _ApologyDisclaimerChatClient()
 
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
+    monkeypatch.setattr(
+        "app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client)
+    )
     monkeypatch.setattr(
         "app.assistant.service.get_settings",
         lambda: SimpleNamespace(
             chat_history_limit=12,
-            note_context_limit=5,
         ),
     )
 
     response = AssistantService().respond("Who is Jake Blamey?", mode="chat")
 
     assert (
-        response.content
-        == "No confirmed entry emerges. The evidence remains theatrically absent."
+        response.content == "No confirmed entry emerges. The evidence remains theatrically absent."
     )
     assert client.calls == 2
     assert "missing evidence" in client.messages[1][0]["content"]
@@ -275,7 +277,9 @@ def test_wake_response_returns_canned_ack(monkeypatch) -> None:
     """
     client = _WakeResponseClient()
 
-    monkeypatch.setattr("app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client))
+    monkeypatch.setattr(
+        "app.assistant.service.get_llm_client", lambda: wrap_with_alignment_intercept(client)
+    )
     monkeypatch.setattr(
         "app.assistant.service.choose_wake_ack_response",
         lambda: "How can I help?",

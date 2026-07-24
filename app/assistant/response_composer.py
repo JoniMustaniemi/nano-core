@@ -98,10 +98,7 @@ class ResponseComposer:
             {"role": "system", "content": system_prompt},
             {
                 "role": "user",
-                "content": (
-                    f"User request: {source.user_message}\n\n"
-                    f"Tool result:\n{source.facts}"
-                ),
+                "content": (f"User request: {source.user_message}\n\nTool result:\n{source.facts}"),
             },
         ]
         summary = client.complete(messages=summary_messages).strip()
@@ -210,9 +207,7 @@ class ResponseComposer:
         step = str(payload.get("step", "unknown")).strip()
         error = str(payload.get("error", "")).strip()
         if step == "lint":
-            return (
-                "Lint checks failed, so I declined to commit anything or open a pull request."
-            )
+            return "Lint checks failed, so I declined to commit anything or open a pull request."
         if step == "verify":
             return "Your tests failed, so I declined to commit anything or open a pull request."
         if step == "preflight" and "nothing" in error.lower():
@@ -256,9 +251,7 @@ class ResponseComposer:
         }
         step_label = step_labels.get(step, step.replace("_", " "))
         if error:
-            return (
-                f"I could not draft an improvement plan. I got stuck at the {step_label} step: {error}"
-            )
+            return f"I could not draft an improvement plan. I got stuck at the {step_label} step: {error}"
         return "I could not draft an improvement plan."
 
     def _brief_plan_theme(self, payload: dict[str, Any]) -> str:

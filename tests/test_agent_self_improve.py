@@ -1,4 +1,3 @@
-
 from app.assistant.agent_router import AgentRouter
 from app.assistant.rules.intents import extract_self_improve_goal, is_self_improve_request
 from app.intents.self_improve import normalize_self_improve_goal
@@ -50,7 +49,5 @@ def test_router_self_improve_routes_before_timer_cancel() -> None:
 def test_wipe_confirmation_ignores_clear_inside_other_words() -> None:
     from app.assistant.rules.intents import needs_wipe_confirmation
 
-    assert not needs_wipe_confirmation(
-        "Improve yourself by making timer messages clearer."
-    )
+    assert not needs_wipe_confirmation("Improve yourself by making timer messages clearer.")
     assert needs_wipe_confirmation("Clear your memory.")

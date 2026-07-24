@@ -121,7 +121,11 @@ class PrNamingService:
 
         if naming is not None and not looks_like_llm_unavailable(raw):
             body = _generate_prose_body(client=client, context=context, slug=naming.slug)
-            if body and not looks_like_file_list_body(body) and not looks_like_llm_unavailable(body):
+            if (
+                body
+                and not looks_like_file_list_body(body)
+                and not looks_like_llm_unavailable(body)
+            ):
                 naming = _replace_body(naming, body)
             if not title_looks_low_effort(naming.title, naming.slug):
                 return naming
@@ -454,7 +458,12 @@ def _path_slug_fragment(path: str) -> str:
         if parent and parent not in _GENERIC_PATH_PARTS and parent not in _GENERIC_SLUGS:
             return sanitize_slug(f"{parent}_{stem}")
         return ""
-    if parent and parent not in _GENERIC_PATH_PARTS and parent not in _GENERIC_SLUGS and parent not in stem:
+    if (
+        parent
+        and parent not in _GENERIC_PATH_PARTS
+        and parent not in _GENERIC_SLUGS
+        and parent not in stem
+    ):
         return sanitize_slug(f"{parent}_{stem}")
     return stem
 
@@ -581,7 +590,11 @@ def _parse_naming(
     if not commit_message:
         commit_message = slug
     if commit_message.splitlines()[0].strip() != slug:
-        commit_message = slug if "\n" not in commit_message else f"{slug}\n{commit_message.splitlines()[-1].strip()}"
+        commit_message = (
+            slug
+            if "\n" not in commit_message
+            else f"{slug}\n{commit_message.splitlines()[-1].strip()}"
+        )
 
     body = str(payload.get("body", "")).strip()
     if not body:

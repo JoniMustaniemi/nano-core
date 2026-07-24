@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from sqlalchemy import text
 from sqlmodel import SQLModel, create_engine
 
 from app.config import get_settings
@@ -39,24 +38,3 @@ def create_db_and_tables() -> None:
         None.
     """
     SQLModel.metadata.create_all(engine)
-    _ensure_sqlite_note_name_column()
-
-
-def _ensure_sqlite_note_name_column() -> None:
-    """
-    Add note.name for existing SQLite databases created before named notes.
-
-    Returns:
-        None.
-    """
-    if engine.dialect.name != "sqlite":
-        return
-
-    with engine.begin() as connection:
-        rows = connection.execute(text("PRAGMA table_info(note)")).mappings().all()
-        columns = {str(row["name"]) for row in rows}
-        if "name" in columns:
-            return
-        connection.execute(
-            text("ALTER TABLE note ADD COLUMN name VARCHAR NOT NULL DEFAULT 'Untitled note'")
-        )

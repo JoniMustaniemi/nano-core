@@ -6,7 +6,9 @@ import pytest
 from app.tools import pr_verify
 
 
-def test_resolve_verify_command_detects_pytest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_verify_command_detects_pytest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         "app.tools.pr_verify.get_settings",
         lambda: type(
@@ -136,7 +138,9 @@ def test_run_pr_lint_auto_fixes_fixable_issues(monkeypatch: pytest.MonkeyPatch) 
     def fake_run(command, **kwargs):
         calls.append(command)
         if command[-1] == "--fix":
-            return type("Process", (), {"returncode": 0, "stdout": "Fixed 4 errors.", "stderr": ""})()
+            return type(
+                "Process", (), {"returncode": 0, "stdout": "Fixed 4 errors.", "stderr": ""}
+            )()
         if len(calls) == 1:
             return type(
                 "Process",
@@ -206,7 +210,9 @@ def test_run_pr_verification_success(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     monkeypatch.setattr(
         "app.tools.pr_verify.subprocess.run",
-        lambda *args, **kwargs: type("Process", (), {"returncode": 0, "stdout": "ok", "stderr": ""})(),
+        lambda *args, **kwargs: type(
+            "Process", (), {"returncode": 0, "stdout": "ok", "stderr": ""}
+        )(),
     )
 
     result = pr_verify.run_pr_verification()

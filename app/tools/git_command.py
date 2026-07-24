@@ -142,7 +142,9 @@ def format_command_result(result: GitCommandResult) -> str:
 def _run_command(executable_name: str, args: list[str]) -> GitCommandResult:
     resolved = resolve_executable(executable_name)
     if resolved is None:
-        missing_message = git_missing_message() if executable_name == "git" else gh_missing_message()
+        missing_message = (
+            git_missing_message() if executable_name == "git" else gh_missing_message()
+        )
         return GitCommandResult(returncode=127, stdout="", stderr=missing_message)
 
     try:

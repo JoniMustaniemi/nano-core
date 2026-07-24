@@ -23,7 +23,7 @@ EXTRA_UI_COMMANDS: tuple[ToolCommand, ...] = (
         label="Wipe data",
         message="Wipe your data.",
         category="System",
-        description="Clear all stored notes, reminders, conversation, and internal memory.",
+        description="Clear conversation and internal memory.",
     ),
     ToolCommand(
         id="capabilities",

@@ -18,12 +18,11 @@ At a high level, every interaction follows the same path:
 1. You send a message through the web interface, voice, or CLI.
 2. Nano interprets what you want and decides whether to answer directly or
    perform an action.
-3. Actions run locally — for example saving a note, starting a timer, or
-   checking system health.
+3. Actions run locally — for example starting a timer or checking system health.
 4. Nano prepares a clear reply and delivers it back to you.
 
-Some requests need a short back-and-forth, such as naming a note or
-confirming a destructive wipe. Others are handled in a single step.
+Some requests need a short back-and-forth, such as confirming a destructive wipe.
+Others are handled in a single step.
 
 ## Core Components
 
@@ -31,22 +30,20 @@ confirming a destructive wipe. Others are handled in a single step.
 |-----------|--------------|
 | Web interface | Browser home screen with voice, chat, quick commands, and the nano sheet with Brains, Plans, and Stored Data |
 | Assistant | Interprets requests, manages multi-step conversations, and picks the right tool |
-| Local memory | SQLite database for notes, reminders, chat history, internal notes, and improvement plans |
-| Tools | Registered actions: notes, timers, files, health, GitHub PRs, improvement-plan drafting, and more |
+| Local memory | SQLite database for chat history, internal notes, and improvement plans |
+| Tools | Registered actions: timers, files, health, GitHub PRs, improvement-plan drafting, and more |
 | Voice | Optional spoken replies and wake-phrase listening with `"hey nano"` |
-| Background services | Reminder/timer polling, health checks, idle codebase review, and proactive improvement-plan outreach |
+| Background services | Timer polling, health checks, idle codebase review, and proactive improvement-plan outreach |
 
 ## Capabilities
 
-### Notes and memory
+### Memory
 
-- Save, list, and look up notes
 - Review internal follow-up notes Nano keeps for later discussion
 - Wipe all stored data after explicit confirmation
 
-### Reminders and timers
+### Timers
 
-- Set reminders for specific times
 - Start, check, and cancel countdown timers
 
 ### Files and workspace
@@ -107,7 +104,7 @@ Plan content is stored in the `ImprovementPlan` table and exposed via
 Nano separates what you see from what happens behind the scenes. The web
 interface talks to an assistant layer that coordinates tools, local memory, the
 AI model, and optional voice output. Background services handle scheduled
-reminders, health monitoring, idle codebase review, and proactive improvement-plan outreach.
+timers, health monitoring, idle codebase review, and proactive improvement-plan outreach.
 
 ```mermaid
 flowchart LR

@@ -10,11 +10,7 @@ from app.memory.models import ImprovementPlan
 
 def has_unprocessed_plan() -> bool:
     with Session(db.engine) as session:
-        statement = (
-            select(ImprovementPlan.id)
-            .where(ImprovementPlan.status == "pending")
-            .limit(1)
-        )
+        statement = select(ImprovementPlan.id).where(ImprovementPlan.status == "pending").limit(1)
         return session.exec(statement).first() is not None
 
 
@@ -31,9 +27,7 @@ def get_unprocessed_plan() -> ImprovementPlan | None:
 
 def list_plans(*, limit: int = 20) -> list[ImprovementPlan]:
     statement = (
-        select(ImprovementPlan)
-        .order_by(col(ImprovementPlan.created_at).desc())
-        .limit(limit)
+        select(ImprovementPlan).order_by(col(ImprovementPlan.created_at).desc()).limit(limit)
     )
     with Session(db.engine) as session:
         return list(session.exec(statement))

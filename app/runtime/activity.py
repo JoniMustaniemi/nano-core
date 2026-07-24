@@ -7,9 +7,9 @@ from threading import RLock
 from typing import Literal
 
 from app.runtime.status_copy import (
-  STANDBY_DETAIL_DEFAULT,
-  STANDBY_DETAIL_READY,
-  STANDBY_TITLE,
+    STANDBY_DETAIL_DEFAULT,
+    STANDBY_DETAIL_READY,
+    STANDBY_TITLE,
 )
 
 ActivityState = Literal["standby", "working", "error"]

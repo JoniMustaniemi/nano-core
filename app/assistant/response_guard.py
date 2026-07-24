@@ -100,13 +100,9 @@ _VIOLATION_LABELS: dict[ViolationKind, str] = {
     "self_description": (
         "Described identity or capabilities instead of answering the user's question."
     ),
-    "unsupported_continuation": (
-        "Promised unsupported continued work after responding."
-    ),
+    "unsupported_continuation": ("Promised unsupported continued work after responding."),
     "third_person": "Referred to Nano in third person instead of first person.",
-    "intent_mismatch": (
-        "Refused or contradicted the action Nano is performing or confirming."
-    ),
+    "intent_mismatch": ("Refused or contradicted the action Nano is performing or confirming."),
 }
 
 

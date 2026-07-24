@@ -20,9 +20,7 @@ class _SummaryClient:
 
 
 def test_summarize_pr_result_success_uses_deterministic_confirmation() -> None:
-    client = _SummaryClient(
-        "I opened the pull request at https://github.com/org/repo/pull/1."
-    )
+    client = _SummaryClient("I opened the pull request at https://github.com/org/repo/pull/1.")
     composer = ResponseComposer()
     payload = json.dumps(
         {

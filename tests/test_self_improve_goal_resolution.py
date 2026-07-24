@@ -45,7 +45,9 @@ def test_resolve_self_improve_goal_uses_pending_note(tmp_path, monkeypatch) -> N
     create_db_and_tables()
     _record_self_improve_note(goal="clearer timer errors")
 
-    goal, note_id, preferred_files = InternalNoteService().resolve_self_improve_goal("improve yourself")
+    goal, note_id, preferred_files = InternalNoteService().resolve_self_improve_goal(
+        "improve yourself"
+    )
 
     assert goal == "clearer timer errors"
     assert note_id is not None
@@ -57,7 +59,9 @@ def test_resolve_self_improve_goal_keeps_explicit_goal(tmp_path, monkeypatch) ->
     create_db_and_tables()
     _record_self_improve_note(goal="clearer timer errors")
 
-    goal, note_id, preferred_files = InternalNoteService().resolve_self_improve_goal("add restart support")
+    goal, note_id, preferred_files = InternalNoteService().resolve_self_improve_goal(
+        "add restart support"
+    )
 
     assert goal == "add restart support"
     assert note_id is None
@@ -135,7 +139,9 @@ def test_resolve_self_improve_goal_returns_preferred_files_from_note(tmp_path, m
         files=["app/assistant/rules/messages.py"],
     )
 
-    goal, note_id, preferred_files = InternalNoteService().resolve_self_improve_goal("improve yourself")
+    goal, note_id, preferred_files = InternalNoteService().resolve_self_improve_goal(
+        "improve yourself"
+    )
 
     assert goal == "improve message helpers"
     assert note_id is not None

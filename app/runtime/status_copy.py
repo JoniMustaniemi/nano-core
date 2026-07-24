@@ -63,37 +63,23 @@ RUNNING_TOOL_DETAIL = "Give me a moment."
 SETTING_TIMER_TITLE = "I'm setting a timer."
 SETTING_TIMER_DETAIL = "Scheduling the requested timer."
 WAITING_TIMER_DURATION_DETAIL = "Waiting for the timer duration."
-TIMER_DURATION_PROMPT = (
-    "How long should the timer run? Try 30 seconds or 5 minutes."
-)
-TIMER_DURATION_RETRY_PROMPT = (
-    "I didn't catch a duration. Try 30 seconds or 5 minutes."
-)
+TIMER_DURATION_PROMPT = "How long should the timer run? Try 30 seconds or 5 minutes."
+TIMER_DURATION_RETRY_PROMPT = "I didn't catch a duration. Try 30 seconds or 5 minutes."
 TIMER_START_FAILED_PROMPT = (
     "I couldn't start the timer. Try again with a duration like 30 seconds or 5 minutes."
 )
 CANCELLED_TIMER_TITLE = "I cancelled the timer."
 TIMER_CANCELLED_PROMPT = "Timer cancelled."
-SAVING_NOTE_TITLE = "I'm saving a note."
-WAITING_NOTE_NAME_DETAIL = "Waiting for the note name."
-WAITING_NOTE_CONTENT_DETAIL = "Waiting for the note content."
-SAVING_NOTE_DETAIL = "Saving that to memory."
-SAVED_NOTE_TITLE = "I saved a note."
-SAVED_NOTE_DETAIL = "It's saved."
-CHECKED_NOTES_TITLE = "I checked notes."
-RETURNED_NOTES_DETAIL = "Returned stored notes."
-CANCELLED_NOTE_TITLE = "I cancelled the note."
-NO_NOTE_SAVED_DETAIL = "No note was saved."
 WIPING_MEMORY_TITLE = "I'm wiping my memory."
 WIPED_MEMORY_TITLE = "I wiped my memory."
 PREPARING_WIPE_DETAIL = "Preparing confirmation for the destructive request."
 WAITING_WIPE_CONFIRMATION_DETAIL = "Waiting for your confirmation before I forget everything."
 WIPE_CANCELLED_DETAIL = "Nothing was deleted."
 WIPING_MEMORY_DETAIL = (
-    "Clearing notes, reminders, conversation, internal notes, improvement plans, and codebase memory."
+    "Clearing conversation, internal notes, improvement plans, and codebase memory."
 )
 WIPED_MEMORY_DETAIL = (
-    "Notes, reminders, conversation history, internal notes, improvement plans, and codebase memory are gone."
+    "Conversation history, internal notes, improvement plans, and codebase memory are gone."
 )
 CANCELLED_WIPE_TITLE = "I cancelled the wipe."
 DRAFTING_IMPROVEMENT_PLAN_TITLE = "I'm drafting an improvement plan."
@@ -121,21 +107,16 @@ VERIFICATION_FAILED_TITLE = "I could not verify the project."
 VERIFICATION_PASSED_TITLE = "Verification passed."
 SCANNED_SOURCE_FILE_TITLE = "I scanned a source file."
 HEALTH_ISSUE_DETECTED_TITLE = "I detected a health issue."
-SCHEDULED_REMINDER_TITLE = "I scheduled a reminder."
 NOTED_FOR_LATER_TITLE = "I noted something to discuss later."
 DISMISSED_FOLLOW_UP_TITLE = "I dismissed a follow-up note."
 RESCHEDULED_FOLLOW_UP_TITLE = "I rescheduled a follow-up note."
 
 _TOOL_ACTIVITY_TITLES: dict[str, str] = {
-    "add_note": "I'm saving a note.",
-    "add_reminder": "I'm scheduling a reminder.",
     "cancel_timers": "I'm cancelling timers.",
     "check_health": "I'm running a health check.",
     "create_pull_request": "I'm opening a pull request.",
     "list_files": "I'm listing files.",
     "list_internal_notes": "I'm reviewing internal notes.",
-    "list_notes": "I'm reading notes.",
-    "list_reminders": "I'm checking reminders.",
     "list_timers": "I'm checking timers.",
     "draft_improvement_plan": "I'm drafting an improvement plan.",
     "read_file": "I'm reading a file.",
@@ -145,15 +126,11 @@ _TOOL_ACTIVITY_TITLES: dict[str, str] = {
 }
 
 _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
-    "add_note": "I saved a note.",
-    "add_reminder": "I scheduled a reminder.",
     "cancel_timers": "I cancelled timers.",
     "check_health": "I finished the health check.",
     "create_pull_request": "I opened a pull request.",
     "list_files": "I listed files.",
     "list_internal_notes": "I reviewed internal notes.",
-    "list_notes": "I read your notes.",
-    "list_reminders": "I checked reminders.",
     "list_timers": "I checked timers.",
     "draft_improvement_plan": "I drafted an improvement plan.",
     "read_file": "I read a file.",
@@ -222,7 +199,6 @@ def route_acknowledgment(
         interaction_titles = {
             "wipe": (WIPING_MEMORY_TITLE, PREPARING_WIPE_DETAIL),
             "timer": (SETTING_TIMER_TITLE, SETTING_TIMER_DETAIL),
-            "note": (SAVING_NOTE_TITLE, SAVING_NOTE_DETAIL),
         }
         return interaction_titles.get(interaction or "", (RECEIVED_TITLE, RECEIVED_DETAIL))
     return RECEIVED_TITLE, RECEIVED_DETAIL

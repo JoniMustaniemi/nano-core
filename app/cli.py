@@ -1,19 +1,12 @@
 import os
-from datetime import datetime
 
 import typer
 import uvicorn
 
 from app.assistant.service import AssistantService
 from app.config import get_settings
-from app.memory.repository import add_note, add_reminder, list_notes, list_reminders
 
 app = typer.Typer(help="Nano Core local assistant CLI.")
-notes_app = typer.Typer(help="Manage notes.")
-reminders_app = typer.Typer(help="Manage reminders.")
-
-app.add_typer(notes_app, name="notes")
-app.add_typer(reminders_app, name="reminders")
 
 
 def start() -> None:
@@ -76,41 +69,6 @@ def start_dev(
         reload=reload,
         reload_dirs=["app"] if reload else None,
     )
-
-
-@notes_app.command("add")
-def note_add(
-    content: str = typer.Argument(..., help="Note text to store."),
-    name: str = typer.Option("Untitled note", "--name", "-n", help="Name for the note."),
-) -> None:
-    """Store a note in the local database."""
-    note = add_note(content, name=name)
-    typer.echo(f"saved note {note.id} ({note.name}): {note.content}")
-
-
-@notes_app.command("list")
-def note_list() -> None:
-    """List notes from the local database."""
-    for note in list_notes():
-        typer.echo(f"{note.id}: {note.name} - {note.content}")
-
-
-@reminders_app.command("add")
-def reminder_add(
-    content: str = typer.Argument(..., help="Reminder text to store."),
-    due_at: str = typer.Argument(..., help="Due time in ISO 8601 format."),
-) -> None:
-    """Store a reminder in the local database."""
-    reminder_due_at = datetime.fromisoformat(due_at)
-    reminder = add_reminder(content, reminder_due_at)
-    typer.echo(f"saved reminder {reminder.id}: {reminder.content}")
-
-
-@reminders_app.command("list")
-def reminder_list() -> None:
-    """List reminders from the local database."""
-    for reminder in list_reminders():
-        typer.echo(f"{reminder.id}: {reminder.content} @ {reminder.due_at.isoformat()}")
 
 
 if __name__ == "__main__":

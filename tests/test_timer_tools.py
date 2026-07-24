@@ -4,7 +4,7 @@ import pytest
 
 from app.memory import repository
 from app.runtime.activity import activity
-from app.scheduler.jobs import _format_due_reminder, check_due_reminders
+from app.scheduler.jobs import _format_due_timer, check_due_timers
 from app.tools import get_tool
 from app.tools.errors import ToolError
 
@@ -20,10 +20,10 @@ def test_start_timer_accepts_duration_text() -> None:
 
     assert tool is not None
     result = tool.handler({"duration_text": "2min", "label": "Tea"})
-    reminders = repository.list_reminders()
+    timers = repository.list_timers()
 
     assert "started timer" in result
-    assert reminders[0].content == "[timer] Tea"
+    assert timers[0].label == "Tea"
 
 
 def test_start_timer_accepts_spoken_duration_text() -> None:
@@ -37,10 +37,10 @@ def test_start_timer_accepts_spoken_duration_text() -> None:
 
     assert tool is not None
     result = tool.handler({"duration_text": "five minutes", "label": "Tea"})
-    reminders = repository.list_reminders()
+    timers = repository.list_timers()
 
     assert "started timer" in result
-    assert reminders[0].content == "[timer] Tea"
+    assert timers[0].label == "Tea"
 
 
 def test_start_timer_requires_explicit_duration() -> None:
@@ -55,9 +55,9 @@ def test_start_timer_requires_explicit_duration() -> None:
     assert tool is not None
     with pytest.raises(ToolError, match="Timer duration is required"):
         tool.handler({"label": "Tea"})
-    reminders = repository.list_reminders()
+    timers = repository.list_timers()
 
-    assert reminders == []
+    assert timers == []
 
 
 def test_list_timers_reports_time_remaining() -> None:
@@ -68,7 +68,7 @@ def test_list_timers_reports_time_remaining() -> None:
         None.
     """
     tool = get_tool("list_timers")
-    repository.add_reminder("[timer] Timer", datetime.now(UTC) + timedelta(minutes=5))
+    repository.add_timer("Timer", datetime.now(UTC) + timedelta(minutes=5))
 
     assert tool is not None
     result = tool.handler({})
@@ -85,8 +85,8 @@ def test_list_timers_reports_multiple_timers_with_count() -> None:
         None.
     """
     tool = get_tool("list_timers")
-    repository.add_reminder("[timer] Tea", datetime.now(UTC) + timedelta(minutes=5))
-    repository.add_reminder("[timer] Laundry", datetime.now(UTC) + timedelta(minutes=10))
+    repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
+    repository.add_timer("Laundry", datetime.now(UTC) + timedelta(minutes=10))
 
     assert tool is not None
     result = tool.handler({})
@@ -98,25 +98,23 @@ def test_list_timers_reports_multiple_timers_with_count() -> None:
     assert "2:" not in result
 
 
-def test_cancel_timers_removes_active_timers_only() -> None:
+def test_cancel_timers_removes_all_active_timers() -> None:
     """
-    Verify that cancel timers removes active timers only.
+    Verify that cancel timers removes active timers.
 
     Returns:
         None.
     """
     tool = get_tool("cancel_timers")
-    repository.add_reminder("[timer] Tea", datetime.now(UTC) + timedelta(minutes=5))
-    repository.add_reminder("[timer] Laundry", datetime.now(UTC) + timedelta(minutes=10))
-    repository.add_reminder("not a timer", datetime.now(UTC) + timedelta(minutes=15))
+    repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
+    repository.add_timer("Laundry", datetime.now(UTC) + timedelta(minutes=10))
 
     assert tool is not None
     result = tool.handler({})
-    reminders = repository.list_reminders()
+    timers = repository.list_timers()
 
     assert result == "Cancelled 2 timers: Tea, Laundry."
-    assert len(reminders) == 1
-    assert reminders[0].content == "not a timer"
+    assert timers == []
 
 
 def test_cancel_timers_reports_when_none_are_active() -> None:
@@ -141,16 +139,16 @@ def test_due_timer_logs_friendly_completion_message() -> None:
     Returns:
         None.
     """
-    repository.add_reminder("[timer] Tea", datetime.now(UTC) - timedelta(minutes=2))
+    repository.add_timer("Tea", datetime.now(UTC) - timedelta(minutes=2))
 
-    check_due_reminders()
+    check_due_timers()
     snapshot = activity.snapshot()
     events = snapshot["events"]
-    reminders = repository.list_reminders(include_sent=True)
+    timers = repository.list_timers()
 
     assert any(event["title"] == "Timer complete." for event in events)
     assert any("timer for Tea is complete." in str(event["detail"]) for event in events)
-    assert reminders == []
+    assert timers == []
 
 
 def test_due_timer_announces_completion(monkeypatch) -> None:
@@ -164,13 +162,13 @@ def test_due_timer_announces_completion(monkeypatch) -> None:
         None.
     """
     spoken: list[str] = []
-    repository.add_reminder("[timer] Tea", datetime.now(UTC) - timedelta(seconds=10))
+    repository.add_timer("Tea", datetime.now(UTC) - timedelta(seconds=10))
     monkeypatch.setattr(
         "app.scheduler.jobs.GladosVoiceService.announce",
         lambda self, text: spoken.append(text),
     )
 
-    check_due_reminders()
+    check_due_timers()
 
     assert spoken
     assert "timer for Tea is complete." in spoken[0]
@@ -183,8 +181,8 @@ def test_due_default_timer_omits_default_label() -> None:
     Returns:
         None.
     """
-    _, detail = _format_due_reminder(
-        "[timer] Timer",
+    _, detail = _format_due_timer(
+        "Timer",
         datetime.now(UTC) - timedelta(seconds=30),
         datetime.now(UTC),
     )

@@ -181,12 +181,6 @@ _ALIGNMENT = _section(
     "Use an empty problems list when aligned is true.",
 )
 
-NOTE_CONTEXT_PREFIX = (
-    "Relevant notes from Nano's memory:\n"
-    "{note_lines}\n"
-    "Use them as background context when helpful."
-)
-
 COMPOSE_HINTS: dict[str, str] = {}
 
 
@@ -206,7 +200,6 @@ class NanoPromptGuide:
     response_composer: str
     guard_rewrite: str
     pr_result_compose: str
-    note_context_prefix: str
 
 
 _PERSONALITY = _section(_IDENTITY, _VOICE, _FIRST_PERSON, _NO_CONTINUATION)
@@ -220,7 +213,6 @@ PROMPT_GUIDE = NanoPromptGuide(
     response_composer=_COMPOSE_PAYLOAD,
     guard_rewrite=_GUARD_FIX,
     pr_result_compose=_PR_RESULT_COMPOSE,
-    note_context_prefix=NOTE_CONTEXT_PREFIX,
 )
 
 _BASE = _section(_PERSONALITY, _EVIDENCE)

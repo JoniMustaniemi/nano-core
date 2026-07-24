@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
-
 from app.assistant.agent import AgentService
 from app.assistant.agent_rules import is_capability_question, is_identity_question
 from app.assistant.answer_executor import AnswerExecutor
-from app.assistant.prompts import NOTE_CONTEXT_PREFIX
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_pipeline import finalize_response
 from app.config import get_settings
@@ -117,20 +114,14 @@ class AssistantService:
                 client=client,
                 message=message,
                 conversation_id=conversation_id,
-                history=self._history_with_notes(
-                    history=history,
-                    note_limit=settings.note_context_limit,
-                ),
+                history=history,
             )
         else:
             source = self.answer_executor.draft(
                 client=client,
                 message=message,
                 conversation_id=conversation_id,
-                history=self._history_with_notes(
-                    history=history,
-                    note_limit=settings.note_context_limit,
-                ),
+                history=history,
             )
         return finalize_response(
             client,
@@ -138,38 +129,3 @@ class AssistantService:
             composer=self.composer,
             standby_source="assistant.chat",
         )
-
-    def _history_with_notes(
-        self,
-        *,
-        history: list[Any],
-        note_limit: int,
-    ) -> list[Any]:
-        """
-        Build chat history with note context for answer drafting.
-
-        Args:
-            history: Stored chat history records.
-            note_limit: Maximum notes to include.
-
-        Returns:
-            History-like records including note context when available.
-        """
-        notes = repository.list_notes(limit=note_limit)
-        if not notes:
-            return history
-
-        note_lines = "\n".join(f"- {note.name}: {note.content}" for note in notes)
-        note_context = SimpleHistoryEntry(
-            role="system",
-            content=NOTE_CONTEXT_PREFIX.format(note_lines=note_lines),
-        )
-        return [*history, note_context]
-
-
-class SimpleHistoryEntry:
-    """Minimal history entry for injecting note context into answer drafting."""
-
-    def __init__(self, *, role: str, content: str) -> None:
-        self.role = role
-        self.content = content

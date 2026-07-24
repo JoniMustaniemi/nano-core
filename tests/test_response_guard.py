@@ -65,9 +65,7 @@ def test_judge_alignment_fails_open_on_non_alignment_json() -> None:
         user_message="Wipe your database.",
         facts='User requested: "Wipe your database."',
     )
-    client = _StubClient(
-        responses=['{"type":"final","content":"Unrelated planner payload."}']
-    )
+    client = _StubClient(responses=['{"type":"final","content":"Unrelated planner payload."}'])
 
     problems = collect_problems(
         client,
@@ -110,12 +108,7 @@ def test_enforce_user_facing_answer_rewrites_confirmation_refusal() -> None:
         facts='User requested: "Wipe your database."',
     )
     client = _StubClient(
-        responses=[
-            (
-                "You want me to wipe your database. "
-                "Say yes to proceed, or no to cancel."
-            )
-        ]
+        responses=[("You want me to wipe your database. Say yes to proceed, or no to cancel.")]
     )
 
     content = enforce_user_facing_answer(

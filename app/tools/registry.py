@@ -10,8 +10,6 @@ _REGISTERED_TOOLS: dict[str, ToolSpec] = {}
 # Tools owned by multi-turn interaction flows; excluded from planner prompts.
 FLOW_OWNED_TOOLS: frozenset[str] = frozenset(
     {
-        "add_note",
-        "list_notes",
         "start_timer",
         "list_timers",
         "cancel_timers",

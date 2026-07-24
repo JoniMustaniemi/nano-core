@@ -124,7 +124,9 @@ def test_pr_naming_service_falls_back_to_meaningful_slug_for_generic_llm_output(
 
 def test_title_looks_low_effort_detects_slug_copy() -> None:
     assert title_looks_low_effort("fix_timer_cancel_bug", "fix_timer_cancel_bug") is True
-    assert title_looks_low_effort("Fix timer cancellation handling", "fix_timer_cancel_bug") is False
+    assert (
+        title_looks_low_effort("Fix timer cancellation handling", "fix_timer_cancel_bug") is False
+    )
 
 
 def test_sanitize_pr_title_trims_and_caps_length() -> None:
@@ -284,7 +286,9 @@ def test_pr_naming_service_retries_invalid_json(monkeypatch: pytest.MonkeyPatch)
     )
     service = PrNamingService()
 
-    naming = service.generate(client=client, context={"changed_files": [], "diff_stat": "", "diff_patch": ""})
+    naming = service.generate(
+        client=client, context={"changed_files": [], "diff_stat": "", "diff_patch": ""}
+    )
 
     assert naming.slug == "add_github_pr"
     assert naming.title == "Add GitHub pull request workflow"

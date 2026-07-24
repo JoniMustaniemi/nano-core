@@ -33,7 +33,6 @@ def test_agent_rewrites_third_person_final_answer(monkeypatch, tmp_path) -> None
     assert "problems to fix" in client.messages[1][1]["content"].lower()
 
 
-
 def test_agent_rewrites_self_description_for_unknown_fact_question(
     monkeypatch,
     tmp_path,
@@ -57,7 +56,6 @@ def test_agent_rewrites_self_description_for_unknown_fact_question(
     assert client.calls == 2
     assert "personality-driven" in client.messages[1][0]["content"]
     assert "I am Nano" in client.messages[1][1]["content"]
-
 
 
 def test_agent_rewrites_apology_disclaimer_for_missing_information(
@@ -88,7 +86,6 @@ def test_agent_rewrites_apology_disclaimer_for_missing_information(
     assert "I apologize" in client.messages[1][1]["content"]
 
 
-
 def test_agent_rewrites_unsupported_continuation_promise(monkeypatch, tmp_path) -> None:
     """
     Verify that final answers do not promise unsupported continued work.
@@ -110,7 +107,6 @@ def test_agent_rewrites_unsupported_continuation_promise(monkeypatch, tmp_path) 
     assert "unsupported continued work" in client.messages[1][1]["content"].lower()
 
 
-
 def test_agent_answers_capability_questions_without_tool_use(monkeypatch, tmp_path) -> None:
     """
     Verify that agent answers capability questions without tool use.
@@ -128,11 +124,9 @@ def test_agent_answers_capability_questions_without_tool_use(monkeypatch, tmp_pa
     content = AgentService().respond("What can you do?")
 
     assert "check_health" in content
-    assert "list_notes" in content
+    assert "list_internal_notes" in content
     assert client.calls == 1
     assert client.messages is not None
     assert "Available capabilities (grouped):" in client.messages[-1]["content"]
     assert "check_health:" in client.messages[-1]["content"]
-    assert repository.list_reminders() == []
-
-
+    assert repository.list_timers() == []

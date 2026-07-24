@@ -33,7 +33,6 @@ def test_agent_runs_a_legitimate_tool_call(monkeypatch, tmp_path) -> None:
     assert "never refer to nano in third person" in client.messages[0]["content"].lower()
 
 
-
 def test_agent_announces_tool_calls(monkeypatch, tmp_path) -> None:
     """
     Verify that agent announces tool calls.
@@ -59,7 +58,6 @@ def test_agent_announces_tool_calls(monkeypatch, tmp_path) -> None:
     assert announcements == ["Running a local procedure"]
 
 
-
 def test_agent_falls_back_to_plain_chat_when_model_skips_json(monkeypatch, tmp_path) -> None:
     """
     Verify that agent falls back to plain chat when model skips json.
@@ -78,7 +76,6 @@ def test_agent_falls_back_to_plain_chat_when_model_skips_json(monkeypatch, tmp_p
 
     assert content == "Hello there"
     assert client.calls == 3
-
 
 
 def test_agent_rejects_irrelevant_tool_calls(monkeypatch, tmp_path) -> None:
@@ -103,8 +100,7 @@ def test_agent_rejects_irrelevant_tool_calls(monkeypatch, tmp_path) -> None:
     content = AgentService().respond("Tell me about rocks.")
 
     assert "igneous" in content
-    assert repository.list_reminders() == []
-
+    assert repository.list_timers() == []
 
 
 def test_agent_announces_tool_errors(monkeypatch, tmp_path) -> None:
@@ -140,7 +136,6 @@ def test_agent_announces_tool_errors(monkeypatch, tmp_path) -> None:
     assert "I hit an error while trying to complete the task." in announcements
 
 
-
 def test_agent_announces_step_limit_errors(monkeypatch, tmp_path) -> None:
     """
     Verify that agent announces step limit errors.
@@ -164,4 +159,3 @@ def test_agent_announces_step_limit_errors(monkeypatch, tmp_path) -> None:
 
     assert content == "I tried to complete the task, but I hit the step limit."
     assert announcements[-1] == "I could not finish the task."
-

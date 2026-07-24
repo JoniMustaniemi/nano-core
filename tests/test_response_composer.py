@@ -61,9 +61,7 @@ def test_compose_pr_result_success_is_voice_friendly() -> None:
 
     content = composer.compose(client, source)
 
-    assert content == (
-        "I opened the pull request. Review it on GitHub when you are ready."
-    )
+    assert content == ("I opened the pull request. Review it on GitHub when you are ready.")
     assert "http" not in content
     assert client.messages is None
 
@@ -162,7 +160,9 @@ def test_compose_improvement_plan_success_points_to_plans_tab() -> None:
 
 def test_compose_improvement_plan_success_truncates_long_theme() -> None:
     composer = ResponseComposer()
-    long_title = "Improve timer copy so every failure path explains what went wrong and what to do next"
+    long_title = (
+        "Improve timer copy so every failure path explains what went wrong and what to do next"
+    )
     payload = json.dumps({"ok": True, "title": long_title, "goal": long_title})
     source = tool_result_source(
         user_message="Improve yourself.",

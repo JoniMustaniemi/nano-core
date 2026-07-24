@@ -36,10 +36,7 @@ def test_plan_title_strips_draft_plan_meta_phrasing() -> None:
 
 def test_plan_title_prefers_summary_from_body() -> None:
     body = (
-        "Summary\n"
-        "Improve CLI structure with consistent Typer sub-apps.\n\n"
-        "Target file\n"
-        "app/cli.py"
+        "Summary\nImprove CLI structure with consistent Typer sub-apps.\n\nTarget file\napp/cli.py"
     )
     title = _plan_title(
         goal="The file is well-structured and follows best practices for a CLI application.",
