@@ -279,6 +279,8 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "formatImplementationFailureFromState" in js_text
     assert "speakImplementationMessage" in js_text
+    assert "speakPrAnnouncement" in js_text
+    assert "tools.pr_service.announce" in js_text
     assert "releaseSelfImprovementWorkingMode" in js_text
     assert "selfImprovementRunSettled" in js_text
 

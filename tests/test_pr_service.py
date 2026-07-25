@@ -19,6 +19,23 @@ class _SummaryClient:
         return self.response
 
 
+def test_pr_service_announces_opening_intent_before_workflow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    announcements: list[str] = []
+    monkeypatch.setattr(
+        "app.tools.pr_service._emit_pr_announcement",
+        lambda message: announcements.append(message),
+    )
+    monkeypatch.setattr("app.tools.pr_service.activity.working", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.is_git_repo", lambda: False)
+    monkeypatch.setattr("app.tools.pr_service.resolve_executable", lambda _: None)
+
+    PullRequestService().run(client=SimpleNamespace())
+
+    assert announcements == ["I'm opening a pull request."]
+
+
 def test_summarize_pr_result_success_uses_deterministic_confirmation() -> None:
     client = _SummaryClient("I opened the pull request at https://github.com/org/repo/pull/1.")
     composer = ResponseComposer()

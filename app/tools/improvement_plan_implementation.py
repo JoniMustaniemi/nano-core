@@ -272,7 +272,10 @@ class ImprovementPlanImplementationService:
 
             reporter.update(step="lint")
             _emit_voice_announcement(running_tool_title("create_pull_request"))
-            pr_result = self.pr_service.run(client=get_code_llm_client())
+            pr_result = self.pr_service.run(
+                client=get_code_llm_client(),
+                announce=False,
+            )
             if not pr_result.ok:
                 _restore_plan_files(allowed_files)
                 improvement_plans.restore_pending(plan_id)

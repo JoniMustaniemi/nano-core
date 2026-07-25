@@ -16,6 +16,18 @@ from app.tools.pr_service import PrResult
 
 def _init_git_repo(path) -> None:
     subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=path,
+        check=True,
+        capture_output=True,
+    )
     subprocess.run(["git", "add", "-A"], cwd=path, check=True, capture_output=True)
     subprocess.run(
         ["git", "commit", "-m", "baseline"],
@@ -137,7 +149,7 @@ def test_implementation_service_applies_plan_and_opens_pr(
     )
 
     class _PrService:
-        def run(self, *, client) -> PrResult:
+        def run(self, *, client, announce=True) -> PrResult:
             return PrResult(
                 ok=True,
                 step="complete",
@@ -179,7 +191,7 @@ def test_implementation_service_restores_pending_on_pr_failure(
     )
 
     class _PrService:
-        def run(self, *, client) -> PrResult:
+        def run(self, *, client, announce=True) -> PrResult:
             return PrResult(ok=False, step="lint", error="Lint checks failed.")
 
     result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
@@ -224,7 +236,7 @@ def test_implementation_service_announces_key_steps(
     )
 
     class _PrService:
-        def run(self, *, client) -> PrResult:
+        def run(self, *, client, announce=True) -> PrResult:
             return PrResult(
                 ok=True,
                 step="complete",
@@ -271,7 +283,7 @@ def test_implementation_service_announces_lint_failure_message(
     )
 
     class _PrService:
-        def run(self, *, client) -> PrResult:
+        def run(self, *, client, announce=True) -> PrResult:
             return PrResult(ok=False, step="lint", error="Lint checks failed.")
 
     ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
@@ -381,7 +393,7 @@ def test_implementation_service_normalizes_apply_paths(
     )
 
     class _PrService:
-        def run(self, *, client) -> PrResult:
+        def run(self, *, client, announce=True) -> PrResult:
             return PrResult(ok=True, step="complete", url="https://github.com/example/repo/pull/2")
 
     result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
@@ -427,7 +439,7 @@ def test_implementation_success_activity_detail_has_no_url(
     )
 
     class _PrService:
-        def run(self, *, client) -> PrResult:
+        def run(self, *, client, announce=True) -> PrResult:
             return PrResult(
                 ok=True,
                 step="complete",
@@ -476,7 +488,7 @@ def test_implementation_service_restores_files_on_pr_failure(
     )
 
     class _PrService:
-        def run(self, *, client) -> PrResult:
+        def run(self, *, client, announce=True) -> PrResult:
             return PrResult(ok=False, step="lint", error="Lint checks failed.")
 
     result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)

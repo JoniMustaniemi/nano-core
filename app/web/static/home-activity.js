@@ -235,6 +235,7 @@ function formatImplementationAnnouncement(event) {
 }
 
 let lastImplementationVoiceMessage = "";
+let lastPrVoiceMessage = "";
 let selfImprovementRunSettled = false;
 
 function isImplementationTerminalMessage(message) {
@@ -263,14 +264,26 @@ function releaseSelfImprovementWorkingMode({ headline, detail, state = "standby"
 }
 
 function speakImplementationMessage(message) {
+  speakActivityAnnouncement(message, lastImplementationVoiceMessage, (value) => {
+    lastImplementationVoiceMessage = value;
+  });
+}
+
+function speakPrAnnouncement(message) {
+  speakActivityAnnouncement(message, lastPrVoiceMessage, (value) => {
+    lastPrVoiceMessage = value;
+  });
+}
+
+function speakActivityAnnouncement(message, lastMessage, setLastMessage) {
   const cleaned = (message || "").trim();
   if (!cleaned || !voiceAvailable) {
     return;
   }
-  if (cleaned === lastImplementationVoiceMessage) {
+  if (cleaned === lastMessage) {
     return;
   }
-  lastImplementationVoiceMessage = cleaned;
+  setLastMessage(cleaned);
   setAnswer(cleaned, { animate: false, deferClearUntilSpeech: true });
   void playVoice(cleaned, { pauseRecognition: true, resumeListening: false });
 }
@@ -311,6 +324,17 @@ function applyActivityEvent(event) {
       detail: event.detail,
     });
     void loadPlans();
+    return;
+  }
+
+  if (
+    event.kind === "log" &&
+    event.source === "tools.pr_service.announce"
+  ) {
+    const message = formatImplementationAnnouncement(event);
+    if (message) {
+      speakPrAnnouncement(message);
+    }
     return;
   }
 
