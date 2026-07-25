@@ -266,6 +266,9 @@ def test_homepage_serves_static_assets() -> None:
     assert "void loadPlans();" in completion_block
     assert "return;" not in completion_block
 
+    assert "tools.improvement_plan_implementation.announce" in js_text
+    assert "formatImplementationAnnouncement" in js_text
+
     assert "runtime.task_timer" in js_text
     assert "syncTaskWaitTimer" in js_text
     assert "task-wait-timer" in css_text

@@ -216,6 +216,15 @@ function formatImprovementPlanCompletedMessage(event) {
   return "I finished a new improvement plan. Open the Plans tab to read it.";
 }
 
+function formatImplementationAnnouncement(event) {
+  const detail = (event.detail || "").trim();
+  if (detail) {
+    return detail;
+  }
+  const title = (event.title || "").trim();
+  return title;
+}
+
 function applyActivityEvent(event) {
   if (
     event.kind === "state" &&
@@ -224,6 +233,20 @@ function applyActivityEvent(event) {
     const message = formatImprovementPlanCompletedMessage(event);
     setAnswer(message, { animate: false, deferClearUntilSpeech: voiceAvailable && !requestInFlight });
     if (voiceAvailable && !requestInFlight) {
+      void playVoice(message, { resumeListening: false });
+    }
+    void loadPlans();
+  }
+
+  if (
+    event.kind === "log" &&
+    event.source === "tools.improvement_plan_implementation.announce" &&
+    voiceAvailable &&
+    !requestInFlight
+  ) {
+    const message = formatImplementationAnnouncement(event);
+    if (message) {
+      setAnswer(message, { animate: false, deferClearUntilSpeech: true });
       void playVoice(message, { resumeListening: false });
     }
     void loadPlans();

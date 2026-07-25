@@ -15,6 +15,7 @@ from app.runtime.status_copy import (
     IMPLEMENTING_IMPROVEMENT_PLAN_TITLE,
     IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
     IMPROVEMENT_PLAN_IMPLEMENTED_TITLE,
+    running_tool_title,
 )
 from app.tools.files import read_text_file, write_text_file
 from app.tools.git_github import (
@@ -33,6 +34,7 @@ from app.tools.self_improve_planning import complete_json_dict
 
 APPLY_JSON_HINT = '{"files": [{"path": "app/...", "content": "..."}]}'
 IMPLEMENTATION_SOURCE = "tools.improvement_plan_implementation"
+IMPLEMENTATION_ANNOUNCE_SOURCE = "tools.improvement_plan_implementation.announce"
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,6 +217,7 @@ class ImprovementPlanImplementationService:
             detail=APPLYING_PLANNED_CHANGES_DETAIL,
             source=IMPLEMENTATION_SOURCE,
         )
+        _emit_voice_announcement(IMPLEMENTING_IMPROVEMENT_PLAN_TITLE)
 
         with LongTaskProgressReporter(task_name="self improvement", goal=plan.goal) as reporter:
             reporter.update(step="plan", current_file=allowed_files[0], file_count=len(allowed_files))
@@ -222,21 +225,30 @@ class ImprovementPlanImplementationService:
             apply_result = self._apply_plan(plan, allowed_files=allowed_files)
             if not apply_result.ok:
                 improvement_plans.restore_pending(plan_id)
+                failure_message = apply_result.error or "Could not apply planned code changes."
                 activity.standby(
                     title=IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
-                    detail=apply_result.error or "Could not apply planned code changes.",
+                    detail=failure_message,
                     source=IMPLEMENTATION_SOURCE,
+                )
+                _emit_voice_announcement(
+                    f"{IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE} {failure_message}"
                 )
                 return apply_result
 
             reporter.update(step="lint")
+            _emit_voice_announcement(running_tool_title("create_pull_request"))
             pr_result = self.pr_service.run(client=get_code_llm_client())
             if not pr_result.ok:
                 improvement_plans.restore_pending(plan_id)
+                failure_message = _pr_failure_detail(pr_result)
                 activity.standby(
                     title=IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
-                    detail=_pr_failure_detail(pr_result),
+                    detail=failure_message,
                     source=IMPLEMENTATION_SOURCE,
+                )
+                _emit_voice_announcement(
+                    f"{IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE} {failure_message}"
                 )
                 return ImplementationResult(
                     ok=False,
@@ -246,11 +258,15 @@ class ImprovementPlanImplementationService:
                 )
 
         improvement_plans.delete_plan(plan_id)
+        success_message = (
+            f"{IMPROVEMENT_PLAN_IMPLEMENTED_TITLE} Review the pull request on GitHub when you are ready."
+        )
         activity.standby(
             title=IMPROVEMENT_PLAN_IMPLEMENTED_TITLE,
             detail=pr_result.url or "Pull request created.",
             source=IMPLEMENTATION_SOURCE,
         )
+        _emit_voice_announcement(success_message)
         return ImplementationResult(
             ok=True,
             step="complete",
@@ -323,3 +339,14 @@ def _pr_failure_detail(result: PrResult) -> str:
     if result.error:
         return result.error
     return "Pull request workflow failed."
+
+
+def _emit_voice_announcement(message: str) -> None:
+    spoken = message.strip().rstrip(".")
+    if not spoken:
+        return
+    activity.log(
+        title=spoken,
+        detail=spoken,
+        source=IMPLEMENTATION_ANNOUNCE_SOURCE,
+    )

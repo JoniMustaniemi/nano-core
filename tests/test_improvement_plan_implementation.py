@@ -177,6 +177,53 @@ def test_implementation_service_restores_pending_on_pr_failure(
     assert plan.status == "pending"
 
 
+def test_implementation_service_announces_key_steps(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'announce.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    target = tmp_path / "app" / "runtime" / "status_copy.py"
+    target.write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    announcements: list[str] = []
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return (
+                '{"files": [{"path": "app/runtime/status_copy.py", '
+                '"content": "NEW = 2\\n"}]}'
+            )
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation._emit_voice_announcement",
+        lambda message: announcements.append(message),
+    )
+
+    class _PrService:
+        def run(self, *, client) -> PrResult:
+            return PrResult(
+                ok=True,
+                step="complete",
+                url="https://github.com/example/repo/pull/1",
+            )
+
+    ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
+
+    assert announcements[0] == "I'm implementing an improvement plan."
+    assert announcements[1] == "I'm opening a pull request."
+    assert "implemented the improvement plan" in announcements[-1].lower()
+
+
 def test_implementation_service_restores_pending_on_apply_failure(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,
