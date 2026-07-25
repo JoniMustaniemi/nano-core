@@ -70,6 +70,29 @@ def test_polish_user_facing_answer_tightens_repetitive_draft() -> None:
     assert "polishing nano's final reply" in client.messages[0]["content"].lower()
 
 
+def test_polish_user_facing_answer_skips_system_analysis_report() -> None:
+    source = tool_result_source(
+        user_message="Can you run a system analysis for me?",
+        facts=(
+            "Here's how I'm running on your machine.\n\n"
+            "You have 16.5 GB free out of 31.7 GB total. That's plenty for me to run smoothly.\n\n"
+            "I run on your machine — my models stay on your device.\n"
+            "For talking with you, I use a 1.2 GB model on your device.\n"
+            "For code work, I use a 2.4 GB model on your device.\n"
+            "My working memory window is about 32k tokens."
+        ),
+        tool_name="analyze_system",
+        conversation_id="default",
+    )
+    client = _StubClient("Should not be called.")
+    draft = source.facts
+
+    content = polish_user_facing_answer(client, source, draft)
+
+    assert content == draft
+    assert client.messages is None
+
+
 def test_polish_user_facing_answer_skips_clean_short_tool_result() -> None:
     source = tool_result_source(
         user_message="Check your health.",

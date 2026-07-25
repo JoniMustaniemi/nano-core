@@ -1,15 +1,26 @@
 sendButton.addEventListener("click", sendMessage);
-commandsToggle.addEventListener("click", openCommandsDrawer);
-if (commandsToggleReveal) {
-  commandsToggleReveal.addEventListener("click", openCommandsDrawer);
-}
-commandsClose.addEventListener("click", closeCommandsDrawer);
-commandsBackdrop.addEventListener("click", closeCommandsDrawer);
-commandsPanel.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    closeCommandsDrawer();
+commandsToggle.addEventListener("click", () => {
+  if (getDisplayState() === "working") {
+    return;
   }
+  if (isViewSessionActive() && activeView === "commands") {
+    closeViewSession({ reason: "ui" });
+    return;
+  }
+  void openViewSession("commands", { source: "ui" });
 });
+if (commandsToggleReveal) {
+  commandsToggleReveal.addEventListener("click", () => {
+    if (getDisplayState() === "working") {
+      return;
+    }
+    if (isViewSessionActive() && activeView === "commands") {
+      closeViewSession({ reason: "ui" });
+      return;
+    }
+    void openViewSession("commands", { source: "ui" });
+  });
+}
 keyboardToggle.addEventListener("click", () => {
   if (isBusy()) {
     return;
@@ -17,22 +28,25 @@ keyboardToggle.addEventListener("click", () => {
   toggleKeyboardPanel();
 });
 nanoControlsToggle.addEventListener("click", () => {
-  if (nanoSheetOpen) {
-    closeNanoSheet();
+  if (getDisplayState() === "working") {
     return;
   }
-  openNanoSheet("brains");
-});
-nanoSheetClose.addEventListener("click", closeNanoSheet);
-nanoSheetBackdrop.addEventListener("click", closeNanoSheet);
-nanoTabBrains.addEventListener("click", () => setNanoTab("brains"));
-nanoTabPlans.addEventListener("click", () => setNanoTab("plans"));
-nanoTabStorage.addEventListener("click", () => setNanoTab("storage"));
-nanoSheet.querySelector(".nano-sheet-panel").addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    closeNanoSheet();
+  if (isViewSessionActive() && activeView === "brains") {
+    closeViewSession({ reason: "ui" });
+    return;
   }
+  void openViewSession("brains", { source: "ui" });
 });
+if (viewModalClose) {
+  viewModalClose.addEventListener("click", () => closeViewSession({ reason: "ui" }));
+}
+if (viewModalPanel) {
+  viewModalPanel.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeViewSession({ reason: "ui" });
+    }
+  });
+}
 messageBox.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();

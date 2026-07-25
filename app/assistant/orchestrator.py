@@ -28,9 +28,7 @@ from app.runtime.status_copy import (
 )
 from app.runtime.user_activity import user_activity
 
-_PLAN_ONLY_REPLY = (
-    "That plan is in the Plans tab. Use the Implement button there to edit code and open a pull request."
-)
+_PLAN_ONLY_REPLY = "That plan is in the Plans tab. Use the Implement button there to edit code and open a pull request."
 
 
 class AgentOrchestrator:

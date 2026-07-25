@@ -88,7 +88,9 @@ def check_implementation_preflight(
     allowed_statuses: tuple[str, ...] = ("pending",),
 ) -> ImplementationPreflightResult:
     if plan is None:
-        return ImplementationPreflightResult(ok=False, error="Improvement plan not found.", status_code=404)
+        return ImplementationPreflightResult(
+            ok=False, error="Improvement plan not found.", status_code=404
+        )
     if plan.status not in allowed_statuses:
         return ImplementationPreflightResult(
             ok=False,
@@ -97,7 +99,9 @@ def check_implementation_preflight(
         )
 
     settings = get_settings()
-    files = _validate_preferred_files(_files_from_plan(plan), allowed=settings.self_improve_allowed_prefix)
+    files = _validate_preferred_files(
+        _files_from_plan(plan), allowed=settings.self_improve_allowed_prefix
+    )
     if not files:
         return ImplementationPreflightResult(
             ok=False,
@@ -224,7 +228,9 @@ class ImprovementPlanImplementationService:
     def run(self, plan_id: int) -> ImplementationResult:
         plan = improvement_plans.get_plan(plan_id)
         if plan is None:
-            return ImplementationResult(ok=False, step="load", plan_id=plan_id, error="Plan not found.")
+            return ImplementationResult(
+                ok=False, step="load", plan_id=plan_id, error="Plan not found."
+            )
 
         preflight = check_implementation_preflight(plan, allowed_statuses=("implementing",))
         if not preflight.ok:
@@ -256,7 +262,9 @@ class ImprovementPlanImplementationService:
         _emit_voice_announcement(IMPLEMENTING_IMPROVEMENT_PLAN_TITLE)
 
         with LongTaskProgressReporter(task_name="self improvement", goal=plan.goal) as reporter:
-            reporter.update(step="plan", current_file=allowed_files[0], file_count=len(allowed_files))
+            reporter.update(
+                step="plan", current_file=allowed_files[0], file_count=len(allowed_files)
+            )
 
             apply_result = self._apply_plan(plan, allowed_files=allowed_files)
             if not apply_result.ok:

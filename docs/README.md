@@ -44,12 +44,16 @@ flowchart TD
 
 Two `ModelRole` clients (`app/llm/roles.py`), created by `get_llm_client()` and
 `get_code_llm_client()` in `app/llm/factory.py`. Both implement `LLMClient.complete()`.
-Local models are loaded lazily via `_load_local_model` (LRU cache keyed by path + context).
+Local models are loaded lazily via `load_local_model` in `app/llm/context_sizing.py`
+(RAM-aware ladder: 32k → 512). If configured context is too large, Nano probes free
+memory, tries smaller sizes, and prefixes the next reply with a downgrade notice.
+Use the **System analysis** command (or `analyze_system` tool) to inspect specs and
+estimated context limits.
 
 | Role | Config path | Context setting | Call sites |
 |------|-------------|-----------------|------------|
 | Chat | `llm_model_path` | `llm_context_size` (32k) | Orchestrator, service, planner, answer/response pipeline |
-| Code | `llm_code_model_path` or fallback to chat path | `llm_code_context_size` (8k) | `self_improve_tools`, `background_tick` / `codebase_crawl`, `github_tools` / `pr_naming`, `presence_gate` delivery |
+| Code | `llm_code_model_path` or fallback to chat path | `llm_code_context_size` (32k) | `self_improve_tools`, `background_tick` / `codebase_crawl`, `github_tools` / `pr_naming`, `presence_gate` delivery |
 
 Remote providers (`ollama`, `llama_cpp_server`) use `llm_model` / `llm_code_model` for model names.
 Defaults live in `app/config.py`.

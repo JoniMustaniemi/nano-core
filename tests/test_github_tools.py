@@ -27,9 +27,11 @@ def test_create_pull_request_tool_delegates_to_service(monkeypatch: pytest.Monke
     monkeypatch.setattr(
         "app.tools.github_tools.PullRequestService",
         lambda: SimpleNamespace(
-            run=lambda client: captured.update({"client": client})
-            or SimpleNamespace(
-                to_json=lambda: json.dumps({"ok": True, "step": "complete", "url": "https://x"})
+            run=lambda client: (
+                captured.update({"client": client})
+                or SimpleNamespace(
+                    to_json=lambda: json.dumps({"ok": True, "step": "complete", "url": "https://x"})
+                )
             )
         ),
     )

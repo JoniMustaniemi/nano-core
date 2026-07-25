@@ -31,7 +31,7 @@ function applyVoiceVolume(volume = loadVoiceVolume()) {
   voiceAudio.volume = clamped;
   if (voiceVolumeInput) {
     voiceVolumeInput.value = String(Math.round(clamped * 100));
-    voiceVolumeInput.disabled = !voiceAvailable;
+    voiceVolumeInput.disabled = false;
   }
   if (voiceVolumeValue) {
     voiceVolumeValue.textContent = formatVoiceVolumePercent(clamped);
@@ -90,11 +90,15 @@ function ensureRecognition() {
     recognitionRunning = true;
     recognitionStarting = false;
     pendingGestureStart = false;
-    setVoiceStatus(
-      listeningForCommand
-        ? "Wake phrase detected. Listening for your command."
-        : 'Waiting for wake phrase: "hey nano".'
-    );
+    if (isViewSessionActive()) {
+      setVoiceStatus("Say close to dismiss.");
+    } else {
+      setVoiceStatus(
+        listeningForCommand
+          ? "Wake phrase detected. Listening for your command."
+          : 'Waiting for wake phrase: "hey nano".'
+      );
+    }
     syncVoiceListeningState();
   };
 
@@ -111,13 +115,25 @@ function ensureRecognition() {
     }
 
     const heardText = (finalTranscript || interimTranscript).trim();
-    if (heardText && listeningForCommand) {
+    if (heardText && (listeningForCommand || isViewSessionActive())) {
       lastHeardTranscript = heardText;
-      setVoiceStatus(`Hearing: ${heardText}`);
+      showUserSpeech(heardText);
+      if (listeningForCommand) {
+        setVoiceStatus(`Hearing: ${heardText}`);
+      }
     }
 
     const transcript = finalTranscript.trim();
     if (!transcript) {
+      return;
+    }
+
+    if (isViewSessionActive()) {
+      if (handleViewSessionTranscript(transcript)) {
+        setVoiceStatus("Closed.");
+      } else {
+        setVoiceStatus("Say close to dismiss.");
+      }
       return;
     }
 
@@ -198,6 +214,17 @@ function ensureRecognition() {
       return;
     }
     if (wakeAcknowledging) {
+      return;
+    }
+    if (isViewSessionActive() && microphoneReady) {
+      try {
+        recognition.start();
+        recognitionStarting = true;
+        setVoiceStatus("Say close to dismiss.");
+      } catch (error) {
+        pendingGestureStart = true;
+        setVoiceStatus("Microphone is connected. Press Start Listening to reply.");
+      }
       return;
     }
     if (isWaitingForUserAnswer() && microphoneReady) {
@@ -553,9 +580,13 @@ async function playVoiceNow(text, options = {}) {
     clearVoiceSource();
     resumeAnswerClearAfterSpeech();
     if (shouldResumeRecognition && microphoneReady) {
-      listeningForCommand = preserveCommandMode;
-      recognitionPausedForSpeech = false;
-      startVoiceListening("resume", preserveCommandMode);
+      if (isViewSessionActive()) {
+        ensureViewSessionListening();
+      } else {
+        listeningForCommand = preserveCommandMode;
+        recognitionPausedForSpeech = false;
+        startVoiceListening("resume", preserveCommandMode);
+      }
     } else {
       recognitionPausedForSpeech = false;
     }
@@ -699,6 +730,10 @@ function armVoiceFollowUp(text) {
 }
 
 function returnToWakeDetection() {
+  if (isViewSessionActive()) {
+    ensureViewSessionListening();
+    return;
+  }
   if (isWaitingForUserAnswer()) {
     ensureDirectAnswerListening();
     return;

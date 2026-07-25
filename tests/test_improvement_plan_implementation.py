@@ -138,10 +138,7 @@ def test_implementation_service_applies_plan_and_opens_pr(
 
     class _Client:
         def complete(self, messages, **kwargs) -> str:
-            return (
-                '{"files": [{"path": "app/runtime/status_copy.py", '
-                '"content": "NEW = 2\\n"}]}'
-            )
+            return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
 
     monkeypatch.setattr(
         "app.tools.improvement_plan_implementation.get_code_llm_client",
@@ -180,10 +177,7 @@ def test_implementation_service_restores_pending_on_pr_failure(
 
     class _Client:
         def complete(self, messages, **kwargs) -> str:
-            return (
-                '{"files": [{"path": "app/runtime/status_copy.py", '
-                '"content": "NEW = 2\\n"}]}'
-            )
+            return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
 
     monkeypatch.setattr(
         "app.tools.improvement_plan_implementation.get_code_llm_client",
@@ -221,10 +215,7 @@ def test_implementation_service_announces_key_steps(
 
     class _Client:
         def complete(self, messages, **kwargs) -> str:
-            return (
-                '{"files": [{"path": "app/runtime/status_copy.py", '
-                '"content": "NEW = 2\\n"}]}'
-            )
+            return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
 
     monkeypatch.setattr(
         "app.tools.improvement_plan_implementation.get_code_llm_client",
@@ -268,10 +259,7 @@ def test_implementation_service_announces_lint_failure_message(
 
     class _Client:
         def complete(self, messages, **kwargs) -> str:
-            return (
-                '{"files": [{"path": "app/runtime/status_copy.py", '
-                '"content": "NEW = 2\\n"}]}'
-            )
+            return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
 
     monkeypatch.setattr(
         "app.tools.improvement_plan_implementation.get_code_llm_client",
@@ -289,8 +277,7 @@ def test_implementation_service_announces_lint_failure_message(
     ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
 
     assert any(
-        "declined to commit anything or open a pull request" in msg.lower()
-        for msg in announcements
+        "declined to commit anything or open a pull request" in msg.lower() for msg in announcements
     )
 
 
@@ -382,10 +369,7 @@ def test_implementation_service_normalizes_apply_paths(
 
     class _Client:
         def complete(self, messages, **kwargs) -> str:
-            return (
-                '{"files": [{"path": "./app/runtime/status_copy.py", '
-                '"content": "NEW = 2\\n"}]}'
-            )
+            return '{"files": [{"path": "./app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
 
     monkeypatch.setattr(
         "app.tools.improvement_plan_implementation.get_code_llm_client",
@@ -420,10 +404,7 @@ def test_implementation_success_activity_detail_has_no_url(
 
     class _Client:
         def complete(self, messages, **kwargs) -> str:
-            return (
-                '{"files": [{"path": "app/runtime/status_copy.py", '
-                '"content": "NEW = 2\\n"}]}'
-            )
+            return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
 
     monkeypatch.setattr(
         "app.tools.improvement_plan_implementation.get_code_llm_client",
@@ -473,10 +454,7 @@ def test_implementation_service_restores_files_on_pr_failure(
 
     class _Client:
         def complete(self, messages, **kwargs) -> str:
-            return (
-                '{"files": [{"path": "app/runtime/status_copy.py", '
-                '"content": "NEW = 2\\n"}]}'
-            )
+            return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
 
     monkeypatch.setattr(
         "app.tools.improvement_plan_implementation.get_code_llm_client",

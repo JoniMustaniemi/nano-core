@@ -40,7 +40,7 @@ def test_llm_client_uses_local_gguf_model(monkeypatch) -> None:
         ),
     )
     monkeypatch.setattr(
-        "app.llm.client._load_local_model",
+        "app.llm.client.load_local_model",
         lambda path, context_size: model,
     )
 
@@ -69,7 +69,7 @@ def test_llm_client_complete_overrides_max_tokens_and_temperature(monkeypatch) -
         ),
     )
     monkeypatch.setattr(
-        "app.llm.client._load_local_model",
+        "app.llm.client.load_local_model",
         lambda path, context_size: model,
     )
 
@@ -169,7 +169,7 @@ def test_llm_client_code_role_uses_code_model_path_and_context(monkeypatch) -> N
             llm_model_path="./models/chat.gguf",
             llm_code_model_path="./models/code.gguf",
             llm_context_size=4096,
-            llm_code_context_size=8192,
+            llm_code_context_size=32768,
             llm_max_tokens=512,
             llm_temperature=0.7,
             llm_base_url="http://localhost:11434",
@@ -178,12 +178,12 @@ def test_llm_client_code_role_uses_code_model_path_and_context(monkeypatch) -> N
             llm_timeout_seconds=30,
         ),
     )
-    monkeypatch.setattr("app.llm.client._load_local_model", record_load)
+    monkeypatch.setattr("app.llm.client.load_local_model", record_load)
 
     content = client.complete([{"role": "user", "content": "hi"}])
 
     assert content == "hello from local model"
-    assert loaded == [("./models/code.gguf", 8192)]
+    assert loaded == [("./models/code.gguf", 32768)]
 
 
 def test_llm_client_code_role_falls_back_to_chat_model_path(monkeypatch) -> None:
@@ -197,7 +197,7 @@ def test_llm_client_code_role_falls_back_to_chat_model_path(monkeypatch) -> None
             llm_model_path="./models/chat.gguf",
             llm_code_model_path="",
             llm_context_size=4096,
-            llm_code_context_size=8192,
+            llm_code_context_size=32768,
             llm_max_tokens=512,
             llm_temperature=0.7,
             llm_base_url="http://localhost:11434",
@@ -207,13 +207,47 @@ def test_llm_client_code_role_falls_back_to_chat_model_path(monkeypatch) -> None
         ),
     )
     monkeypatch.setattr(
-        "app.llm.client._load_local_model",
+        "app.llm.client.load_local_model",
         lambda path, context_size: loaded.append(path) or _LocalModel(),
     )
 
     client.complete([{"role": "user", "content": "hi"}])
 
     assert loaded == ["./models/chat.gguf"]
+
+
+def test_llm_client_prefixes_context_downgrade_notice(monkeypatch) -> None:
+    client = LocalLLMClient()
+    model = _LocalModel()
+
+    monkeypatch.setattr(
+        "app.llm.client.get_settings",
+        lambda: SimpleNamespace(
+            llm_provider="local",
+            llm_model_path="./models/nano.gguf",
+            llm_context_size=32768,
+            llm_max_tokens=512,
+            llm_temperature=0.7,
+            llm_base_url="http://localhost:11434",
+            llm_model="test-model",
+            llm_timeout_seconds=30,
+        ),
+    )
+    monkeypatch.setattr(
+        "app.llm.client.load_local_model",
+        lambda path, context_size: model,
+    )
+    monkeypatch.setattr(
+        "app.llm.client.pop_context_load_notice",
+        lambda path: (
+            "I had to use a smaller memory window" if path == "./models/nano.gguf" else None
+        ),
+    )
+
+    content = client.complete([{"role": "user", "content": "hi"}])
+
+    assert content.startswith("I had to use a smaller memory window")
+    assert "hello from local model" in content
 
 
 def test_llm_client_code_role_ollama_uses_code_model_name(monkeypatch) -> None:
@@ -233,7 +267,7 @@ def test_llm_client_code_role_ollama_uses_code_model_name(monkeypatch) -> None:
             llm_model_path="",
             llm_code_model_path="",
             llm_context_size=4096,
-            llm_code_context_size=8192,
+            llm_code_context_size=32768,
             llm_max_tokens=512,
             llm_temperature=0.7,
             llm_base_url="http://localhost:11434",

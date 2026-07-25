@@ -87,8 +87,30 @@ def test_resolve_lint_command_returns_none_without_ruff(
     assert pr_verify.resolve_lint_command() is None
 
 
+def test_resolve_mypy_command_detects_mypy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.tools.pr_verify.effective_workspace_root", lambda: tmp_path)
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.mypy]\npython_version = '3.12'\n",
+        encoding="utf-8",
+    )
+
+    command = pr_verify.resolve_mypy_command()
+
+    assert command == [sys.executable, "-m", "mypy", "app"]
+
+
+def test_resolve_mypy_command_returns_none_without_mypy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.tools.pr_verify.effective_workspace_root", lambda: tmp_path)
+
+    assert pr_verify.resolve_mypy_command() is None
+
+
 def test_run_pr_lint_skips_when_unconfigured(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.tools.pr_verify.resolve_lint_command", lambda: None)
+    monkeypatch.setattr("app.tools.pr_verify.resolve_mypy_command", lambda: None)
 
     result = pr_verify.run_pr_lint()
 
@@ -101,6 +123,7 @@ def test_run_pr_lint_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         "app.tools.pr_verify.resolve_lint_command",
         lambda: [sys.executable, "-m", "ruff", "check", "app", "tests"],
     )
+    monkeypatch.setattr("app.tools.pr_verify.resolve_mypy_command", lambda: None)
     monkeypatch.setattr(
         "app.tools.pr_verify.get_settings",
         lambda: type("Settings", (), {"github_pr_verify_timeout_seconds": 30})(),
@@ -131,6 +154,7 @@ def test_run_pr_lint_auto_fixes_fixable_issues(monkeypatch: pytest.MonkeyPatch) 
         "app.tools.pr_verify.resolve_lint_command",
         lambda: [sys.executable, "-m", "ruff", "check", "app", "tests"],
     )
+    monkeypatch.setattr("app.tools.pr_verify.resolve_mypy_command", lambda: None)
     monkeypatch.setattr(
         "app.tools.pr_verify.get_settings",
         lambda: type("Settings", (), {"github_pr_verify_timeout_seconds": 30})(),
@@ -174,6 +198,7 @@ def test_run_pr_lint_auto_fix_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         "app.tools.pr_verify.resolve_lint_command",
         lambda: [sys.executable, "-m", "ruff", "check", "app", "tests"],
     )
+    monkeypatch.setattr("app.tools.pr_verify.resolve_mypy_command", lambda: None)
     monkeypatch.setattr(
         "app.tools.pr_verify.get_settings",
         lambda: type("Settings", (), {"github_pr_verify_timeout_seconds": 30})(),
@@ -199,6 +224,36 @@ def test_run_pr_lint_auto_fix_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.ok is False
     assert result.error == "Lint auto-fix failed."
     assert "fix failed" in result.output
+
+
+def test_run_pr_lint_mypy_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.tools.pr_verify.resolve_lint_command", lambda: None)
+    monkeypatch.setattr(
+        "app.tools.pr_verify.resolve_mypy_command",
+        lambda: [sys.executable, "-m", "mypy", "app"],
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_verify.get_settings",
+        lambda: type("Settings", (), {"github_pr_verify_timeout_seconds": 30})(),
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_verify.subprocess.run",
+        lambda *args, **kwargs: type(
+            "Process",
+            (),
+            {
+                "returncode": 1,
+                "stdout": "app/system/specs.py: error: example\n",
+                "stderr": "",
+            },
+        )(),
+    )
+
+    result = pr_verify.run_pr_lint()
+
+    assert result.ok is False
+    assert result.error == "Type checks failed."
+    assert "specs.py" in result.output
 
 
 def test_run_pr_verification_success(monkeypatch: pytest.MonkeyPatch) -> None:

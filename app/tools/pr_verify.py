@@ -21,6 +21,20 @@ class VerifyResult:
     auto_fixed: bool = False
 
 
+def resolve_mypy_command() -> list[str] | None:
+    """
+    Resolve the mypy command for the current workspace.
+
+    Returns:
+        Command argv list, or None when mypy is not configured.
+    """
+    root = effective_workspace_root()
+    pyproject = root / "pyproject.toml"
+    if pyproject.exists() and _pyproject_has_mypy(pyproject.read_text(encoding="utf-8")):
+        return [sys.executable, "-m", "mypy", "app"]
+    return None
+
+
 def resolve_lint_command() -> list[str] | None:
     """
     Resolve the lint command for the current workspace.
@@ -67,12 +81,40 @@ def resolve_verify_command() -> list[str] | None:
 
 def run_pr_lint() -> VerifyResult:
     """
-    Run the resolved lint command in the workspace.
+    Run lint and type-check commands in the workspace.
 
-    When ruff reports fixable issues, applies ``--fix`` and re-checks once.
+    Runs ruff (with optional auto-fix) first, then mypy when configured.
 
     Returns:
         Lint result with captured output. Skipped projects return ok=True.
+    """
+    ruff_result = _run_ruff_lint()
+    if not ruff_result.ok:
+        return ruff_result
+
+    mypy_result = _run_mypy_check()
+    if not mypy_result.ok:
+        return mypy_result
+
+    if not ruff_result.command and not mypy_result.command:
+        return VerifyResult(ok=True, command=[], exit_code=0, output="")
+
+    return VerifyResult(
+        ok=True,
+        command=ruff_result.command or mypy_result.command,
+        exit_code=0,
+        output=_append_output(ruff_result.output, mypy_result.output),
+        error=None,
+        auto_fixed=ruff_result.auto_fixed,
+    )
+
+
+def _run_ruff_lint() -> VerifyResult:
+    """
+    Run ruff lint checks, applying auto-fix once when ruff reports fixable issues.
+
+    Returns:
+        Ruff lint result. Skipped projects return ok=True.
     """
     command = resolve_lint_command()
     if command is None:
@@ -105,6 +147,19 @@ def run_pr_lint() -> VerifyResult:
         error=None,
         auto_fixed=True,
     )
+
+
+def _run_mypy_check() -> VerifyResult:
+    """
+    Run mypy type checks when the workspace configures it.
+
+    Returns:
+        Mypy result with captured output. Skipped projects return ok=True.
+    """
+    command = resolve_mypy_command()
+    if command is None:
+        return VerifyResult(ok=True, command=[], exit_code=0, output="")
+    return _run_command(command, failure_message="Type checks failed.")
 
 
 def run_pr_verification() -> VerifyResult:
@@ -202,6 +257,10 @@ def _pyproject_has_pytest(text: str) -> bool:
 
 def _pyproject_has_ruff(text: str) -> bool:
     return "[tool.ruff" in text.lower()
+
+
+def _pyproject_has_mypy(text: str) -> bool:
+    return "[tool.mypy" in text.lower()
 
 
 def _makefile_has_test_target(text: str) -> bool:
