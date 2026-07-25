@@ -145,7 +145,7 @@ def test_run_pr_lint_failure(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert result.ok is False
     assert "E999" in result.output
-    assert result.error == "Lint checks failed."
+    assert result.error == "Lint checks failed: Found 1 error."
     assert result.auto_fixed is False
 
 
@@ -190,7 +190,9 @@ def test_run_pr_lint_auto_fixes_fixable_issues(monkeypatch: pytest.MonkeyPatch) 
     assert result.ok is True
     assert result.auto_fixed is True
     assert calls[1] == [sys.executable, "-m", "ruff", "check", "app", "tests", "--fix"]
-    assert len(calls) == 3
+    assert calls[2] == [sys.executable, "-m", "ruff", "check", "app", "tests"]
+    assert calls[3] == [sys.executable, "-m", "ruff", "format", "app", "tests"]
+    assert len(calls) == 4
 
 
 def test_run_pr_lint_auto_fix_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -252,8 +254,18 @@ def test_run_pr_lint_mypy_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     result = pr_verify.run_pr_lint()
 
     assert result.ok is False
-    assert result.error == "Type checks failed."
+    assert "Type checks failed" in result.error
+    assert "specs.py" in result.error
     assert "specs.py" in result.output
+
+
+def test_resolve_ruff_format_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.tools.pr_verify.effective_workspace_root", lambda: tmp_path)
+    (tmp_path / "pyproject.toml").write_text("[tool.ruff]\n", encoding="utf-8")
+
+    command = pr_verify.resolve_ruff_format_command()
+
+    assert command == [sys.executable, "-m", "ruff", "format", "app", "tests"]
 
 
 def test_run_pr_verification_success(monkeypatch: pytest.MonkeyPatch) -> None:

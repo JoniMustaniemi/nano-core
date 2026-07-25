@@ -50,6 +50,11 @@ def test_homepage_shows_standby_ui(api_client) -> None:
 
     assert 'id="user-speech"' in response.text
     assert 'class="user-speech-text"' in response.text
+    assert 'class="user-speech-label"' in response.text
+    answer_index = response.text.index('id="answer-output"')
+    user_speech_index = response.text.index('id="user-speech"')
+    essence_index = response.text.index('class="essence-zone"')
+    assert answer_index < user_speech_index < essence_index
 
     assert 'id="answer-output"' in response.text
     assert 'class="response-zone"' in response.text
@@ -111,16 +116,16 @@ def test_homepage_shows_standby_ui(api_client) -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=user-speech-1"' in response.text
+    assert 'href="/static/home.css?v=user-speech-3"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/essence_visualizer.js?v=idle-essence-3"' in response.text
     assert 'src="/static/home-state.js?v=user-speech-1"' in response.text
     assert 'src="/static/home-plans.js?v=view-modals-1"' in response.text
     assert 'src="/static/home-view-session.js?v=view-close-controls-2"' in response.text
-    assert 'src="/static/home-ui.js?v=user-speech-1"' in response.text
-    assert 'src="/static/home-voice.js?v=user-speech-1"' in response.text
-    assert 'src="/static/home-activity.js?v=view-modals-1"' in response.text
+    assert 'src="/static/home-ui.js?v=user-speech-3"' in response.text
+    assert 'src="/static/home-voice.js?v=implement-busy-wake-1"' in response.text
+    assert 'src="/static/home-activity.js?v=voice-announce-1"' in response.text
     assert 'src="/static/home-chat.js?v=user-speech-1"' in response.text
     assert 'src="/static/home.js?v=view-modals-1"' in response.text
 
@@ -227,7 +232,9 @@ def test_homepage_serves_static_assets() -> None:
     assert "returnToWakeDetection" in js_text
 
     assert ".user-speech" in css_text
+    assert ".user-speech-label" in css_text
     assert "showUserSpeech" in js_text
+    assert "isTransientActivityCopy" in js_text
     assert "USER_SPEECH_DISPLAY_MS" in js_text
     assert ".activity-status[hidden]" in css_text
 
@@ -297,9 +304,8 @@ def test_homepage_serves_static_assets() -> None:
     assert "playVoice" not in silent_block
 
     assert "formatImplementationFailureFromState" in js_text
-    assert "speakImplementationMessage" in js_text
-    assert "speakPrAnnouncement" in js_text
-    assert "tools.pr_service.announce" in js_text
+    assert "speakVoiceAnnouncement" in js_text
+    assert "runtime.voice.announce" in js_text
     assert "releaseSelfImprovementWorkingMode" in js_text
     assert "selfImprovementRunSettled" in js_text
 
@@ -386,6 +392,8 @@ def test_homepage_serves_static_assets() -> None:
     assert "formatBusyWakeMessage" in js_text
 
     assert "acknowledgeBusyWake" in js_text
+
+    assert "resumeWhileBusy" in js_text
 
     assert "isWorkingOnTask" in js_text
 

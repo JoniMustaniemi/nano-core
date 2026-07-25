@@ -234,9 +234,14 @@ function formatImplementationAnnouncement(event) {
   return title;
 }
 
-let lastImplementationVoiceMessage = "";
-let lastPrVoiceMessage = "";
+let lastVoiceAnnouncement = "";
 let selfImprovementRunSettled = false;
+
+function normalizeVoiceAnnouncement(message) {
+  const skip = new Set(["the", "a"]);
+  const words = (message || "").trim().toLowerCase().replace(/\.$/, "").split(/\s+/).filter(Boolean);
+  return words.filter((word) => !skip.has(word)).join(" ");
+}
 
 function isImplementationTerminalMessage(message) {
   const lowered = (message || "").toLowerCase();
@@ -263,27 +268,16 @@ function releaseSelfImprovementWorkingMode({ headline, detail, state = "standby"
   renderState();
 }
 
-function speakImplementationMessage(message) {
-  speakActivityAnnouncement(message, lastImplementationVoiceMessage, (value) => {
-    lastImplementationVoiceMessage = value;
-  });
-}
-
-function speakPrAnnouncement(message) {
-  speakActivityAnnouncement(message, lastPrVoiceMessage, (value) => {
-    lastPrVoiceMessage = value;
-  });
-}
-
-function speakActivityAnnouncement(message, lastMessage, setLastMessage) {
+function speakVoiceAnnouncement(message) {
   const cleaned = (message || "").trim();
   if (!cleaned || !voiceAvailable) {
     return;
   }
-  if (cleaned === lastMessage) {
+  const normalized = normalizeVoiceAnnouncement(cleaned);
+  if (normalized === normalizeVoiceAnnouncement(lastVoiceAnnouncement)) {
     return;
   }
-  setLastMessage(cleaned);
+  lastVoiceAnnouncement = cleaned;
   setAnswer(cleaned, { animate: false, deferClearUntilSpeech: true });
   void playVoice(cleaned, { pauseRecognition: true, resumeListening: false });
 }
@@ -329,25 +323,14 @@ function applyActivityEvent(event) {
 
   if (
     event.kind === "log" &&
-    event.source === "tools.pr_service.announce"
-  ) {
-    const message = formatImplementationAnnouncement(event);
-    if (message) {
-      speakPrAnnouncement(message);
-    }
-    return;
-  }
-
-  if (
-    event.kind === "log" &&
-    event.source === "tools.improvement_plan_implementation.announce"
+    event.source === "runtime.voice.announce"
   ) {
     const message = formatImplementationAnnouncement(event);
     if (message && !message.includes("http://") && !message.includes("https://")) {
       if (message.toLowerCase().includes("implemented the improvement plan")) {
-        lastImplementationVoiceMessage = "";
+        lastVoiceAnnouncement = "";
       }
-      speakImplementationMessage(message);
+      speakVoiceAnnouncement(message);
       if (isImplementationTerminalMessage(message)) {
         releaseSelfImprovementWorkingMode({
           headline: message,
@@ -364,14 +347,6 @@ function applyActivityEvent(event) {
     event.source === "tools.improvement_plan_implementation" &&
     (event.state === "standby" || event.state === "error")
   ) {
-    const message = formatImplementationFailureFromState(event);
-    if (
-      event.state === "standby" &&
-      (event.title || "").toLowerCase().includes("could not implement") &&
-      message
-    ) {
-      speakImplementationMessage(message);
-    }
     releaseSelfImprovementWorkingMode({
       headline: event.title || currentActivitySnapshot.headline,
       detail: event.detail ?? currentActivitySnapshot.detail,

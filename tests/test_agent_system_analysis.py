@@ -20,7 +20,7 @@ class _PolishFailsClient:
 
 def test_agent_system_analysis_skips_polish_when_llm_unavailable(monkeypatch, tmp_path) -> None:
     client = _PolishFailsClient()
-    patch_agent(monkeypatch, client=client, tmp_path=tmp_path, announce=lambda self, text: None)
+    patch_agent(monkeypatch, client=client, tmp_path=tmp_path, announce=lambda text: None)
 
     content = AgentService().respond("Can you run a system analysis for me?")
 
@@ -34,7 +34,7 @@ def test_agent_routes_system_analysis_request(monkeypatch, tmp_path) -> None:
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
 
     content = AgentService().respond("Can you run a system analysis for me?")

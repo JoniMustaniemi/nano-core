@@ -97,6 +97,7 @@ def _normalize_pull_request_homophones(message: str) -> str:
     normalized = re.sub(r"\bpool\s+request\b", "pull request", message)
     return re.sub(r"\bpool\s+pr\b", "pull pr", normalized)
 
+
 SELF_IMPROVE_PATTERNS: tuple[str, ...] = (
     r"\b(?:improve|fix|change|update|modify)\b.*\b(?:your(?:self)?|your code|nano)\b",
     r"\badd\b.*\b(?:to yourself|to nano)\b",

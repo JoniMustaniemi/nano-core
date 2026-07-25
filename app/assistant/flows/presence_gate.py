@@ -18,7 +18,6 @@ from app.runtime.status_copy import (
     PRESENCE_TITLE,
     STANDBY_DETAIL_PRESENCE,
 )
-from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
 
 class PresenceGateHandler:
@@ -159,10 +158,7 @@ class PresenceGateHandler:
         self._announce(PRESENCE_TIMEOUT_TITLE)
 
     def _announce(self, message: str) -> None:
-        try:
-            GladosVoiceService().announce(message)
-        except VoiceUnavailableError:
-            return
+        activity.announce_voice(message)
 
 
 presence_gate = PresenceGateHandler()

@@ -26,7 +26,7 @@ def test_agent_can_check_its_own_health(monkeypatch, tmp_path) -> None:
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
     monkeypatch.setattr(
         "app.tools.health_tools.run_health_checks",
@@ -58,7 +58,7 @@ def test_agent_health_summary_is_deterministic_all_clear(monkeypatch, tmp_path) 
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
     monkeypatch.setattr(
         "app.tools.health_tools.run_health_checks",
@@ -92,7 +92,7 @@ def test_agent_health_summary_never_thanks_or_mentions_user_health(
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
     monkeypatch.setattr(
         "app.tools.health_tools.run_health_checks",
@@ -125,7 +125,7 @@ def test_agent_health_summary_names_failing_check(monkeypatch, tmp_path) -> None
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
     monkeypatch.setattr(
         "app.tools.health_tools.run_health_checks",
@@ -157,7 +157,7 @@ def test_agent_health_summary_handles_missing_failure_detail(monkeypatch, tmp_pa
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
     monkeypatch.setattr(
         "app.tools.health_tools.run_health_checks",
@@ -245,7 +245,7 @@ def test_agent_runs_health_check_for_explicit_diagnostics_request(
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
     monkeypatch.setattr(
         "app.tools.health_tools.run_health_checks",
@@ -279,7 +279,7 @@ def test_agent_health_summary_omits_passing_checks_when_everything_is_ok(
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
     monkeypatch.setattr(
         "app.tools.health_tools.run_health_checks",

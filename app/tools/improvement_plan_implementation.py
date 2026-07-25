@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.config import get_settings
-from app.llm.factory import get_code_llm_client
+from app.llm.factory import get_code_llm_client, get_llm_client
 from app.memory import improvement_plans
 from app.memory.models import ImprovementPlan
 from app.runtime.activity import activity
@@ -16,7 +16,6 @@ from app.runtime.status_copy import (
     IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
     IMPROVEMENT_PLAN_IMPLEMENTED_DETAIL,
     IMPROVEMENT_PLAN_IMPLEMENTED_TITLE,
-    running_tool_title,
 )
 from app.tools.files import read_text_file, write_text_file
 from app.tools.git_command import run_git
@@ -30,13 +29,12 @@ from app.tools.git_github import (
     resolve_executable,
     working_tree_dirty,
 )
-from app.tools.improvement_plan_service import _validate_preferred_files
+from app.tools.improvement_plan_service import PLAN_TEMPERATURE, _validate_preferred_files
 from app.tools.pr_service import PrResult, PullRequestService
-from app.tools.self_improve_planning import complete_json_dict
+from app.tools.self_improve_planning import complete_json_dict, looks_like_llm_unavailable
 
 APPLY_JSON_HINT = '{"files": [{"path": "app/...", "content": "..."}]}'
 IMPLEMENTATION_SOURCE = "tools.improvement_plan_implementation"
-IMPLEMENTATION_ANNOUNCE_SOURCE = "tools.improvement_plan_implementation.announce"
 _NO_DIFF_ERROR = "Planned changes produced no file diff."
 
 
@@ -259,7 +257,7 @@ class ImprovementPlanImplementationService:
             detail=APPLYING_PLANNED_CHANGES_DETAIL,
             source=IMPLEMENTATION_SOURCE,
         )
-        _emit_voice_announcement(IMPLEMENTING_IMPROVEMENT_PLAN_TITLE)
+        activity.announce_voice(IMPLEMENTING_IMPROVEMENT_PLAN_TITLE)
 
         with LongTaskProgressReporter(task_name="self improvement", goal=plan.goal) as reporter:
             reporter.update(
@@ -275,14 +273,13 @@ class ImprovementPlanImplementationService:
                     detail=failure_message,
                     source=IMPLEMENTATION_SOURCE,
                 )
-                _emit_voice_announcement(failure_message)
+                activity.announce_voice(failure_message)
                 return apply_result
 
             reporter.update(step="lint")
-            _emit_voice_announcement(running_tool_title("create_pull_request"))
             pr_result = self.pr_service.run(
                 client=get_code_llm_client(),
-                announce=False,
+                announce=True,
             )
             if not pr_result.ok:
                 _restore_plan_files(allowed_files)
@@ -293,7 +290,7 @@ class ImprovementPlanImplementationService:
                     detail=failure_message,
                     source=IMPLEMENTATION_SOURCE,
                 )
-                _emit_voice_announcement(failure_message)
+                activity.announce_voice(failure_message)
                 return ImplementationResult(
                     ok=False,
                     step=pr_result.step,
@@ -307,7 +304,7 @@ class ImprovementPlanImplementationService:
             detail=IMPROVEMENT_PLAN_IMPLEMENTED_DETAIL,
             source=IMPLEMENTATION_SOURCE,
         )
-        _emit_voice_announcement(IMPROVEMENT_PLAN_IMPLEMENTED_TITLE)
+        activity.announce_voice(IMPROVEMENT_PLAN_IMPLEMENTED_TITLE)
         return ImplementationResult(
             ok=True,
             step="complete",
@@ -322,6 +319,7 @@ class ImprovementPlanImplementationService:
         allowed_files: list[str],
     ) -> ImplementationResult:
         plan_id = plan.id
+        settings = get_settings()
         file_contents: dict[str, str] = {}
         for path in allowed_files:
             try:
@@ -334,27 +332,43 @@ class ImprovementPlanImplementationService:
                     error=str(exc),
                 )
 
-        client = get_code_llm_client()
         messages = _build_apply_messages(
             goal=plan.goal,
             body=plan.body,
             file_contents=file_contents,
             allowed_files=allowed_files,
         )
-        payload = complete_json_dict(
-            client,
-            messages,
-            correction=(
-                "Your previous response was invalid. Return JSON only with key files. "
-                f"Example: {APPLY_JSON_HINT}"
-            ),
+        apply_correction = (
+            "Your previous response was invalid. Return JSON only with key files. "
+            f"Example: {APPLY_JSON_HINT}"
         )
+        max_tokens = settings.self_improve_plan_max_tokens
+        payload: dict[str, Any] | None = None
+        apply_error: str | None = None
+        for client in (get_code_llm_client(), get_llm_client()):
+            payload = complete_json_dict(
+                client,
+                messages,
+                correction=apply_correction,
+                max_tokens=max_tokens,
+                temperature=PLAN_TEMPERATURE,
+            )
+            if payload is not None:
+                break
+            probe = client.complete(
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=PLAN_TEMPERATURE,
+            ).strip()
+            if looks_like_llm_unavailable(probe):
+                apply_error = probe
+                break
         if payload is None:
             return ImplementationResult(
                 ok=False,
                 step="apply",
                 plan_id=plan_id,
-                error="Could not apply planned code changes.",
+                error=apply_error or "Could not apply planned code changes.",
             )
 
         try:
@@ -429,14 +443,3 @@ def _format_apply_failure_message(error: str | None) -> str:
 
 def _pr_failure_detail(result: PrResult) -> str:
     return _format_implementation_pr_failure(result)
-
-
-def _emit_voice_announcement(message: str) -> None:
-    spoken = message.strip().rstrip(".")
-    if not spoken:
-        return
-    activity.log(
-        title=spoken,
-        detail=spoken,
-        source=IMPLEMENTATION_ANNOUNCE_SOURCE,
-    )

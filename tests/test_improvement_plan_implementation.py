@@ -4,6 +4,7 @@ import json
 import subprocess
 
 import pytest
+from helpers.voice_announce import patch_announce_voice, silence_announce_voice
 
 from app.memory import improvement_plans
 from app.memory.db import create_db_and_tables
@@ -221,10 +222,7 @@ def test_implementation_service_announces_key_steps(
         "app.tools.improvement_plan_implementation.get_code_llm_client",
         lambda: _Client(),
     )
-    monkeypatch.setattr(
-        "app.tools.improvement_plan_implementation._emit_voice_announcement",
-        lambda message: announcements.append(message),
-    )
+    patch_announce_voice(monkeypatch, announcements)
 
     class _PrService:
         def run(self, *, client, announce=True) -> PrResult:
@@ -237,7 +235,6 @@ def test_implementation_service_announces_key_steps(
     ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
 
     assert announcements[0] == "I'm implementing an improvement plan."
-    assert announcements[1] == "I'm opening a pull request."
     assert announcements[-1] == "I implemented the improvement plan."
 
 
@@ -265,10 +262,7 @@ def test_implementation_service_announces_lint_failure_message(
         "app.tools.improvement_plan_implementation.get_code_llm_client",
         lambda: _Client(),
     )
-    monkeypatch.setattr(
-        "app.tools.improvement_plan_implementation._emit_voice_announcement",
-        lambda message: announcements.append(message),
-    )
+    patch_announce_voice(monkeypatch, announcements)
 
     class _PrService:
         def run(self, *, client, announce=True) -> PrResult:
@@ -279,6 +273,52 @@ def test_implementation_service_announces_lint_failure_message(
     assert any(
         "declined to commit anything or open a pull request" in msg.lower() for msg in announcements
     )
+
+
+def test_implementation_service_passes_plan_max_tokens_to_apply_llm(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'tokens.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    (tmp_path / "app" / "runtime" / "status_copy.py").write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    captured: list[dict[str, int | float | None]] = []
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            captured.append(
+                {
+                    "max_tokens": kwargs.get("max_tokens"),
+                    "temperature": kwargs.get("temperature"),
+                }
+            )
+            return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_llm_client",
+        lambda: _Client(),
+    )
+    silence_announce_voice(monkeypatch)
+
+    class _PrService:
+        def run(self, *, client, announce=True) -> PrResult:
+            return PrResult(ok=True, step="complete", url="https://github.com/example/repo/pull/9")
+
+    ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
+
+    assert captured
+    assert captured[0]["max_tokens"] == 8192
+    assert captured[0]["temperature"] == 0.2
 
 
 def test_implementation_service_restores_pending_on_apply_failure(
@@ -410,10 +450,7 @@ def test_implementation_success_activity_detail_has_no_url(
         "app.tools.improvement_plan_implementation.get_code_llm_client",
         lambda: _Client(),
     )
-    monkeypatch.setattr(
-        "app.tools.improvement_plan_implementation._emit_voice_announcement",
-        lambda message: None,
-    )
+    silence_announce_voice(monkeypatch)
     monkeypatch.setattr(
         "app.tools.improvement_plan_implementation.activity.standby",
         lambda **kwargs: standby_calls.append(kwargs) or None,
@@ -460,10 +497,7 @@ def test_implementation_service_restores_files_on_pr_failure(
         "app.tools.improvement_plan_implementation.get_code_llm_client",
         lambda: _Client(),
     )
-    monkeypatch.setattr(
-        "app.tools.improvement_plan_implementation._emit_voice_announcement",
-        lambda message: None,
-    )
+    silence_announce_voice(monkeypatch)
 
     class _PrService:
         def run(self, *, client, announce=True) -> PrResult:

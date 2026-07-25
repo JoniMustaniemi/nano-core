@@ -2,6 +2,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from helpers.voice_announce import patch_announce_voice
 
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_source import tool_result_source
@@ -23,10 +24,7 @@ def test_pr_service_announces_opening_intent_before_workflow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     announcements: list[str] = []
-    monkeypatch.setattr(
-        "app.tools.pr_service._emit_pr_announcement",
-        lambda message: announcements.append(message),
-    )
+    patch_announce_voice(monkeypatch, announcements)
     monkeypatch.setattr("app.tools.pr_service.activity.working", lambda **kwargs: None)
     monkeypatch.setattr("app.tools.pr_service.is_git_repo", lambda: False)
     monkeypatch.setattr("app.tools.pr_service.resolve_executable", lambda _: None)
@@ -339,6 +337,94 @@ def test_pr_service_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     assert ("push", "-u", "origin", "HEAD") in git_calls
     assert gh_calls[0][:2] == ("pr", "create")
     assert "--head" not in gh_calls[0]
+
+
+def test_pr_service_happy_path_announces_opening_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    announcements: list[str] = []
+    branch_state = {"name": "main"}
+
+    patch_announce_voice(monkeypatch, announcements)
+    monkeypatch.setattr("app.tools.pr_service.is_git_repo", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.gh_available", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.gh_authenticated", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.get_open_pull_request", lambda: None)
+    monkeypatch.setattr("app.tools.pr_service.has_publishable_changes", lambda: True)
+    monkeypatch.setattr(
+        "app.tools.pr_service.collect_change_context",
+        lambda: {"changed_files": ["a.py"], "dirty": True},
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_pr_lint",
+        lambda: SimpleNamespace(
+            ok=True,
+            command=["python", "-m", "ruff", "check", "app", "tests"],
+            exit_code=0,
+            output="",
+            error=None,
+        ),
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_pr_verification",
+        lambda: SimpleNamespace(
+            ok=True,
+            command=["python", "-m", "pytest", "-q"],
+            exit_code=0,
+            output="",
+            error=None,
+        ),
+    )
+    monkeypatch.setattr("app.tools.pr_service.working_tree_dirty", lambda: True)
+    monkeypatch.setattr(
+        "app.tools.pr_service.get_current_branch",
+        lambda: branch_state["name"],
+    )
+    monkeypatch.setattr("app.tools.pr_service.detect_default_base_branch", lambda: "main")
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_git",
+        lambda *args: (
+            SimpleNamespace(returncode=0, stdout=f"{branch_state['name']}\n", stderr="")
+            if args[:2] == ("branch", "--show-current")
+            else SimpleNamespace(returncode=0, stdout="", stderr="")
+        ),
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_gh",
+        lambda *args: SimpleNamespace(
+            returncode=0,
+            stdout="https://github.com/org/repo/pull/2\n",
+            stderr="",
+        ),
+    )
+
+    def fake_ensure_feature_branch(name: str):
+        branch_state["name"] = name
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(
+        "app.tools.pr_service.ensure_feature_branch",
+        fake_ensure_feature_branch,
+    )
+    monkeypatch.setattr("app.tools.pr_service.activity.working", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.log", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.standby", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.start_task_timer", lambda *args: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.clear_task_timer", lambda: None)
+
+    naming = SimpleNamespace(
+        slug="add_github_pr",
+        title="add_github_pr",
+        commit_message="add_github_pr",
+        body="Adds GitHub PR support.",
+        branch="feature/add_github_pr",
+    )
+    service = PullRequestService(
+        naming_service=SimpleNamespace(generate=lambda **kwargs: naming),
+    )
+
+    result = service.run(client=SimpleNamespace())
+
+    assert result.ok is True
+    assert announcements == ["I'm opening a pull request."]
 
 
 def test_pr_service_blocks_when_open_pr_exists(monkeypatch: pytest.MonkeyPatch) -> None:

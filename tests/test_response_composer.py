@@ -92,6 +92,23 @@ def test_compose_pr_tool_error_skips_llm() -> None:
     assert client.messages is None
 
 
+def test_compose_pr_lint_error_includes_checker_summary() -> None:
+    composer = ResponseComposer()
+    error = "Type checks failed: app/tools/demo.py:1: error: example"
+    payload = json.dumps({"ok": False, "step": "lint", "error": error})
+    source = tool_error_source(
+        user_message="Open a PR",
+        facts=payload,
+        tool_name="create_pull_request",
+        conversation_id="default",
+    )
+
+    content = composer.compose(_StubClient(), source)
+
+    assert "demo.py" in content
+    assert error in content
+
+
 def test_compose_confirmation_uses_follow_up_text() -> None:
     composer = ResponseComposer()
     source = follow_up_source(

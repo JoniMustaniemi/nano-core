@@ -34,10 +34,19 @@ def complete_json_dict(
     *,
     correction: str,
     attempts: int = 2,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
 ) -> dict[str, Any] | None:
     conversation = list(messages)
     for _attempt in range(attempts):
-        raw = cast(str, client.complete(messages=conversation)).strip()
+        raw = cast(
+            str,
+            client.complete(
+                messages=conversation,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            ),
+        ).strip()
         if looks_like_llm_unavailable(raw):
             return None
         payload = extract_json(raw)

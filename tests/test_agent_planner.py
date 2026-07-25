@@ -50,7 +50,7 @@ def test_agent_announces_tool_calls(monkeypatch, tmp_path) -> None:
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: announcements.append(text),
+        announce=lambda text: announcements.append(text),
     )
 
     AgentService().respond("What is 2 + 2?")
@@ -94,7 +94,7 @@ def test_agent_rejects_irrelevant_tool_calls(monkeypatch, tmp_path) -> None:
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
 
     content = AgentService().respond("Tell me about rocks.")
@@ -120,7 +120,7 @@ def test_agent_announces_tool_errors(monkeypatch, tmp_path) -> None:
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: announcements.append(text),
+        announce=lambda text: announcements.append(text),
     )
     monkeypatch.setattr(
         "app.assistant.tool_runner.get_tool",
@@ -152,7 +152,7 @@ def test_agent_announces_step_limit_errors(monkeypatch, tmp_path) -> None:
         monkeypatch,
         client=NeverFinishesClient(),
         tmp_path=tmp_path,
-        announce=lambda self, text: announcements.append(text),
+        announce=lambda text: announcements.append(text),
     )
 
     content = AgentService().respond("What is 2 + 2?")

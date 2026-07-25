@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeGuard
 
 from app.assistant.agent_rules import parse_decision, tool_matches_request, tool_signature
-from app.assistant.agent_types import AnswerIntentDecision, FinalDecision, ToolResult
+from app.assistant.agent_types import AnswerIntentDecision, Decision, FinalDecision, ToolResult
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
 from app.assistant.response_source import ResponseSource, answer_source, tool_result_source
@@ -85,7 +85,7 @@ class AgentPlanner:
             raw = client.complete(messages=messages)
             decision = parse_decision(raw)
 
-            if decision["type"] in {"final", "answer_intent"}:
+            if _is_answer_decision(decision):
                 return self._build_answer_source(
                     client=client,
                     message=message,
@@ -275,3 +275,9 @@ class AgentPlanner:
                 ),
             }
         )
+
+
+def _is_answer_decision(
+    decision: Decision,
+) -> TypeGuard[AnswerIntentDecision | FinalDecision]:
+    return decision["type"] in {"final", "answer_intent"}

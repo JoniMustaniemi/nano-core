@@ -1,4 +1,5 @@
 from helpers.agent_fixtures import wrap_with_alignment_intercept
+from helpers.voice_announce import silence_announce_voice
 
 from app.assistant.pending import pending_interactions
 from app.config import get_settings
@@ -79,10 +80,7 @@ def test_health_check_sets_working_activity(api_client, monkeypatch) -> None:
         "app.assistant.orchestrator.get_llm_client",
         lambda: wrap_with_alignment_intercept(_HealthClient()),
     )
-    monkeypatch.setattr(
-        "app.assistant.tool_runner.GladosVoiceService.announce",
-        lambda self, text: None,
-    )
+    silence_announce_voice(monkeypatch)
 
     response = api_client.post("/chat", json={"message": "Check your health.", "mode": "agent"})
     status = api_client.get("/api/status")
@@ -182,3 +180,26 @@ def test_task_timer_cleared_on_error() -> None:
     snapshot = activity.snapshot()
     assert snapshot["task_timer"] is None
     activity.standby()
+
+
+def test_announce_voice_uses_single_runtime_source() -> None:
+    from app.runtime.activity import VOICE_ANNOUNCE_SOURCE, activity
+
+    activity.reset()
+    event = activity.announce_voice("I'm opening a pull request.")
+
+    assert event is not None
+    assert event.source == VOICE_ANNOUNCE_SOURCE
+    assert event.title == "I'm opening a pull request"
+    assert event.detail == "I'm opening a pull request"
+
+
+def test_announce_voice_ignores_duplicate_messages() -> None:
+    from app.runtime.activity import activity
+
+    activity.reset()
+    first = activity.announce_voice("I'm opening a pull request.")
+    second = activity.announce_voice("I'm opening the pull request.")
+
+    assert first is not None
+    assert second is None
