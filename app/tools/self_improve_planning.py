@@ -28,6 +28,40 @@ def looks_like_llm_unavailable(raw: str) -> bool:
     return any(marker in raw for marker in _LLM_UNAVAILABLE_MARKERS)
 
 
+def complete_json_dict_with_raw(
+    client: Any,
+    messages: list[dict[str, str]],
+    *,
+    correction: str,
+    attempts: int = 2,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+) -> tuple[dict[str, Any] | None, str]:
+    conversation = list(messages)
+    last_raw = ""
+    for _attempt in range(attempts):
+        last_raw = cast(
+            str,
+            client.complete(
+                messages=conversation,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            ),
+        ).strip()
+        if looks_like_llm_unavailable(last_raw):
+            return None, last_raw
+        payload = extract_json(last_raw)
+        if isinstance(payload, dict):
+            return payload, last_raw
+        conversation.extend(
+            [
+                {"role": "assistant", "content": last_raw},
+                {"role": "user", "content": correction},
+            ]
+        )
+    return None, last_raw
+
+
 def complete_json_dict(
     client: Any,
     messages: list[dict[str, str]],
@@ -37,28 +71,15 @@ def complete_json_dict(
     max_tokens: int | None = None,
     temperature: float | None = None,
 ) -> dict[str, Any] | None:
-    conversation = list(messages)
-    for _attempt in range(attempts):
-        raw = cast(
-            str,
-            client.complete(
-                messages=conversation,
-                max_tokens=max_tokens,
-                temperature=temperature,
-            ),
-        ).strip()
-        if looks_like_llm_unavailable(raw):
-            return None
-        payload = extract_json(raw)
-        if isinstance(payload, dict):
-            return payload
-        conversation.extend(
-            [
-                {"role": "assistant", "content": raw},
-                {"role": "user", "content": correction},
-            ]
-        )
-    return None
+    payload, _last_raw = complete_json_dict_with_raw(
+        client,
+        messages,
+        correction=correction,
+        attempts=attempts,
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    return payload
 
 
 def parse_selection(payload: dict[str, Any]) -> list[str]:

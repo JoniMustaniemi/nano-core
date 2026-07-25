@@ -31,11 +31,18 @@ from app.tools.git_github import (
 )
 from app.tools.improvement_plan_service import PLAN_TEMPERATURE, _validate_preferred_files
 from app.tools.pr_service import PrResult, PullRequestService
-from app.tools.self_improve_planning import complete_json_dict, looks_like_llm_unavailable
+from app.tools.self_improve_planning import (
+    complete_json_dict_with_raw,
+    looks_like_llm_unavailable,
+)
 
-APPLY_JSON_HINT = '{"files": [{"path": "app/...", "content": "..."}]}'
+APPLY_REPLACEMENT_HINT = (
+    '{"files": [{"path": "app/...", "replacements": [{"find": "...", "replace": "..."}]}]}'
+)
+APPLY_FULL_FILE_HINT = '{"files": [{"path": "app/...", "content": "..."}]}'
 IMPLEMENTATION_SOURCE = "tools.improvement_plan_implementation"
 _NO_DIFF_ERROR = "Planned changes produced no file diff."
+_RAW_PREVIEW_MAX_CHARS = 200
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,10 +146,39 @@ def check_implementation_preflight(
     return ImplementationPreflightResult(ok=True)
 
 
+def _parse_replacement_items(raw: object) -> list[tuple[str, str]]:
+    if not isinstance(raw, list) or not raw:
+        raise ValueError("Response must include a non-empty replacements array.")
+    parsed: list[tuple[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        find = item.get("find")
+        replace = item.get("replace")
+        if isinstance(find, str) and isinstance(replace, str):
+            parsed.append((find, replace))
+    if not parsed:
+        raise ValueError("No valid replacements were returned.")
+    return parsed
+
+
+def _apply_replacements(content: str, replacements: list[tuple[str, str]]) -> str:
+    result = content
+    for find, replace in replacements:
+        count = result.count(find)
+        if count != 1:
+            raise ValueError(
+                f"Replacement find text must appear exactly once (found {count} times)."
+            )
+        result = result.replace(find, replace, 1)
+    return result
+
+
 def _parse_apply_payload(
     payload: dict[str, Any],
     *,
     allowed_files: list[str],
+    file_contents: dict[str, str],
 ) -> list[tuple[str, str]]:
     raw_files = payload.get("files", [])
     if not isinstance(raw_files, list) or not raw_files:
@@ -155,16 +191,25 @@ def _parse_apply_payload(
         if not isinstance(item, dict):
             continue
         normalized = _normalize_plan_path(str(item.get("path", "")))
-        content = item.get("content")
-        if not normalized or not isinstance(content, str):
+        if not normalized:
             continue
         canonical = allowed_map.get(normalized)
         if canonical is None:
             raise ValueError(f"Unexpected file path: {normalized}")
         if canonical in seen:
             continue
-        seen.add(canonical)
-        parsed.append((canonical, content))
+
+        content = item.get("content")
+        replacements = item.get("replacements")
+        if isinstance(content, str):
+            seen.add(canonical)
+            parsed.append((canonical, content))
+            continue
+        if replacements is not None:
+            original = file_contents.get(canonical, "")
+            replacement_pairs = _parse_replacement_items(replacements)
+            seen.add(canonical)
+            parsed.append((canonical, _apply_replacements(original, replacement_pairs)))
 
     if not parsed:
         raise ValueError("No valid file edits were returned.")
@@ -194,10 +239,12 @@ def _build_apply_messages(
             "role": "system",
             "content": (
                 "You implement a focused improvement plan for Nano, a local AI assistant codebase. "
-                "Return JSON only with the full updated file contents. "
-                f"Use this shape: {APPLY_JSON_HINT}. "
+                "Return JSON only with minimal search/replace edits. "
+                f"Preferred shape: {APPLY_REPLACEMENT_HINT}. "
+                "Each replacement find string must match the current file exactly once. "
                 f"You must return exactly these paths: {required_paths}. "
                 "Include every listed target file exactly once. "
+                f"Alternatively you may return full file contents using: {APPLY_FULL_FILE_HINT}. "
                 "Do not add markdown fences or commentary."
             ),
         },
@@ -264,7 +311,11 @@ class ImprovementPlanImplementationService:
                 step="plan", current_file=allowed_files[0], file_count=len(allowed_files)
             )
 
-            apply_result = self._apply_plan(plan, allowed_files=allowed_files)
+            apply_result = self._apply_plan(
+                plan,
+                allowed_files=allowed_files,
+                reporter=reporter,
+            )
             if not apply_result.ok:
                 improvement_plans.restore_pending(plan_id)
                 failure_message = _format_apply_failure_message(apply_result.error)
@@ -317,6 +368,7 @@ class ImprovementPlanImplementationService:
         plan: ImprovementPlan,
         *,
         allowed_files: list[str],
+        reporter: LongTaskProgressReporter | None = None,
     ) -> ImplementationResult:
         plan_id = plan.id
         settings = get_settings()
@@ -340,45 +392,84 @@ class ImprovementPlanImplementationService:
         )
         apply_correction = (
             "Your previous response was invalid. Return JSON only with key files. "
-            f"Example: {APPLY_JSON_HINT}"
+            f"Preferred example: {APPLY_REPLACEMENT_HINT}"
         )
         max_tokens = settings.self_improve_plan_max_tokens
+        max_attempts = settings.self_improve_apply_max_attempts
         payload: dict[str, Any] | None = None
+        edits: list[tuple[str, str]] = []
         apply_error: str | None = None
-        for client in (get_code_llm_client(), get_llm_client()):
-            payload = complete_json_dict(
-                client,
-                messages,
-                correction=apply_correction,
-                max_tokens=max_tokens,
-                temperature=PLAN_TEMPERATURE,
-            )
-            if payload is not None:
-                break
-            probe = client.complete(
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=PLAN_TEMPERATURE,
-            ).strip()
-            if looks_like_llm_unavailable(probe):
-                apply_error = probe
-                break
-        if payload is None:
-            return ImplementationResult(
-                ok=False,
-                step="apply",
-                plan_id=plan_id,
-                error=apply_error or "Could not apply planned code changes.",
-            )
+        last_parse_error: str | None = None
+        last_raw = ""
+        total_attempts = 0
 
-        try:
-            edits = _parse_apply_payload(payload, allowed_files=allowed_files)
-        except ValueError as exc:
+        for client in (get_code_llm_client(), get_llm_client()):
+            if apply_error is not None:
+                break
+            conversation = list(messages)
+            for _attempt in range(max_attempts):
+                total_attempts += 1
+                if reporter is not None:
+                    reporter.update(attempt=total_attempts)
+
+                payload, last_raw = complete_json_dict_with_raw(
+                    client,
+                    conversation,
+                    correction=apply_correction,
+                    attempts=1,
+                    max_tokens=max_tokens,
+                    temperature=PLAN_TEMPERATURE,
+                )
+                if payload is None:
+                    if looks_like_llm_unavailable(last_raw):
+                        apply_error = last_raw
+                        break
+                    conversation.extend(
+                        [
+                            {"role": "assistant", "content": last_raw},
+                            {"role": "user", "content": apply_correction},
+                        ]
+                    )
+                    continue
+
+                try:
+                    edits = _parse_apply_payload(
+                        payload,
+                        allowed_files=allowed_files,
+                        file_contents=file_contents,
+                    )
+                    break
+                except ValueError as exc:
+                    last_parse_error = str(exc)
+                    parse_correction = (
+                        f"Your JSON structure was invalid: {exc}. Fix the JSON. {apply_correction}"
+                    )
+                    conversation.extend(
+                        [
+                            {"role": "assistant", "content": last_raw},
+                            {"role": "user", "content": parse_correction},
+                        ]
+                    )
+                    payload = None
+                    continue
+
+            if payload is not None and edits:
+                break
+
+        if payload is None or not edits:
+            if apply_error:
+                error = apply_error
+            elif last_parse_error is not None:
+                error = last_parse_error
+            elif total_attempts > 0:
+                error = _format_invalid_json_error(total_attempts, last_raw)
+            else:
+                error = "Could not apply planned code changes."
             return ImplementationResult(
                 ok=False,
                 step="apply",
                 plan_id=plan_id,
-                error=str(exc),
+                error=error,
             )
 
         changed_edits: list[tuple[str, str]] = []
@@ -407,6 +498,21 @@ class ImprovementPlanImplementationService:
                 )
 
         return ImplementationResult(ok=True, step="apply", plan_id=plan_id)
+
+
+def _truncate_raw_preview(raw: str, max_chars: int = _RAW_PREVIEW_MAX_CHARS) -> str:
+    cleaned = " ".join(raw.split())
+    if len(cleaned) > max_chars:
+        return cleaned[:max_chars] + "..."
+    return cleaned
+
+
+def _format_invalid_json_error(attempts: int, last_raw: str) -> str:
+    message = f"Model returned invalid JSON after {attempts} attempts."
+    preview = _truncate_raw_preview(last_raw)
+    if preview:
+        message = f"{message} Last response preview: {preview}"
+    return message
 
 
 def _format_implementation_pr_failure(result: PrResult) -> str:

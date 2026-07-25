@@ -10,6 +10,7 @@ from app.memory import improvement_plans
 from app.memory.db import create_db_and_tables
 from app.tools.improvement_plan_implementation import (
     ImprovementPlanImplementationService,
+    _apply_replacements,
     check_implementation_preflight,
 )
 from app.tools.pr_service import PrResult
@@ -510,3 +511,205 @@ def test_implementation_service_restores_files_on_pr_failure(
     plan = improvement_plans.get_plan(plan_id)
     assert plan is not None
     assert plan.status == "pending"
+
+
+def test_apply_replacements_requires_unique_find_text() -> None:
+    content = "OLD = 1\nOTHER = 1\n"
+    result = _apply_replacements(content, [("OLD = 1\n", "NEW = 2\n")])
+    assert result == "NEW = 2\nOTHER = 1\n"
+
+    with pytest.raises(ValueError, match="exactly once"):
+        _apply_replacements(content, [("= 1", "x")])
+
+    with pytest.raises(ValueError, match="exactly once"):
+        _apply_replacements("OLD = 1\n", [("missing", "x")])
+
+
+def test_implementation_service_applies_replacement_json(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'replace.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    target = tmp_path / "app" / "runtime" / "status_copy.py"
+    target.write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return json.dumps(
+                {
+                    "files": [
+                        {
+                            "path": "app/runtime/status_copy.py",
+                            "replacements": [{"find": "OLD = 1", "replace": "NEW = 2"}],
+                        }
+                    ]
+                }
+            )
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+
+    class _PrService:
+        def run(self, *, client, announce=True) -> PrResult:
+            return PrResult(ok=True, step="complete", url="https://github.com/example/repo/pull/4")
+
+    result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
+
+    assert result.ok is True
+    assert target.read_text(encoding="utf-8") == "NEW = 2\n"
+
+
+def test_implementation_service_rejects_ambiguous_replacement_find(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'ambiguous.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    target = tmp_path / "app" / "runtime" / "status_copy.py"
+    target.write_text("OLD = 1\nDUP = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return json.dumps(
+                {
+                    "files": [
+                        {
+                            "path": "app/runtime/status_copy.py",
+                            "replacements": [{"find": "= 1", "replace": "= 2"}],
+                        }
+                    ]
+                }
+            )
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_llm_client",
+        lambda: _Client(),
+    )
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_plan_max_tokens=8192,
+            self_improve_apply_max_attempts=1,
+        ),
+    )
+
+    result = ImprovementPlanImplementationService().run(plan_id)
+
+    assert result.ok is False
+    assert result.step == "apply"
+    assert "exactly once" in (result.error or "").lower()
+    assert target.read_text(encoding="utf-8") == "OLD = 1\nDUP = 1\n"
+    plan = improvement_plans.get_plan(plan_id)
+    assert plan is not None
+    assert plan.status == "pending"
+
+
+def test_implementation_service_reports_invalid_json_with_preview(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'invalid-json.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    (tmp_path / "app" / "runtime" / "status_copy.py").write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return "not json at all"
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_llm_client",
+        lambda: _Client(),
+    )
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_plan_max_tokens=8192,
+            self_improve_apply_max_attempts=2,
+        ),
+    )
+
+    result = ImprovementPlanImplementationService().run(plan_id)
+
+    assert result.ok is False
+    assert result.step == "apply"
+    assert "invalid json after 4 attempts" in (result.error or "").lower()
+    assert "not json at all" in (result.error or "")
+
+
+def test_implementation_service_uses_configured_apply_max_attempts(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'attempts.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    (tmp_path / "app" / "runtime" / "status_copy.py").write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    call_count = 0
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            nonlocal call_count
+            call_count += 1
+            return "not json"
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_llm_client",
+        lambda: _Client(),
+    )
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_plan_max_tokens=8192,
+            self_improve_apply_max_attempts=3,
+        ),
+    )
+
+    result = ImprovementPlanImplementationService().run(plan_id)
+
+    assert result.ok is False
+    assert call_count == 6
+    assert "invalid json after 6 attempts" in (result.error or "").lower()
