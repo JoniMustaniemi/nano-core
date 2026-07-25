@@ -55,6 +55,7 @@ STOPWATCH_STATUS_KEYWORDS: tuple[str, ...] = (
     "what stopwatches",
     "what stopwatch",
 )
+_STOPWATCH_TWO_WORD_RE = re.compile(r"\bstop\s+watch(?:es)?\b", re.IGNORECASE)
 
 
 def needs_timer_duration(message: str) -> bool:
@@ -116,7 +117,7 @@ def is_stopwatch_stop_request(message: str) -> bool:
     Returns:
         True when the condition is met; otherwise false.
     """
-    lowered = message.lower()
+    lowered = _normalize_stopwatch_spelling(message.lower())
     return _has_stopwatch_trigger(lowered) and _has_timer_cancel_keyword(lowered)
 
 
@@ -165,7 +166,7 @@ def is_timer_status_request(message: str) -> bool:
     Returns:
         True when the condition is met; otherwise false.
     """
-    lowered = message.lower()
+    lowered = _normalize_stopwatch_spelling(message.lower())
     if _has_timer_cancel_keyword(lowered):
         return False
     if _has_stopwatch_trigger(lowered):
@@ -173,6 +174,13 @@ def is_timer_status_request(message: str) -> bool:
     if not any(trigger in lowered for trigger in TIMER_REQUEST_TRIGGERS):
         return False
     return any(keyword in lowered for keyword in TIMER_STATUS_KEYWORDS)
+
+
+def _normalize_stopwatch_spelling(message: str) -> str:
+    return _STOPWATCH_TWO_WORD_RE.sub(
+        lambda match: "stopwatches" if match.group(0).lower().endswith("es") else "stopwatch",
+        message,
+    )
 
 
 def _has_stopwatch_trigger(lowered_message: str) -> bool:

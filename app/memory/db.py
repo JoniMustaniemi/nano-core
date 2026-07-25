@@ -85,3 +85,5 @@ def _migrate_timer_table() -> None:
         )
         conn.execute(text("DROP TABLE timer"))
         conn.execute(text("ALTER TABLE timer_new RENAME TO timer"))
+        conn.execute(text("CREATE INDEX ix_timer_kind ON timer (kind)"))
+        conn.execute(text("CREATE INDEX ix_timer_due_at ON timer (due_at)"))

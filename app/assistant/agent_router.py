@@ -40,19 +40,22 @@ class AgentRouter:
     Unified router for new user messages.
 
     Priority order:
-    1. Timer status/cancel (clears pending timer follow-ups)
-    2. Pending interaction resume
-    3. Self-improvement tool
-    4. Timer start/duration
-    5. Wipe confirmation
-    6. Health check tool
-    7. System analysis tool
-    8. Pull request tool
-    9. Internal note list tool
-    10. Direct answer without tools
-    11. Capabilities answer from tool catalog
-    12. Identity answer with dynamic context
-    13. Planner fallback
+    1. Timer status (clears pending timer follow-ups)
+    2. Stopwatch stop (clears pending timer follow-ups)
+    3. Timer cancel (clears pending timer follow-ups)
+    4. Pending interaction resume
+    5. Self-improvement tool
+    6. Stopwatch start
+    7. Timer start/duration
+    8. Wipe confirmation
+    9. Health check tool
+    10. System analysis tool
+    11. Pull request tool
+    12. Internal note list tool
+    13. Direct answer without tools
+    14. Capabilities answer from tool catalog
+    15. Identity answer with dynamic context
+    16. Planner fallback
     """
 
     def decide(

@@ -190,7 +190,7 @@ _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
     "read_file": "I read a file.",
     "run_python": "I ran code.",
     "start_timer": "I set a timer.",
-    "start_stopwatch": "Stopwatch started.",
+    "start_stopwatch": STOPWATCH_STARTED_MESSAGE,
     "stop_stopwatches": "I stopped the stopwatch.",
     "write_file": "I wrote a file.",
 }

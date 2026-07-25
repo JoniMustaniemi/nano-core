@@ -13,6 +13,7 @@ from app.assistant.rules.timers import (
     is_stopwatch_stop_request,
     is_timer_cancel_request,
     is_timer_start_request,
+    is_timer_status_request,
 )
 from app.memory import repository
 from app.runtime.status_copy import (
@@ -38,7 +39,14 @@ def test_stopwatch_start_and_stop_phrases() -> None:
     assert is_stopwatch_start_request("Start a stopwatch.")
     assert is_stopwatch_start_request("Add stopwatch.")
     assert is_stopwatch_stop_request("Stop stopwatch.")
+    assert is_stopwatch_stop_request("Stop stop watch.")
     assert not is_stopwatch_start_request("Stop stopwatch.")
+
+
+def test_stop_watch_spelling_does_not_trigger_timer_cancel() -> None:
+    assert is_timer_status_request("What stop watches are running?")
+    assert is_timer_status_request("Status of stop watch.")
+    assert not is_timer_status_request("Stop stop watch.")
 
 
 def test_agent_handles_add_timer_phrase_without_model(monkeypatch, tmp_path) -> None:
