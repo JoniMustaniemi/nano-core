@@ -85,6 +85,7 @@ def test_homepage_shows_standby_ui(api_client) -> None:
     assert 'id="plans-tab-count"' in response.text
     assert 'id="plan-reader"' in response.text
     assert 'id="plan-copy-button"' in response.text
+    assert 'id="plan-implement-button"' in response.text
 
     assert 'id="brains-clear"' in response.text
 
@@ -264,6 +265,9 @@ def test_homepage_serves_static_assets() -> None:
     ].split('if (event.kind === "log" && event.source === "runtime.task_timer")')[0]
     assert "void loadPlans();" in completion_block
     assert "return;" not in completion_block
+
+    assert "tools.improvement_plan_implementation.announce" in js_text
+    assert "formatImplementationAnnouncement" in js_text
 
     assert "runtime.task_timer" in js_text
     assert "syncTaskWaitTimer" in js_text

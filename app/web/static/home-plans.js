@@ -30,6 +30,22 @@ function resetPlanCopyButtonLabel() {
   planCopyButton.setAttribute("aria-label", "Copy plan");
 }
 
+function clearPlanReaderStatus() {
+  if (!planReaderStatus) {
+    return;
+  }
+  planReaderStatus.hidden = true;
+  planReaderStatus.textContent = "";
+}
+
+function showPlanReaderStatus(message) {
+  if (!planReaderStatus) {
+    return;
+  }
+  planReaderStatus.textContent = message;
+  planReaderStatus.hidden = false;
+}
+
 function closePlanReader() {
   activePlanId = null;
   activePlanKind = "drafted";
@@ -42,6 +58,7 @@ function closePlanReader() {
   }
   resetPlanCopyButtonLabel();
   updatePlanCopyButton();
+  clearPlanReaderStatus();
 }
 
 function isPlanProcessable(plan) {
@@ -63,12 +80,25 @@ function updatePlanProcessButton(plan) {
   planProcessButton.disabled = !processable;
 }
 
+function updatePlanImplementButton(plan) {
+  if (!planImplementButton) {
+    return;
+  }
+  const implementable = Boolean(
+    plan && plan.kind === "drafted" && plan.status === "pending",
+  );
+  planImplementButton.hidden = !implementable;
+  planImplementButton.disabled = !implementable;
+}
+
 function openPlanReader(plan) {
   activePlanId = plan.id;
   activePlanKind = plan.kind || "drafted";
   planReaderTitle.textContent = planCardLabel(plan);
   planReaderBody.textContent = plan.body || "";
   updatePlanProcessButton(plan);
+  updatePlanImplementButton(plan);
+  clearPlanReaderStatus();
   plansList.hidden = true;
   planReader.hidden = false;
   nanoPanelPlans.classList.add("reading");
@@ -103,7 +133,12 @@ function updatePlansTabCount(plans) {
     return;
   }
   const pending = Array.isArray(plans)
-    ? plans.filter((plan) => plan.status === "pending" || plan.status === "waiting").length
+    ? plans.filter(
+        (plan) =>
+          plan.status === "pending" ||
+          plan.status === "waiting" ||
+          plan.status === "implementing",
+      ).length
     : 0;
   plansTabCount.hidden = pending === 0;
   plansTabCount.textContent = String(pending);
@@ -148,8 +183,17 @@ function renderPlans(plans) {
     const status = document.createElement("span");
     const isPending = plan.status === "pending";
     const isWaiting = plan.status === "waiting";
-    status.className = `plan-card-status ${isPending ? "pending" : isWaiting ? "waiting" : "processed"}`;
-    status.textContent = isPending ? "Pending" : isWaiting ? "Waiting" : "Done";
+    const isImplementing = plan.status === "implementing";
+    status.className = `plan-card-status ${
+      isPending ? "pending" : isWaiting ? "waiting" : isImplementing ? "pending" : "processed"
+    }`;
+    status.textContent = isPending
+      ? "Pending"
+      : isWaiting
+        ? "Waiting"
+        : isImplementing
+          ? "Implementing"
+          : "Done";
 
     button.append(title, meta, status);
     button.addEventListener("click", () => {
@@ -195,6 +239,53 @@ async function processActivePlan() {
   await loadPlans();
 }
 
+async function implementActivePlan() {
+  if (
+    activePlanId === null ||
+    activePlanKind !== "drafted" ||
+    !planImplementButton ||
+    planImplementButton.disabled
+  ) {
+    return;
+  }
+  if (
+    !window.confirm("This will edit code and open a pull request. Continue?")
+  ) {
+    return;
+  }
+
+  clearPlanReaderStatus();
+  planImplementButton.disabled = true;
+  if (planProcessButton) {
+    planProcessButton.disabled = true;
+  }
+
+  const response = await fetch(`/api/improvement-plans/${activePlanId}/implement`, {
+    method: "POST",
+  });
+
+  if (response.status === 202) {
+    closePlanReader();
+    await loadPlans();
+    return;
+  }
+
+  let message = "Could not start implementation.";
+  try {
+    const payload = await response.json();
+    if (payload?.detail) {
+      message = String(payload.detail);
+    }
+  } catch (_error) {
+    // Keep default message when the response is not JSON.
+  }
+  showPlanReaderStatus(message);
+  updatePlanImplementButton({ kind: "drafted", status: "pending" });
+  if (planProcessButton) {
+    planProcessButton.disabled = false;
+  }
+}
+
 async function copyActivePlan() {
   if (!planReaderBody?.textContent?.trim() || !planCopyButton) {
     return;
@@ -224,6 +315,12 @@ async function copyActivePlan() {
 planProcessButton.addEventListener("click", () => {
   void processActivePlan();
 });
+
+if (planImplementButton) {
+  planImplementButton.addEventListener("click", () => {
+    void implementActivePlan();
+  });
+}
 
 if (planCopyButton) {
   planCopyButton.addEventListener("click", () => {
