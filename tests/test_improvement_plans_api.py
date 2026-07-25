@@ -5,6 +5,29 @@ from app.memory.internal_note_service import InternalNoteService
 from app.proactive.types import ProactiveOffer
 
 
+def _pass_implement_preflight(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.is_git_repo",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.gh_available",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.gh_authenticated",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.working_tree_dirty",
+        lambda: False,
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_open_pull_request",
+        lambda: None,
+    )
+
+
 def test_improvement_plan_api_list_get_and_process(api_client) -> None:
     plan = improvement_plans.create_plan(
         title="Clearer timer errors",
@@ -133,3 +156,69 @@ def test_record_from_offer_skips_second_suggestion() -> None:
     assert first is not None
     assert second is None
     assert len(internal_notes.list_pending_self_improvement_notes(limit=10)) == 1
+
+
+def test_improvement_plan_api_implement_returns_202(monkeypatch, api_client) -> None:
+    plan = improvement_plans.create_plan(
+        title="Clearer timer errors",
+        goal="clearer timer errors",
+        body="Summary\nImprove timer copy.",
+        files=["app/runtime/status_copy.py"],
+    )
+    assert plan.id is not None
+    _pass_implement_preflight(monkeypatch)
+    monkeypatch.setattr(
+        "app.api.improvement_plans._run_plan_implementation",
+        lambda plan_id: None,
+    )
+
+    response = api_client.post(f"/api/improvement-plans/{plan.id}/implement")
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload == {"ok": True, "plan_id": plan.id, "status": "implementing"}
+    saved = improvement_plans.get_plan(plan.id)
+    assert saved is not None
+    assert saved.status == "implementing"
+    assert improvement_plans.has_unprocessed_plan() is True
+
+
+def test_improvement_plan_api_implement_returns_404(api_client) -> None:
+    response = api_client.post("/api/improvement-plans/999/implement")
+    assert response.status_code == 404
+
+
+def test_improvement_plan_api_implement_returns_409_when_not_pending(api_client) -> None:
+    plan = improvement_plans.create_plan(
+        title="Clearer timer errors",
+        goal="clearer timer errors",
+        body="Summary\nImprove timer copy.",
+        files=["app/runtime/status_copy.py"],
+    )
+    assert plan.id is not None
+    improvement_plans.try_mark_implementing(plan.id)
+
+    response = api_client.post(f"/api/improvement-plans/{plan.id}/implement")
+    assert response.status_code == 409
+
+
+def test_improvement_plan_api_implement_returns_400_for_dirty_tree(monkeypatch, api_client) -> None:
+    plan = improvement_plans.create_plan(
+        title="Clearer timer errors",
+        goal="clearer timer errors",
+        body="Summary\nImprove timer copy.",
+        files=["app/runtime/status_copy.py"],
+    )
+    assert plan.id is not None
+    _pass_implement_preflight(monkeypatch)
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.working_tree_dirty",
+        lambda: True,
+    )
+
+    response = api_client.post(f"/api/improvement-plans/{plan.id}/implement")
+    assert response.status_code == 400
+    assert "uncommitted changes" in response.json()["detail"].lower()
+    saved = improvement_plans.get_plan(plan.id)
+    assert saved is not None
+    assert saved.status == "pending"

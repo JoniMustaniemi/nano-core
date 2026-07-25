@@ -7,10 +7,16 @@ from sqlmodel import Session, col, select
 import app.memory.db as db
 from app.memory.models import ImprovementPlan
 
+_UNPROCESSED_STATUSES = ("pending", "implementing")
+
 
 def has_unprocessed_plan() -> bool:
     with Session(db.engine) as session:
-        statement = select(ImprovementPlan.id).where(ImprovementPlan.status == "pending").limit(1)
+        statement = (
+            select(ImprovementPlan.id)
+            .where(col(ImprovementPlan.status).in_(_UNPROCESSED_STATUSES))
+            .limit(1)
+        )
         return session.exec(statement).first() is not None
 
 
@@ -67,5 +73,27 @@ def delete_plan(plan_id: int) -> bool:
         if plan is None:
             return False
         session.delete(plan)
+        session.commit()
+        return True
+
+
+def try_mark_implementing(plan_id: int) -> bool:
+    with Session(db.engine) as session:
+        plan = session.get(ImprovementPlan, plan_id)
+        if plan is None or plan.status != "pending":
+            return False
+        plan.status = "implementing"
+        session.add(plan)
+        session.commit()
+        return True
+
+
+def restore_pending(plan_id: int) -> bool:
+    with Session(db.engine) as session:
+        plan = session.get(ImprovementPlan, plan_id)
+        if plan is None or plan.status != "implementing":
+            return False
+        plan.status = "pending"
+        session.add(plan)
         session.commit()
         return True

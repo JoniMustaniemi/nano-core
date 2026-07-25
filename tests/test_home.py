@@ -85,6 +85,7 @@ def test_homepage_shows_standby_ui(api_client) -> None:
     assert 'id="plans-tab-count"' in response.text
     assert 'id="plan-reader"' in response.text
     assert 'id="plan-copy-button"' in response.text
+    assert 'id="plan-implement-button"' in response.text
 
     assert 'id="brains-clear"' in response.text
 

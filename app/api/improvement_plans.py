@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from threading import Thread
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -8,6 +9,10 @@ from pydantic import BaseModel
 from app.memory import improvement_plans, internal_notes
 from app.memory.models import ImprovementPlan, InternalNote
 from app.proactive.types import ProactiveOffer
+from app.tools.improvement_plan_implementation import (
+    ImprovementPlanImplementationService,
+    check_implementation_preflight,
+)
 
 router = APIRouter(prefix="/api", tags=["improvement-plans"])
 
@@ -25,6 +30,12 @@ class ImprovementPlanSummary(BaseModel):
 
 class ImprovementPlanDetail(ImprovementPlanSummary):
     body: str
+
+
+class ImplementPlanResponse(BaseModel):
+    ok: bool
+    plan_id: int
+    status: str
 
 
 def _parse_files(raw: object) -> list[str]:
@@ -177,3 +188,34 @@ def process_improvement_suggestion(note_id: int) -> None:
 def process_improvement_plan(plan_id: int) -> None:
     if not improvement_plans.delete_plan(plan_id):
         raise HTTPException(status_code=404, detail="Improvement plan not found.")
+
+
+def _run_plan_implementation(plan_id: int) -> None:
+    ImprovementPlanImplementationService().run(plan_id)
+
+
+@router.post(
+    "/improvement-plans/{plan_id}/implement",
+    status_code=202,
+    response_model=ImplementPlanResponse,
+)
+def implement_improvement_plan(plan_id: int) -> ImplementPlanResponse:
+    plan = improvement_plans.get_plan(plan_id)
+    preflight = check_implementation_preflight(plan)
+    if not preflight.ok:
+        raise HTTPException(status_code=preflight.status_code, detail=preflight.error)
+
+    if not improvement_plans.try_mark_implementing(plan_id):
+        raise HTTPException(
+            status_code=409,
+            detail="Plan is not available for implementation.",
+        )
+
+    thread = Thread(
+        target=_run_plan_implementation,
+        args=(plan_id,),
+        name=f"implement-plan-{plan_id}",
+        daemon=True,
+    )
+    thread.start()
+    return ImplementPlanResponse(ok=True, plan_id=plan_id, status="implementing")
