@@ -583,9 +583,8 @@ async function bootstrap() {
       }
     }
     applyVoiceVolume();
-    await refreshStandbyGreeting({ speakOnce: true });
-    const commands = await loadToolCommands();
-    renderToolCommands(commands);
+    await loadAndRenderToolCommands();
+    void refreshStandbyGreeting({ speakOnce: true });
     await loadPlans();
     await connectMicrophoneOnStartup();
     const lastEventId = Array.isArray(snapshot.events)

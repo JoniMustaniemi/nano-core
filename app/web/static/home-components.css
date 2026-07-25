@@ -21,125 +21,99 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: center;
-  padding: 0 clamp(12px, 3vw, 24px);
-  border: 1px solid rgba(57, 255, 20, 0.12);
+  padding: 0 clamp(8px, 2vw, 16px);
+  border: none;
   border-radius: 20px;
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38);
 }
 
 .bottom-bar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   margin: 0 auto;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.04);
+  border: none;
+  border-radius: 14px;
+  background: transparent;
   color: var(--accent-soft);
   cursor: pointer;
   transition:
-    border-color 140ms ease,
+    color 140ms ease,
     background 140ms ease,
-    box-shadow 140ms ease;
+    transform 140ms ease;
 }
 
 .bottom-bar-btn svg {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
 }
 
 .bottom-bar-btn:hover {
-  border-color: rgba(57, 255, 20, 0.3);
-  background: rgba(57, 255, 20, 0.08);
+  color: var(--accent-strong);
+  background: rgba(57, 255, 20, 0.07);
 }
 
 .bottom-bar-btn.active {
-  border-color: rgba(57, 255, 20, 0.5);
-  background: rgba(57, 255, 20, 0.14);
-  box-shadow: 0 0 20px rgba(57, 255, 20, 0.2);
+  color: var(--accent-strong);
+  background: rgba(57, 255, 20, 0.1);
+  box-shadow: none;
 }
 
 #nano-controls-toggle {
   position: relative;
 }
 
-/* ── Nano bottom sheet ── */
+/* ── Full-screen view modal ── */
 
-.nano-sheet {
+.view-modal {
   position: fixed;
   inset: 0;
-  z-index: 35;
+  z-index: 45;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0)
+    env(safe-area-inset-left, 0);
+  background: rgba(0, 0, 0, 0.72);
+  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
+  transition: opacity 200ms ease, visibility 200ms ease;
 }
 
-.nano-sheet.open {
+.view-modal.open {
+  opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
-.nano-sheet-backdrop {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: min(88vh, 920px);
-  border: 0;
-  padding: 0;
-  background: transparent;
-  opacity: 0;
-  transition: opacity 180ms ease;
-  cursor: pointer;
-}
-
-.nano-sheet.open .nano-sheet-backdrop {
-  opacity: 1;
-}
-
-.nano-sheet-panel {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: min(88vh, 920px);
-  max-height: min(88vh, 920px);
+.view-modal-panel {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  padding: 0 0 env(safe-area-inset-bottom, 0);
-  border-top: 1px solid var(--panel-border);
-  border-radius: 6px 6px 0 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  border: 1px solid var(--panel-border);
   background: linear-gradient(180deg, rgba(6, 12, 8, 0.98), rgba(2, 6, 4, 0.96));
-  transform: translateY(100%);
-  transition: transform 240ms ease;
 }
 
-.nano-sheet.open .nano-sheet-panel {
-  transform: translateY(0);
-}
-
-.nano-sheet-header {
+.view-modal-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 12px;
-  padding: 20px 24px 14px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.09);
+  background: rgba(0, 0, 0, 0.32);
+  flex-shrink: 0;
 }
 
-.nano-sheet-chrome {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  padding: 0;
-  border-bottom: 1px solid rgba(57, 255, 20, 0.12);
-  background: rgba(0, 0, 0, 0.35);
-}
-
-.nano-sheet-header h2 {
+.view-modal-title {
   margin: 0;
   color: var(--accent-strong);
   font: 800 1.05rem/1.2 "Cascadia Mono", "Consolas", monospace;
@@ -147,80 +121,60 @@
   text-transform: uppercase;
 }
 
-.nano-sheet-close {
-  flex-shrink: 0;
-  align-self: center;
-  min-height: 38px;
-  margin: 10px 16px 10px 8px;
-  padding: 0 14px;
-  font-size: 0.76rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border-radius: 4px;
-}
-
-.nano-tabs {
+.view-modal-body {
   display: flex;
   flex: 1;
-  min-width: 0;
-  gap: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.nano-tab {
-  position: relative;
-  display: flex;
+.view-panel {
+  display: none;
   flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.view-panel.active {
+  display: flex;
+}
+
+.view-panel-commands {
+  gap: 16px;
+  padding: 16px 18px 24px;
+  overflow: auto;
+}
+
+.view-panel-commands .commands-list {
+  flex: 1;
+  min-height: 0;
+}
+
+.chrome-close-btn {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 14px 10px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--muted);
-  font: 700 0.8rem/1.1 "Cascadia Mono", "Consolas", monospace;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: color 140ms ease, background 140ms ease;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  flex-shrink: 0;
 }
 
-.nano-tab::after {
-  content: "";
-  position: absolute;
-  left: 18%;
-  right: 18%;
-  bottom: 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: transparent;
-  transition: background 140ms ease;
-}
-
-.nano-tab.active {
-  color: var(--accent-strong);
-  background: rgba(57, 255, 20, 0.04);
-}
-
-.nano-tab.active::after {
-  background: var(--accent);
-}
-
-.nano-tab-label {
-  position: relative;
-  display: inline-block;
+.chrome-close-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .plans-tab-count {
-  position: absolute;
-  top: -0.55rem;
-  left: calc(100% + 0.18rem);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 1.05rem;
   height: 1.05rem;
+  margin-left: 0.35rem;
   padding: 0 0.3rem;
   border-radius: 999px;
   background: var(--accent);
@@ -230,58 +184,18 @@
   letter-spacing: -0.01em;
   text-transform: none;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-}
-
-.nano-tab:not(.active) .plans-tab-count {
-  background: rgba(57, 255, 20, 0.88);
-}
-
-.nano-tab.active .plans-tab-count {
-  background: rgba(57, 255, 20, 0.16);
-  color: var(--accent-strong);
-  box-shadow: inset 0 0 0 1px rgba(57, 255, 20, 0.28);
+  vertical-align: super;
 }
 
 .plans-tab-count[hidden] {
   display: none !important;
 }
 
-.nano-tab-text-short {
-  display: none;
-}
-
-@media (max-width: 520px) {
-  .nano-tab {
-    padding: 14px 6px;
-    font-size: 0.72rem;
-  }
-
-  .nano-tab-text-full {
-    display: none;
-  }
-
-  .nano-tab-text-short {
-    display: inline;
-  }
-}
-
-.nano-panels {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-
 .nano-panel {
-  position: absolute;
-  inset: 0;
-  display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px 16px 16px;
   overflow: hidden;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .nano-panel.active {
@@ -340,20 +254,15 @@
 }
 
 @media (min-width: 900px) {
-  .nano-sheet-backdrop {
-    bottom: 85vh;
+  .view-modal {
+    padding: clamp(12px, 2vh, 24px);
   }
 
-  .nano-sheet-panel {
-    left: 50%;
-    right: auto;
-    width: min(1200px, 96vw);
-    transform: translate(-50%, 100%);
-    max-height: 85vh;
-  }
-
-  .nano-sheet.open .nano-sheet-panel {
-    transform: translate(-50%, 0);
+  .view-modal-panel {
+    max-width: min(1200px, 96vw);
+    max-height: 92vh;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
   }
 
   .nano-panel .terminal {
@@ -397,90 +306,31 @@ body.inputs-locked #keyboard-toggle:disabled {
   cursor: not-allowed;
 }
 
-/* ── Commands drawer ── */
-
-.commands-drawer {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  pointer-events: none;
-}
-
-.commands-drawer.open {
-  pointer-events: auto;
-}
-
-.commands-backdrop {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: min(380px, 100vw);
-  border: 0;
-  padding: 0;
-  background: transparent;
-  opacity: 0;
-  transition: opacity 180ms ease;
-  cursor: pointer;
-}
-
-.commands-drawer.open .commands-backdrop {
-  opacity: 1;
-}
-
-.commands-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: min(380px, 100vw);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 22px 18px 24px;
-  border-left: 1px solid var(--panel-border);
-  background: linear-gradient(180deg, rgba(6, 12, 8, 0.98), rgba(2, 6, 4, 0.96));
-  transform: translateX(100%);
-  transition: transform 220ms ease;
-}
-
-.commands-drawer.open .commands-panel {
-  transform: translateX(0);
-}
-
-.commands-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.commands-header h2 {
-  margin: 0;
-  color: var(--accent-strong);
-  font: 800 1rem/1.2 "Cascadia Mono", "Consolas", monospace;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.commands-subtitle {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.commands-close {
-  flex: 0 0 auto;
-}
+/* ── Commands panel content ── */
 
 .commands-voice-settings {
   display: grid;
   gap: 10px;
-  padding: 14px 16px;
-  border: 1px solid rgba(57, 255, 20, 0.14);
-  border-radius: 16px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.03);
   flex-shrink: 0;
+}
+
+.commands-list {
+  display: grid;
+  gap: 10px;
+  overflow: auto;
+  padding-right: 4px;
+  min-height: 0;
+}
+
+.commands-dropdown {
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
 }
 
 .commands-voice-header {
@@ -505,11 +355,19 @@ body.inputs-locked #keyboard-toggle:disabled {
   letter-spacing: 0.06em;
 }
 
+.commands-empty {
+  margin: 0;
+  padding: 12px 4px;
+  color: var(--muted);
+  font: 500 0.88rem/1.45 "Segoe UI", system-ui, sans-serif;
+}
+
 .voice-volume {
   width: 100%;
   margin: 0;
   accent-color: var(--accent);
   cursor: pointer;
+  opacity: 1;
 }
 
 .voice-volume:disabled {
@@ -517,29 +375,15 @@ body.inputs-locked #keyboard-toggle:disabled {
   cursor: not-allowed;
 }
 
-.commands-list {
-  display: grid;
-  gap: 10px;
-  overflow: auto;
-  padding-right: 4px;
-}
-
-.commands-dropdown {
-  border: 1px solid rgba(57, 255, 20, 0.14);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.02);
-  overflow: hidden;
-}
-
 .commands-dropdown-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   color: var(--muted);
-  font: 700 0.76rem/1 "Cascadia Mono", "Consolas", monospace;
-  letter-spacing: 0.1em;
+  font: 600 0.74rem/1 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
   list-style: none;
@@ -572,8 +416,8 @@ body.inputs-locked #keyboard-toggle:disabled {
 
 .commands-dropdown .commands-group-grid {
   display: grid;
-  gap: 10px;
-  padding: 0 12px 12px;
+  gap: 8px;
+  padding: 0 10px 10px;
 }
 
 .commands-group {

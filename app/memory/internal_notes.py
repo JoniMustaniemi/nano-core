@@ -130,11 +130,7 @@ def dismiss_internal_note(note_id: int) -> bool:
 def delete_self_improvement_suggestion(note_id: int) -> bool:
     with Session(db.engine) as session:
         note = session.get(InternalNote, note_id)
-        if (
-            note is None
-            or note.kind != "self_improvement_suggestion"
-            or note.status != "pending"
-        ):
+        if note is None or note.kind != "self_improvement_suggestion" or note.status != "pending":
             return False
         session.delete(note)
         session.commit()

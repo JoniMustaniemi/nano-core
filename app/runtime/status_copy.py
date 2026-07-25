@@ -158,6 +158,7 @@ PR_NAMING_TIMER_SECONDS = 120
 PR_OPENING_TIMER_SECONDS = 120
 
 _TOOL_ACTIVITY_TITLES: dict[str, str] = {
+    "analyze_system": "I'm analyzing system specs.",
     "cancel_timers": "I'm cancelling timers.",
     "check_health": "I'm running a health check.",
     "create_pull_request": "I'm opening a pull request.",
@@ -172,6 +173,7 @@ _TOOL_ACTIVITY_TITLES: dict[str, str] = {
 }
 
 _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
+    "analyze_system": "I finished the system analysis.",
     "cancel_timers": "I cancelled timers.",
     "check_health": "I finished the health check.",
     "create_pull_request": "I opened a pull request.",

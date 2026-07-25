@@ -9,6 +9,16 @@ from app.llm.protocol import LLMClient
 
 _POLISH_PROMPT_MARKER = "polishing nano's final reply"
 
+# Tools that already return curated, user-facing prose — never send to polish.
+_POLISH_EXEMPT_TOOLS = frozenset(
+    {
+        "analyze_system",
+        "check_health",
+        "create_pull_request",
+        "draft_improvement_plan",
+    }
+)
+
 
 def should_polish(source: ResponseSource, content: str) -> bool:
     """
@@ -24,6 +34,8 @@ def should_polish(source: ResponseSource, content: str) -> bool:
     if not content.strip():
         return False
     if source.kind in {"follow_up", "confirmation"}:
+        return False
+    if source.tool_name in _POLISH_EXEMPT_TOOLS:
         return False
     if source.kind == "answer":
         return True

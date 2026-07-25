@@ -71,12 +71,31 @@ INTERNAL_NOTE_LIST_PATTERNS: tuple[str, ...] = (
     r"\bwhat are you saving to discuss\b",
 )
 
-PULL_REQUEST_PATTERNS: tuple[str, ...] = (
-    r"\b(?:create|open|make|start)\b.*\b(?:pull request|pr)\b",
-    r"\b(?:pull request|pr)\b.*\b(?:create|open|make|start)\b",
-    r"\b(?:need|want)\s+(?:a\s+)?(?:pull request|pr)\b",
-    r"^\s*(?:pr|pull request)\s*$",
+SYSTEM_ANALYSIS_PATTERNS: tuple[str, ...] = (
+    r"\bsystem\s+analysis\b",
+    r"\banalyze\s+(?:my\s+)?system\b",
+    r"\brun\s+(?:a\s+)?system\s+analysis\b",
+    r"\bcan\s+you\s+run\s+(?:a\s+)?system\s+analysis\b",
+    r"\bcheck\s+(?:my\s+)?system\s+specs?\b",
+    r"\bwhat\s+are\s+my\s+system\s+specs\b",
+    r"\bhow\s+much\s+memory\b",
 )
+
+PULL_REQUEST_PATTERNS: tuple[str, ...] = (
+    r"\b(?:create|open|make|start|begin|publish|submit|send|file|raise)\b.*\b(?:pull request|pool request|pr)\b",
+    r"\b(?:pull request|pool request|pr)\b.*\b(?:create|open|make|start|begin|publish|submit|send|file|raise)\b",
+    r"\b(?:need|want)\s+(?:a\s+|to\s+open\s+(?:a\s+)?)?(?:pull request|pool request|pr)\b",
+    r"\b(?:can|could|may|would|let)\s+(?:you|me|us|i)\s+(?:open|create|make|start|submit|publish)\b.*\b(?:pull request|pool request|pr)\b",
+    r"\b(?:i|we)\s+(?:need|want)\s+(?:a\s+|to\s+open\s+(?:a\s+)?)?(?:pull request|pool request|pr)\b",
+    r"\bopen\s+up\s+(?:a\s+)?(?:pull request|pool request|pr)\b",
+    r"^\s*(?:pr|pull request|pool request)\s*$",
+)
+
+
+def _normalize_pull_request_homophones(message: str) -> str:
+    """Treat speech-recognition homophones like pool/pull as equivalent for PR intent."""
+    normalized = re.sub(r"\bpool\s+request\b", "pull request", message)
+    return re.sub(r"\bpool\s+pr\b", "pull pr", normalized)
 
 SELF_IMPROVE_PATTERNS: tuple[str, ...] = (
     r"\b(?:improve|fix|change|update|modify)\b.*\b(?:your(?:self)?|your code|nano)\b",
@@ -108,7 +127,7 @@ def is_pull_request_request(message: str) -> bool:
     Returns:
         True when the message requests pull request creation.
     """
-    lowered = " ".join(message.lower().split())
+    lowered = _normalize_pull_request_homophones(" ".join(message.lower().split()))
     return any(re.search(pattern, lowered) for pattern in PULL_REQUEST_PATTERNS)
 
 
@@ -194,6 +213,20 @@ def is_health_check_request(message: str) -> bool:
     return any(re.search(pattern, lowered) for pattern in explicit_patterns)
 
 
+def is_system_analysis_request(message: str) -> bool:
+    """
+    Return whether the user wants Nano's system analysis report.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message requests system analysis.
+    """
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in SYSTEM_ANALYSIS_PATTERNS)
+
+
 def is_internal_note_list_request(message: str) -> bool:
     """
     Return whether the user is asking about Nano's internal follow-up notes.
@@ -256,6 +289,8 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_timer_cancel_request(message)
     if tool_name == "check_health":
         return is_health_check_request(message)
+    if tool_name == "analyze_system":
+        return is_system_analysis_request(message)
     if tool_name == "create_pull_request":
         return is_pull_request_request(message)
     if tool_name == "draft_improvement_plan":

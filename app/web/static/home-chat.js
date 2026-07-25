@@ -4,7 +4,16 @@ async function sendMessage() {
     replyStatus.textContent = "Write a message first.";
     return;
   }
-  if (tryHandleUiCommand(message)) {
+  if (isViewSessionActive()) {
+    if (tryHandleUiCommand(message, "text")) {
+      await completeUiCommand("text");
+      messageBox.value = "";
+      return;
+    }
+    replyStatus.textContent = "Say close to dismiss.";
+    return;
+  }
+  if (tryHandleUiCommand(message, "text")) {
     await completeUiCommand("text");
     messageBox.value = "";
     return;
@@ -19,7 +28,7 @@ async function sendMessage() {
 
 async function sendRecognizedMessage(message) {
   messageBox.value = message;
-  if (tryHandleUiCommand(message)) {
+  if (tryHandleUiCommand(message, "voice")) {
     await completeUiCommand("voice");
     messageBox.value = "";
     return;
@@ -58,10 +67,14 @@ async function submitDefaultNoAnswer() {
 async function submitMessage(message, source, commandHint) {
   clearAnswerTimeoutTimer();
   answerTimeoutPending = false;
-  if (tryHandleUiCommand(message)) {
+  if (tryHandleUiCommand(message, source)) {
     await completeUiCommand(source);
     return;
   }
+  if (isViewSessionActive()) {
+    return;
+  }
+  showUserSpeech(message);
   requestInFlight = true;
   await acknowledgeRequest(source, commandHint);
   replyStatus.textContent = source === "voice" ? "Sending voice command..." : "Sending...";

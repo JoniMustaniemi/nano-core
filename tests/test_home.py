@@ -7,6 +7,7 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "app" / "web" / "static"
 HOME_JS_MODULES = (
     "home-state.js",
     "home-plans.js",
+    "home-view-session.js",
     "home-ui.js",
     "home-voice.js",
     "home-activity.js",
@@ -16,7 +17,9 @@ HOME_JS_MODULES = (
 
 
 def _load_home_js() -> str:
-    return "\n".join((STATIC_DIR / module).read_text(encoding="utf-8") for module in HOME_JS_MODULES)
+    return "\n".join(
+        (STATIC_DIR / module).read_text(encoding="utf-8") for module in HOME_JS_MODULES
+    )
 
 
 def _load_home_css() -> str:
@@ -44,6 +47,9 @@ def test_homepage_shows_standby_ui(api_client) -> None:
 
     assert 'id="activity-status"' in response.text
     assert 'activity-status" aria-live="polite" hidden' in response.text
+
+    assert 'id="user-speech"' in response.text
+    assert 'class="user-speech-text"' in response.text
 
     assert 'id="answer-output"' in response.text
     assert 'class="response-zone"' in response.text
@@ -74,13 +80,12 @@ def test_homepage_shows_standby_ui(api_client) -> None:
 
     assert 'id="commands-toggle"' in response.text
 
-    assert 'id="nano-sheet"' in response.text
+    assert 'id="view-modal"' in response.text
+    assert 'id="view-modal-panel"' in response.text
 
     assert "Nano's brains" not in response.text
 
     assert "Brains" in response.text
-    assert "Plans" in response.text
-    assert 'id="nano-tab-plans"' in response.text
     assert 'id="plans-list"' in response.text
     assert 'id="plans-tab-count"' in response.text
     assert 'id="plan-reader"' in response.text
@@ -92,7 +97,7 @@ def test_homepage_shows_standby_ui(api_client) -> None:
 
     assert 'id="brains-clear"' in response.text
 
-    assert "Stored Data" in response.text
+    assert "Storage snapshot" in response.text
 
     assert "Standby" not in response.text
 
@@ -106,24 +111,25 @@ def test_homepage_shows_standby_ui(api_client) -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=working-controls-1"' in response.text
+    assert 'href="/static/home.css?v=user-speech-1"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/essence_visualizer.js?v=idle-essence-3"' in response.text
-    assert 'src="/static/home-state.js?v=waiting-for-answer-1"' in response.text
-    assert 'src="/static/home-plans.js?v=plans-process-1"' in response.text
-    assert 'src="/static/home-ui.js?v=waiting-for-answer-1"' in response.text
-    assert 'src="/static/home-voice.js?v=default-no-answer-1"' in response.text
-    assert 'src="/static/home-activity.js?v=pr-failure-recovery-1"' in response.text
-    assert 'src="/static/home-chat.js?v=default-no-answer-1"' in response.text
-    assert 'src="/static/home.js?v=working-controls-1"' in response.text
+    assert 'src="/static/home-state.js?v=user-speech-1"' in response.text
+    assert 'src="/static/home-plans.js?v=view-modals-1"' in response.text
+    assert 'src="/static/home-view-session.js?v=view-close-controls-2"' in response.text
+    assert 'src="/static/home-ui.js?v=user-speech-1"' in response.text
+    assert 'src="/static/home-voice.js?v=user-speech-1"' in response.text
+    assert 'src="/static/home-activity.js?v=view-modals-1"' in response.text
+    assert 'src="/static/home-chat.js?v=user-speech-1"' in response.text
+    assert 'src="/static/home.js?v=view-modals-1"' in response.text
 
     assert "Enter to send" in response.text
 
-    assert 'id="commands-drawer"' in response.text
     assert 'id="voice-volume"' in response.text
     assert 'id="voice-volume-value"' in response.text
     assert "Voice settings" in response.text or 'aria-label="Voice settings"' in response.text
+    assert 'id="commands-drawer"' not in response.text
 
 
 def test_homepage_serves_static_assets() -> None:
@@ -143,7 +149,7 @@ def test_homepage_serves_static_assets() -> None:
     js_text = _load_home_js()
     essence_js_text = (STATIC_DIR / "essence_visualizer.js").read_text(encoding="utf-8")
 
-    assert ".nano-sheet" in css_text
+    assert ".view-modal" in css_text
 
     assert ".bottom-bar" in css_text
 
@@ -161,7 +167,7 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "controls-hidden" in css_text
 
-    assert "body.controls-hidden .commands-drawer" not in css_text
+    assert "body.view-modal-open" in css_text
 
     assert "@keyframes blink" in css_text
 
@@ -220,7 +226,9 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "returnToWakeDetection" in js_text
 
-    assert ".activity-status" in css_text
+    assert ".user-speech" in css_text
+    assert "showUserSpeech" in js_text
+    assert "USER_SPEECH_DISPLAY_MS" in js_text
     assert ".activity-status[hidden]" in css_text
 
     assert "renderActivityStatus" in js_text
@@ -247,11 +255,22 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "headline === STANDBY_HEADLINE" in js_text
 
-    assert "commands-drawer" in css_text
+    assert ".view-modal-body" in css_text
 
     assert ".voice-volume" in css_text
 
-    assert "matchControlsUiCommand" in js_text
+    assert "matchUiCommand" in js_text
+    assert "PLANS_SECTION_PATTERNS" in js_text
+    assert "CONTROLS_SHOW_PATTERNS" in js_text
+    assert "CLOSE_PATTERNS" in js_text
+    assert "have\\s+you\\s+planned" in js_text
+    assert "closeOpenUiPanels" in js_text
+    assert "loadAndRenderToolCommands" in js_text
+    assert "showCommandsEmptyState" in js_text
+    assert "revealControlsForUiCommand" in js_text
+    assert "uiCommandStatusMessage" in js_text
+    assert 'clientAction === "open_plans"' in js_text
+    assert "chrome-close-btn" in css_text
 
     assert "completeUiCommand" in js_text
 
@@ -305,14 +324,14 @@ def test_homepage_serves_static_assets() -> None:
     assert "scheduleAnswerTimeout" in js_text
     assert "submitDefaultNoAnswer" in js_text
     assert 'DEFAULT_NO_ANSWER = "no"' in js_text
-    assert 'How can I help?' in js_text
+    assert "How can I help?" in js_text
     assert "GREETING_SPOKEN_KEY" in js_text
     assert "speakOnce" in js_text
     assert 'fetch("/api/greeting")' in js_text
     assert "hasScheduledAnswerContent" in js_text
     assert 'Say "hey nano" when ready.' in js_text
-    assert "WAITING_FOR_ANSWER_HEADLINE" in js_text
-    assert "Waiting for answer" in js_text
+    assert "LISTENING_ACTIVITY_HEADLINE" in js_text
+    assert "Waiting for your input." in js_text
     assert "isWaitingForAnswerActivity" in js_text
     assert "hasCustomStandbyActivityCopy" in js_text
     assert "acknowledgePresenceDismissal" in js_text
@@ -383,7 +402,13 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "toggleKeyboardPanel" in js_text
 
-    assert "openNanoSheet" in js_text
+    assert "openViewSession" in js_text
+    assert "closeViewSession" in js_text
+    assert "handleViewSessionTranscript" in js_text
+    assert "matchViewCloseKeyword" in js_text
+    assert "isViewSessionActive" in js_text
+    assert "VIEW_SESSION_HEADLINE" in js_text
+    assert "VIEW_SESSION_MS" not in js_text
 
     assert "RECEIVED_TITLE" in js_text
 
@@ -422,6 +447,11 @@ def test_tool_commands_endpoint_lists_quick_actions(api_client) -> None:
     assert any(item["id"] == "wipe_data" for item in payload)
 
     assert any(item["id"] == "toggle_controls" for item in payload)
+    assert any(item["id"] == "open_plans" for item in payload)
+    assert any(item["id"] == "open_brains" for item in payload)
+    assert any(item["id"] == "open_storage" for item in payload)
+    assert any(item["id"] == "open_commands" for item in payload)
+    assert any(item.get("client_action") == "open_plans" for item in payload)
 
     assert any(item["message"] == "Tell me about your internal notes." for item in payload)
 

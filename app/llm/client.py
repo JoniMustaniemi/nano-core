@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from functools import lru_cache
 from typing import Any
 
 import httpx
 
 from app.config import get_settings
+from app.llm.context_sizing import LocalModelLoadError, load_local_model, pop_context_load_notice
 from app.llm.roles import ModelRole
 
 _OLLAMA_CHAT_PATH = "/api/chat"
@@ -179,7 +179,7 @@ class LocalLLMClient:
         )
 
         try:
-            model = _load_local_model(
+            model = load_local_model(
                 self._local_model_path(),
                 self._context_size(),
             )
@@ -188,7 +188,18 @@ class LocalLLMClient:
                 temperature=resolved_temperature,
                 max_tokens=resolved_max_tokens,
             )
-        except (ImportError, OSError, ValueError, RuntimeError):
+        except ImportError:
+            if raise_on_error:
+                return (
+                    "Local LLM is not available yet. Set LLM_MODEL_PATH to a GGUF "
+                    "model file and install the local-llm extra."
+                )
+            return None
+        except LocalModelLoadError as exc:
+            if raise_on_error:
+                return str(exc)
+            return None
+        except (OSError, ValueError, RuntimeError):
             if raise_on_error:
                 return (
                     "Local LLM is not available yet. Set LLM_MODEL_PATH to a GGUF "
@@ -197,9 +208,12 @@ class LocalLLMClient:
             return None
 
         content = self._extract_llama_cpp_content(result)
-        if content is not None:
-            return content
-        return "Local LLM returned an empty response."
+        if content is None:
+            return "Local LLM returned an empty response."
+        notice = pop_context_load_notice(self._local_model_path())
+        if notice:
+            return f"{notice}\n\n{content}"
+        return content
 
     def _complete_ollama(
         self,
@@ -403,28 +417,3 @@ class LocalLLMClient:
         if isinstance(content, str) and content.strip():
             return content
         return None
-
-
-@lru_cache(maxsize=4)
-def _load_local_model(model_path: str, context_size: int) -> Any:
-    """
-    Load local model.
-
-    Args:
-        model_path: Filesystem path to the local model file.
-        context_size: Context size value.
-
-    Returns:
-        Any result.
-
-    Raises:
-        ImportError: If the operation cannot be completed.
-    """
-    try:
-        from llama_cpp import Llama
-    except ImportError as exc:  # pragma: no cover - depends on optional install
-        raise ImportError(
-            "llama-cpp-python is not installed. Install the local-llm extra."
-        ) from exc
-
-    return Llama(model_path=model_path, n_ctx=context_size, verbose=False)

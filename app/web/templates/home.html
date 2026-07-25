@@ -10,17 +10,18 @@
 
 <title>{app_name}</title>
 
-<link rel="stylesheet" href="/static/home.css?v=working-controls-1" />
+<link rel="stylesheet" href="/static/home.css?v=user-speech-1" />
 
 <script defer src="/static/three.min.js?v=0.160.1"></script>
 <script defer src="/static/essence_visualizer.js?v=idle-essence-3"></script>
-<script defer src="/static/home-state.js?v=waiting-for-answer-1"></script>
-<script defer src="/static/home-plans.js?v=plans-process-1"></script>
-<script defer src="/static/home-ui.js?v=waiting-for-answer-1"></script>
-<script defer src="/static/home-voice.js?v=default-no-answer-1"></script>
-<script defer src="/static/home-activity.js?v=pr-failure-recovery-1"></script>
-<script defer src="/static/home-chat.js?v=default-no-answer-1"></script>
-<script defer src="/static/home.js?v=working-controls-1"></script>
+<script defer src="/static/home-state.js?v=user-speech-1"></script>
+<script defer src="/static/home-plans.js?v=view-modals-1"></script>
+<script defer src="/static/home-ui.js?v=user-speech-1"></script>
+<script defer src="/static/home-view-session.js?v=view-close-controls-2"></script>
+<script defer src="/static/home-voice.js?v=user-speech-1"></script>
+<script defer src="/static/home-activity.js?v=view-modals-1"></script>
+<script defer src="/static/home-chat.js?v=user-speech-1"></script>
+<script defer src="/static/home.js?v=view-modals-1"></script>
 
 </head>
 
@@ -35,6 +36,12 @@
 <span class="activity-status-text"></span>
 
 <span class="activity-cursor" aria-hidden="true">|</span>
+
+</p>
+
+<p id="user-speech" class="user-speech" aria-live="polite" hidden>
+
+<span class="user-speech-text"></span>
 
 </p>
 
@@ -83,7 +90,7 @@ type="button"
 
 aria-expanded="false"
 
-aria-controls="commands-panel"
+aria-controls="view-modal-panel"
 
 >
 
@@ -129,141 +136,41 @@ rows="3"
 
 </section>
 
-<div id="nano-sheet" class="nano-sheet" aria-hidden="true">
-
-<button
-
-id="nano-sheet-backdrop"
-
-class="nano-sheet-backdrop"
-
-type="button"
-
-aria-label="Close Nano controls"
-
-tabindex="-1"
-
-></button>
+<div id="view-modal" class="view-modal" aria-hidden="true">
 
 <div
 
-id="nano-sheet-panel"
+id="view-modal-panel"
 
-class="nano-sheet-panel"
+class="view-modal-panel"
 
 role="dialog"
 
-aria-modal="false"
+aria-modal="true"
 
-aria-label="Nano controls"
-
->
-
-<header class="nano-sheet-chrome">
-
-<nav class="nano-tabs" role="tablist" aria-label="Nano data views">
-
-<button
-
-id="nano-tab-brains"
-
-class="nano-tab active"
-
-type="button"
-
-role="tab"
-
-aria-selected="true"
-
-aria-controls="nano-panel-brains"
+aria-labelledby="view-modal-title"
 
 >
 
-Brains
+<header class="view-modal-header">
 
-</button>
+<h2 id="view-modal-title" class="view-modal-title">Brains</h2>
 
-<button
+<button id="view-modal-close" class="ghost chrome-close-btn" type="button" aria-label="Close">
 
-id="nano-tab-plans"
+<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
 
-class="nano-tab"
+<path d="M6 6l12 12M18 6L6 18"></path>
 
-type="button"
-
-role="tab"
-
-aria-selected="false"
-
-aria-controls="nano-panel-plans"
-
->
-
-<span class="nano-tab-label">
-
-Plans
-
-<span id="plans-tab-count" class="plans-tab-count" hidden aria-label="Pending plans">0</span>
-
-</span>
-
-</button>
-
-<button
-
-id="nano-tab-storage"
-
-class="nano-tab"
-
-type="button"
-
-role="tab"
-
-aria-selected="false"
-
-aria-controls="nano-panel-storage"
-
->
-
-<span class="nano-tab-text-full">Stored Data</span>
-
-<span class="nano-tab-text-short" aria-hidden="true">Data</span>
-
-</button>
-
-</nav>
-
-<button
-
-id="nano-sheet-close"
-
-class="ghost nano-sheet-close"
-
-type="button"
-
-aria-label="Close"
-
->
-
-Close
+</svg>
 
 </button>
 
 </header>
 
-<div class="nano-panels">
+<div class="view-modal-body">
 
-<div
-
-id="nano-panel-brains"
-
-class="nano-panel active"
-
-role="tabpanel"
-
-aria-labelledby="nano-tab-brains"
-
->
+<div id="nano-panel-brains" class="view-panel nano-panel active">
 
 <div class="nano-panel-toolbar">
 
@@ -293,23 +200,17 @@ placeholder="No internal activity yet."
 
 </div>
 
-<div
-
-id="nano-panel-plans"
-
-class="nano-panel nano-panel-plans"
-
-role="tabpanel"
-
-aria-labelledby="nano-tab-plans"
-
-hidden
-
->
+<div id="nano-panel-plans" class="view-panel nano-panel nano-panel-plans" hidden>
 
 <div class="nano-panel-toolbar">
 
-<span class="nano-panel-label">Improvement plans</span>
+<span class="nano-panel-label">
+
+Improvement plans
+
+<span id="plans-tab-count" class="plans-tab-count" hidden aria-label="Pending plans">0</span>
+
+</span>
 
 </div>
 
@@ -360,19 +261,7 @@ Implement
 
 </div>
 
-<div
-
-id="nano-panel-storage"
-
-class="nano-panel"
-
-role="tabpanel"
-
-aria-labelledby="nano-tab-storage"
-
-hidden
-
->
+<div id="nano-panel-storage" class="view-panel nano-panel" hidden>
 
 <div class="nano-panel-toolbar">
 
@@ -393,6 +282,29 @@ spellcheck="false"
 placeholder="No storage snapshot loaded yet."
 
 ></textarea>
+
+</div>
+
+<div id="view-panel-commands" class="view-panel view-panel-commands" hidden>
+
+<section class="commands-voice-settings" aria-label="Voice settings">
+<div class="commands-voice-header">
+<h3 class="commands-group-title">Voice</h3>
+<span id="voice-volume-value" class="voice-volume-value">80%</span>
+</div>
+<label class="voice-volume-label" for="voice-volume">Volume</label>
+<input
+id="voice-volume"
+class="voice-volume"
+type="range"
+min="0"
+max="100"
+step="1"
+value="80"
+/>
+</section>
+
+<div id="commands-list" class="commands-list"></div>
 
 </div>
 
@@ -430,7 +342,7 @@ type="button"
 
 aria-expanded="false"
 
-aria-controls="nano-sheet-panel"
+aria-controls="view-modal-panel"
 
 >
 
@@ -456,7 +368,7 @@ type="button"
 
 aria-expanded="false"
 
-aria-controls="commands-panel"
+aria-controls="view-modal-panel"
 
 >
 
@@ -485,77 +397,6 @@ aria-controls="commands-panel"
 <p id="voice-status" class="sr-only">Voice on standby.</p>
 
 <audio id="voice-audio" hidden preload="none"></audio>
-
-<div id="commands-drawer" class="commands-drawer" aria-hidden="true">
-
-<button
-
-id="commands-backdrop"
-
-class="commands-backdrop"
-
-type="button"
-
-aria-label="Close commands drawer"
-
-tabindex="-1"
-
-></button>
-
-<aside
-
-id="commands-panel"
-
-class="commands-panel"
-
-role="dialog"
-
-aria-modal="false"
-
-aria-labelledby="commands-title"
-
->
-
-<header class="commands-header">
-
-<div>
-
-<h2 id="commands-title">Commands</h2>
-
-<p class="commands-subtitle">Run a tool without typing.</p>
-
-</div>
-
-<button id="commands-close" class="ghost commands-close" type="button" aria-label="Close commands">
-
-Close
-
-</button>
-
-</header>
-
-<section class="commands-voice-settings" aria-label="Voice settings">
-<div class="commands-voice-header">
-<h3 class="commands-group-title">Voice</h3>
-<span id="voice-volume-value" class="voice-volume-value">80%</span>
-</div>
-<label class="voice-volume-label" for="voice-volume">Volume</label>
-<input
-id="voice-volume"
-class="voice-volume"
-type="range"
-min="0"
-max="100"
-step="1"
-value="80"
-/>
-</section>
-
-<div id="commands-list" class="commands-list"></div>
-
-</aside>
-
-</div>
 
 </body>
 

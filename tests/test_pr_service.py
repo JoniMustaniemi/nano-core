@@ -182,7 +182,10 @@ def test_pr_service_starts_verify_task_timer(monkeypatch: pytest.MonkeyPatch) ->
             error="Verification failed.",
         ),
     )
-    monkeypatch.setattr("app.tools.pr_service.run_git", lambda *args: SimpleNamespace(returncode=0, stdout="", stderr=""))
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_git",
+        lambda *args: SimpleNamespace(returncode=0, stdout="", stderr=""),
+    )
     monkeypatch.setattr("app.tools.pr_service.activity.working", lambda **kwargs: None)
     monkeypatch.setattr("app.tools.pr_service.activity.log", lambda **kwargs: None)
     monkeypatch.setattr("app.tools.pr_service.activity.error", lambda **kwargs: None)

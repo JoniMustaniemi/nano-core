@@ -11,7 +11,17 @@ from app.memory.repository import list_recent_chat_messages
 def test_is_pull_request_request_matches_common_phrases() -> None:
     assert is_pull_request_request("create a PR") is True
     assert is_pull_request_request("open a pull request") is True
+    assert is_pull_request_request("Open a pull request") is True
+    assert is_pull_request_request("open PR") is True
+    assert is_pull_request_request("can you open a pull request") is True
+    assert is_pull_request_request("I want to open a pull request") is True
+    assert is_pull_request_request("submit a pull request") is True
+    assert is_pull_request_request("publish a pull request") is True
+    assert is_pull_request_request("open up a pull request") is True
+    assert is_pull_request_request("open a pool request") is True
+    assert is_pull_request_request("can you open a pool request") is True
     assert is_pull_request_request("what is a pull request") is False
+    assert is_pull_request_request("review the pull request") is False
 
 
 def test_agent_routes_pull_request_request_directly(monkeypatch: pytest.MonkeyPatch) -> None:

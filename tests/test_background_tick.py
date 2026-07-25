@@ -142,9 +142,7 @@ def test_background_draft_uses_silent_completion_source(tmp_path, monkeypatch) -
     snapshot = activity.snapshot()
     events = snapshot.get("events", [])
     completed = [
-        event
-        for event in events
-        if event.get("source") == IMPROVEMENT_PLAN_COMPLETED_SILENT_SOURCE
+        event for event in events if event.get("source") == IMPROVEMENT_PLAN_COMPLETED_SILENT_SOURCE
     ]
     assert completed
     get_settings.cache_clear()
