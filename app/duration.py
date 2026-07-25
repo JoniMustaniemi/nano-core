@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 _DIGIT_DURATION_PATTERN = re.compile(
     r"\b(\d+)\s*(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours)\b"
@@ -12,6 +13,7 @@ _WORD_DURATION_PATTERN = re.compile(
     r"(s|sec|secs|second|seconds|m|min|mins|minute|minutes|h|hr|hrs|hour|hours)\b"
 )
 _UNIT_ONLY_PATTERN = re.compile(r"\b(s|m|h)\b")
+_BARE_NUMBER_PATTERN = re.compile(r"^\s*(\d+)\s*$")
 
 _UNIT_ALIASES: dict[str, str] = {
     "s": "seconds",
@@ -75,16 +77,44 @@ def extract_duration_args(message: str) -> dict[str, int] | None:
     Returns:
         Dictionary containing the requested data.
     """
-    parsed = parse_duration_phrase(message)
-    if parsed is None:
+    seconds = extract_duration_seconds(message)
+    if seconds is None:
         return None
+    return {"duration_seconds": seconds}
 
-    value, unit = parsed
-    if unit == "seconds":
-        return {"duration_seconds": value}
-    if unit == "minutes":
-        return {"duration_minutes": value}
-    return {"duration_hours": value}
+
+def extract_duration_seconds(
+    message: str,
+    *,
+    bare_number_unit: str | None = None,
+) -> int | None:
+    """
+    Extract a timer duration as total seconds.
+
+    Args:
+        message: User message or prompt text.
+        bare_number_unit: When set to ``minutes``, accept a bare integer reply.
+
+    Returns:
+        Total seconds when a duration is present; otherwise None.
+    """
+    segments = _iter_duration_segments(message)
+    if segments:
+        return sum(_segment_to_seconds(value, unit) for value, unit, _, _ in segments)
+
+    lowered = message.lower()
+    unit_only_match = _UNIT_ONLY_PATTERN.search(lowered)
+    if unit_only_match is not None:
+        unit = _normalize_unit(unit_only_match.group(1))
+        if unit is not None:
+            return _segment_to_seconds(1, unit)
+
+    if bare_number_unit == "minutes":
+        bare_match = _BARE_NUMBER_PATTERN.match(message.strip())
+        if bare_match is not None:
+            return int(bare_match.group(1)) * 60
+
+    return None
 
 
 def parse_duration_phrase(message: str) -> tuple[int, str] | None:
@@ -97,26 +127,17 @@ def parse_duration_phrase(message: str) -> tuple[int, str] | None:
     Returns:
         Tuple containing the requested values.
     """
+    segments = _iter_duration_segments(message)
+    if segments:
+        value, unit, _, _ = segments[0]
+        return value, unit
+
     lowered = message.lower()
-
-    digit_match = _DIGIT_DURATION_PATTERN.search(lowered)
-    if digit_match is not None:
-        unit = _normalize_unit(digit_match.group(2))
-        if unit is not None:
-            return int(digit_match.group(1)), unit
-
-    word_match = _WORD_DURATION_PATTERN.search(lowered)
-    if word_match is not None:
-        value = _words_to_number(word_match.group(1))
-        unit = _normalize_unit(word_match.group(2))
-        if value is not None and unit is not None:
-            return value, unit
-
     unit_only_match = _UNIT_ONLY_PATTERN.search(lowered)
     if unit_only_match is not None:
-        unit = _normalize_unit(unit_only_match.group(1))
-        if unit is not None:
-            return 1, unit
+        normalized_unit = _normalize_unit(unit_only_match.group(1))
+        if normalized_unit is not None:
+            return 1, normalized_unit
 
     return None
 
@@ -131,16 +152,88 @@ def parse_duration_to_seconds(raw: str) -> int:
     Returns:
         Computed integer value.
     """
-    parsed = parse_duration_phrase(raw)
-    if parsed is None:
-        return 0
+    seconds = extract_duration_seconds(raw)
+    return seconds if seconds is not None else 0
 
-    value, unit = parsed
+
+def duration_seconds_from_tool_args(args: dict[str, Any]) -> int:
+    """
+    Resolve timer tool args to total seconds.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Computed integer value.
+    """
+    if "duration_seconds" in args:
+        return int(args.get("duration_seconds", 0))
+    if "duration_minutes" in args:
+        return int(args.get("duration_minutes", 0)) * 60
+    if "duration_hours" in args:
+        return int(args.get("duration_hours", 0)) * 3600
+    if "duration_text" in args:
+        return parse_duration_to_seconds(str(args.get("duration_text", "")))
+    return 0
+
+
+def humanize_duration_seconds(total_seconds: int) -> str:
+    """
+    Format a duration in seconds for user-facing copy.
+
+    Args:
+        total_seconds: Duration value in seconds.
+
+    Returns:
+        Generated or formatted string value.
+    """
+    if total_seconds <= 0:
+        return "less than a second"
+
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    parts: list[str] = []
+    if hours:
+        parts.append(_format_unit(hours, "hour"))
+    if minutes:
+        parts.append(_format_unit(minutes, "minute"))
+    if seconds or not parts:
+        parts.append(_format_unit(seconds, "second"))
+    return " and ".join(parts[:2])
+
+
+def _iter_duration_segments(message: str) -> list[tuple[int, str, int, int]]:
+    lowered = message.lower()
+    segments: list[tuple[int, str, int, int]] = []
+
+    for match in _DIGIT_DURATION_PATTERN.finditer(lowered):
+        unit = _normalize_unit(match.group(2))
+        if unit is not None:
+            segments.append((int(match.group(1)), unit, match.start(), match.end()))
+
+    for match in _WORD_DURATION_PATTERN.finditer(lowered):
+        if any(not (match.end() <= start or match.start() >= end) for _, _, start, end in segments):
+            continue
+        value = _words_to_number(match.group(1))
+        unit = _normalize_unit(match.group(2))
+        if value is not None and unit is not None:
+            segments.append((value, unit, match.start(), match.end()))
+
+    segments.sort(key=lambda item: item[2])
+    return segments
+
+
+def _segment_to_seconds(value: int, unit: str) -> int:
     if unit == "seconds":
         return value
     if unit == "minutes":
         return value * 60
     return value * 3600
+
+
+def _format_unit(amount: int, unit: str) -> str:
+    suffix = "" if amount == 1 else "s"
+    return f"{amount} {unit}{suffix}"
 
 
 def _normalize_unit(unit: str) -> str | None:

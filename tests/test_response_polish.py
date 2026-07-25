@@ -4,6 +4,7 @@ from app.assistant.response_polish import (
     should_polish,
 )
 from app.assistant.response_source import answer_source, follow_up_source, tool_result_source
+from app.runtime.status_copy import TIMER_DURATION_PROMPT
 
 
 class _StubClient:
@@ -39,11 +40,11 @@ def test_should_polish_answer_kind() -> None:
 def test_should_not_polish_follow_up() -> None:
     source = follow_up_source(
         user_message="Start a timer.",
-        facts="How long should the timer run? Try 30 seconds or 5 minutes.",
+        facts=TIMER_DURATION_PROMPT,
         conversation_id="default",
     )
 
-    assert not should_polish(source, "How long should the timer run? Try 30 seconds or 5 minutes.")
+    assert not should_polish(source, TIMER_DURATION_PROMPT)
 
 
 def test_polish_user_facing_answer_tightens_repetitive_draft() -> None:

@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.config import get_settings
+from app.duration import humanize_duration_seconds
 from app.health import HealthCheckResult, run_health_checks
 from app.memory.repository import delete_timer, list_due_timers
 from app.proactive.background_tick import check_presence_timeouts, run_proactive_background_tick
@@ -57,33 +58,8 @@ def _format_due_timer(label: str, created_at: datetime, due_at: datetime) -> tup
 
     return (
         "Timer complete.",
-        f"Your {_humanize_duration(duration_seconds)} timer{label_suffix} is complete.",
+        f"Your {humanize_duration_seconds(duration_seconds)} timer{label_suffix} is complete.",
     )
-
-
-def _humanize_duration(duration_seconds: int) -> str:
-    """
-    Humanize duration.
-
-    Args:
-        duration_seconds: Duration value in seconds.
-
-    Returns:
-        Generated or formatted string value.
-    """
-
-    if duration_seconds % 60 == 0:
-        minutes = duration_seconds // 60
-
-        if minutes == 1:
-            return "1 minute"
-
-        return f"{minutes} minutes"
-
-    if duration_seconds == 1:
-        return "1 second"
-
-    return f"{duration_seconds} seconds"
 
 
 def check_system_health() -> list[HealthCheckResult]:

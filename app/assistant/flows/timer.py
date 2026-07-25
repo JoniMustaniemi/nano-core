@@ -17,6 +17,7 @@ from app.assistant.response_source import (
 )
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
+from app.duration import extract_duration_seconds
 from app.runtime.activity import activity
 from app.runtime.status_copy import (
     CANCELLED_TIMER_TITLE,
@@ -118,6 +119,10 @@ class TimerInteractionHandler:
             )
 
         duration_args = duration_args_from_message(message)
+        if duration_args is None:
+            seconds = extract_duration_seconds(message, bare_number_unit="minutes")
+            if seconds is not None:
+                duration_args = {"duration_seconds": seconds}
         if duration_args is None:
             return follow_up_source(
                 user_message=user_message,

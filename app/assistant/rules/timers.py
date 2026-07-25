@@ -3,7 +3,12 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.duration import extract_duration_args
+from app.duration import (
+    duration_seconds_from_tool_args,
+    extract_duration_args,
+    extract_duration_seconds,
+    humanize_duration_seconds,
+)
 
 TIMER_REQUEST_TRIGGERS: tuple[str, ...] = (
     "timer",
@@ -43,7 +48,7 @@ def needs_timer_duration(message: str) -> bool:
         return False
     if not any(keyword in lowered for keyword in TIMER_START_KEYWORDS):
         return False
-    return extract_duration_args(lowered) is None
+    return extract_duration_seconds(lowered) is None
 
 
 def duration_args_from_message(message: str) -> dict[str, Any] | None:
@@ -147,16 +152,5 @@ def timer_confirmation(args: dict[str, Any]) -> str:
     Returns:
         Generated or formatted string value.
     """
-    if "duration_hours" in args:
-        amount = int(args["duration_hours"])
-        unit = "hour" if amount == 1 else "hours"
-        return f"The timer is set for {amount} {unit}."
-
-    if "duration_seconds" in args:
-        amount = int(args["duration_seconds"])
-        unit = "second" if amount == 1 else "seconds"
-        return f"The timer is set for {amount} {unit}."
-
-    amount = int(args["duration_minutes"])
-    unit = "minute" if amount == 1 else "minutes"
-    return f"The timer is set for {amount} {unit}."
+    seconds = duration_seconds_from_tool_args(args)
+    return f"The timer is set for {humanize_duration_seconds(seconds)}."
