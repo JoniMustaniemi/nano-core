@@ -64,6 +64,28 @@ def _find_balanced_json_object(text: str) -> str | None:
     return None
 
 
+def looks_like_truncated_json(raw: str) -> bool:
+    """
+    Return True when raw text appears to start JSON but never closes an object.
+
+    Args:
+        raw: Raw model output to inspect.
+
+    Returns:
+        True when a JSON object looks cut off before completion.
+    """
+    if not isinstance(raw, str):
+        return False
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if "\n" in text:
+            text = text.split("\n", 1)[1]
+    if "{" not in text:
+        return False
+    return _find_balanced_json_object(text) is None
+
+
 def extract_json(raw: str) -> Any:
     """
     Extract json.

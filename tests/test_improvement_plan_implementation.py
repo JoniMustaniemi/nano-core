@@ -11,6 +11,9 @@ from app.memory.db import create_db_and_tables
 from app.tools.improvement_plan_implementation import (
     ImprovementPlanImplementationService,
     _apply_replacements,
+    _build_apply_messages,
+    _prefer_full_file_apply,
+    _retry_assistant_content,
     check_implementation_preflight,
 )
 from app.tools.pr_service import PrResult
@@ -713,3 +716,211 @@ def test_implementation_service_uses_configured_apply_max_attempts(
     assert result.ok is False
     assert call_count == 6
     assert "invalid json after 6 attempts" in (result.error or "").lower()
+
+
+def test_prefer_full_file_apply_for_single_small_file() -> None:
+    contents = {"app/runtime/status_copy.py": "OLD = 1\n"}
+    assert _prefer_full_file_apply(contents) is True
+
+
+def test_prefer_full_file_apply_false_for_multiple_files() -> None:
+    contents = {
+        "app/runtime/status_copy.py": "OLD = 1\n",
+        "app/runtime/activity.py": "ACTIVITY = 1\n",
+    }
+    assert _prefer_full_file_apply(contents) is False
+
+
+def test_build_apply_messages_prefers_full_file_for_small_target() -> None:
+    messages = _build_apply_messages(
+        goal="clearer timer errors",
+        body="Summary\nImprove timer copy.",
+        file_contents={"app/runtime/status_copy.py": "OLD = 1\n"},
+        allowed_files=["app/runtime/status_copy.py"],
+        prefer_full_file=True,
+    )
+    system_prompt = messages[0]["content"]
+    assert "full updated file contents" in system_prompt
+    assert "Do not use replacements" in system_prompt
+
+
+def test_retry_assistant_content_truncates_large_failed_response() -> None:
+    large = '{"files": [{"path": "app/x.py", "content": "' + ("x" * 2000) + '"}'
+    preview = _retry_assistant_content(large)
+    assert len(preview) < len(large)
+    assert "truncated for context" in preview
+
+
+def test_implementation_service_switches_to_full_file_correction_after_json_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'full-file-fallback.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    (tmp_path / "app" / "runtime" / "status_copy.py").write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    captured_corrections: list[str] = []
+    call_count = 0
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            nonlocal call_count
+            call_count += 1
+            for message in reversed(messages):
+                if message.get("role") == "user" and "invalid" in str(message.get("content", "")).lower():
+                    captured_corrections.append(str(message["content"]))
+                    break
+            if call_count == 3:
+                return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
+            return '{"files": [{"path": "app/runtime/status_copy.py", "replacements":'
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_llm_client",
+        lambda: _Client(),
+    )
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_plan_max_tokens=8192,
+            self_improve_apply_max_attempts=4,
+        ),
+    )
+    silence_announce_voice(monkeypatch)
+
+    class _PrService:
+        def run(self, *, client, announce=True) -> PrResult:
+            return PrResult(ok=True, step="complete", url="https://github.com/example/repo/pull/5")
+
+    result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
+
+    assert result.ok is True
+    assert any("Required shape" in correction for correction in captured_corrections)
+    assert any("cut off" in correction.lower() for correction in captured_corrections)
+
+
+def test_implementation_service_retry_conversation_uses_short_assistant_preview(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'retry-hygiene.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    (tmp_path / "app" / "runtime" / "status_copy.py").write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    captured_messages: list[list[dict[str, str]]] = []
+    call_count = 0
+    huge_truncated = (
+        '{"files": [{"path": "app/runtime/status_copy.py", "replacements": '
+        '[{"find": "OLD", "replace": "' + ("x" * 3000)
+    )
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            nonlocal call_count
+            call_count += 1
+            captured_messages.append(list(messages))
+            if call_count == 2:
+                return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
+            return huge_truncated
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_llm_client",
+        lambda: _Client(),
+    )
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_plan_max_tokens=8192,
+            self_improve_apply_max_attempts=4,
+        ),
+    )
+    silence_announce_voice(monkeypatch)
+
+    class _PrService:
+        def run(self, *, client, announce=True) -> PrResult:
+            return PrResult(ok=True, step="complete", url="https://github.com/example/repo/pull/6")
+
+    result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
+
+    assert result.ok is True
+    retry_messages = captured_messages[1]
+    assistant_messages = [
+        message["content"]
+        for message in retry_messages
+        if message.get("role") == "assistant"
+    ]
+    assert assistant_messages
+    assert len(assistant_messages[-1]) < len(huge_truncated)
+    assert "truncated for context" in assistant_messages[-1]
+
+
+def test_implementation_service_reports_truncated_json_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'truncated-json.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    (tmp_path / "app" / "runtime" / "status_copy.py").write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    truncated = (
+        '```json\n{"files": [{"path": "app/runtime/status_copy.py", "replacements": '
+        '[{"find": "import asyncio", "replace": "import asyncio\\nfrom fastapi imp'
+    )
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return truncated
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_llm_client",
+        lambda: _Client(),
+    )
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_plan_max_tokens=8192,
+            self_improve_apply_max_attempts=2,
+        ),
+    )
+
+    result = ImprovementPlanImplementationService().run(plan_id)
+
+    assert result.ok is False
+    assert result.step == "apply"
+    assert "truncated json after 4 attempts" in (result.error or "").lower()
+    assert "larger code model" in (result.error or "").lower()
