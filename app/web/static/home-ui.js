@@ -763,11 +763,15 @@ function isIdleStandbyGreeting(headline) {
 }
 
 function hasCustomStandbyActivityCopy() {
-  if (currentActivitySnapshot.state !== "standby") {
+  const state = currentActivitySnapshot.state;
+  if (state !== "standby" && state !== "error") {
     return false;
   }
   const headline = (currentActivitySnapshot.headline || "").trim();
   const detail = (currentActivitySnapshot.detail || "").trim();
+  if (isTransientActivityCopy(headline, detail)) {
+    return true;
+  }
   if (isIdleStandbyGreeting(headline)) {
     return false;
   }
@@ -775,6 +779,47 @@ function hasCustomStandbyActivityCopy() {
     return Boolean(detail && detail !== STANDBY_DETAIL_DEFAULT);
   }
   return true;
+}
+
+function isTransientActivityCopy(headline, detail) {
+  const lowered = `${headline || ""} ${detail || ""}`.toLowerCase();
+  if (!lowered.trim()) {
+    return false;
+  }
+  return (
+    lowered.includes("lint check") ||
+    lowered.includes("type check") ||
+    lowered.includes("verification failed") ||
+    lowered.includes("could not complete") ||
+    lowered.includes("could not implement") ||
+    lowered.includes("declined to commit") ||
+    lowered.includes("tests failed")
+  );
+}
+
+function shouldScheduleActivityClear() {
+  if (isWaitingForAnswerActivity()) {
+    return false;
+  }
+  if (getDisplayState() === "working") {
+    return true;
+  }
+  const headline = (currentActivitySnapshot.headline || "").trim();
+  const detail = (currentActivitySnapshot.detail || "").trim();
+  return isTransientActivityCopy(headline, detail) || hasCustomStandbyActivityCopy();
+}
+
+function resetTransientActivityCopy() {
+  if (isWaitingForAnswerActivity()) {
+    return;
+  }
+  const headline = (currentActivitySnapshot.headline || "").trim();
+  const detail = (currentActivitySnapshot.detail || "").trim();
+  if (!isTransientActivityCopy(headline, detail)) {
+    return;
+  }
+  resetStandbySnapshot();
+  clearActivityStatusDisplay();
 }
 
 function cancelStatusReveal() {
@@ -824,6 +869,7 @@ function isBaseAnswerContent(content) {
 }
 
 function restoreBaseAnswer() {
+  resetTransientActivityCopy();
   setAnswer(IDLE_RESPONSE, {
     animate: false,
     bypassSpeechGuard: true,
@@ -873,7 +919,7 @@ function renderActivityStatus(options = {}) {
     }
   }
 
-  if (displayState === "working") {
+  if (shouldScheduleActivityClear()) {
     scheduleStatusClear();
     return;
   }

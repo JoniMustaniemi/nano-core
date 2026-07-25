@@ -1,6 +1,8 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+from helpers.voice_announce import patch_announce_voice
+
 from app.health.checks import HealthCheckResult, run_health_checks
 from app.scheduler import jobs
 
@@ -51,10 +53,7 @@ def test_health_scheduler_announces_new_failures(monkeypatch) -> None:
         "app.scheduler.jobs.run_health_checks",
         lambda: [HealthCheckResult(name="voice", ok=False, detail="Voice backend is unavailable.")],
     )
-    monkeypatch.setattr(
-        "app.scheduler.jobs.GladosVoiceService.announce",
-        lambda self, text: spoken.append(text),
-    )
+    patch_announce_voice(monkeypatch, spoken)
 
     results = jobs.check_system_health()
 
@@ -79,10 +78,7 @@ def test_health_scheduler_does_not_repeat_same_failure_announcement(monkeypatch)
         "app.scheduler.jobs.run_health_checks",
         lambda: [HealthCheckResult(name="voice", ok=False, detail="Voice backend is unavailable.")],
     )
-    monkeypatch.setattr(
-        "app.scheduler.jobs.GladosVoiceService.announce",
-        lambda self, text: spoken.append(text),
-    )
+    patch_announce_voice(monkeypatch, spoken)
 
     jobs.check_system_health()
 
@@ -272,10 +268,7 @@ def test_health_scheduler_announces_database_size_warning(monkeypatch) -> None:
             )
         ],
     )
-    monkeypatch.setattr(
-        "app.scheduler.jobs.GladosVoiceService.announce",
-        lambda self, text: spoken.append(text),
-    )
+    patch_announce_voice(monkeypatch, spoken)
 
     jobs.check_system_health()
 

@@ -34,6 +34,8 @@ from app.runtime.status_copy import (
     VERIFICATION_FAILED_TITLE,
     VERIFICATION_PASSED_TITLE,
     VERIFYING_PROJECT_TITLE,
+    lint_failure_detail,
+    lint_failure_voice_message,
     running_tool_title,
 )
 from app.tools.git_github import (
@@ -57,19 +59,6 @@ from app.tools.git_github import (
 )
 from app.tools.pr_naming import PrNamingService
 from app.tools.pr_verify import command_display, run_pr_lint, run_pr_verification
-
-PR_ANNOUNCE_SOURCE = "tools.pr_service.announce"
-
-
-def _emit_pr_announcement(message: str) -> None:
-    spoken = message.strip().rstrip(".")
-    if not spoken:
-        return
-    activity.log(
-        title=spoken,
-        detail=spoken,
-        source=PR_ANNOUNCE_SOURCE,
-    )
 
 
 def _finalize_pr_activity(result: PrResult) -> None:
@@ -136,7 +125,7 @@ class PullRequestService:
             source="tools.pr_service",
         )
         if announce:
-            _emit_pr_announcement(running_tool_title("create_pull_request"))
+            activity.announce_voice(running_tool_title("create_pull_request"))
 
         if not is_git_repo():
             if resolve_executable("git") is None:
@@ -191,11 +180,21 @@ class PullRequestService:
         activity.start_task_timer(PR_LINT_TIMER_LABEL, PR_LINT_TIMER_SECONDS)
         lint = run_pr_lint()
         if not lint.ok:
+            failure_detail = lint_failure_detail(
+                lint.error or "Lint checks failed.",
+                lint.output,
+            )
             activity.error(
                 title=LINT_CHECKS_FAILED_TITLE,
-                detail=lint.error or lint.output,
+                detail=failure_detail,
                 source="tools.pr_service",
             )
+            activity.log(
+                title="Lint check output",
+                detail=failure_detail,
+                source="tools.pr_service.lint",
+            )
+            activity.announce_voice(lint_failure_voice_message(lint.error or "Lint checks failed."))
             result = PrResult(
                 ok=False,
                 step="lint",
@@ -328,7 +327,6 @@ class PullRequestService:
             detail=f"{current_branch} -> {base_branch}",
             source="tools.pr_service",
         )
-        _emit_pr_announcement(OPENING_PR_TITLE)
         activity.start_task_timer(PR_OPENING_TIMER_LABEL, PR_OPENING_TIMER_SECONDS)
         pr_result = run_gh(
             "pr",

@@ -13,6 +13,7 @@ from app.assistant.response_guard import looks_like_refusal
 from app.assistant.response_source import ResponseSource
 from app.intents.self_improve import normalize_self_improve_goal
 from app.llm.protocol import LLMClient
+from app.runtime.status_copy import lint_failure_user_message
 
 
 class ResponseComposer:
@@ -210,7 +211,7 @@ class ResponseComposer:
         step = str(payload.get("step", "unknown")).strip()
         error = str(payload.get("error", "")).strip()
         if step == "lint":
-            return "Lint checks failed, so I declined to commit anything or open a pull request."
+            return lint_failure_user_message(error)
         if step == "verify":
             return "Your tests failed, so I declined to commit anything or open a pull request."
         if step == "preflight" and "nothing" in error.lower():

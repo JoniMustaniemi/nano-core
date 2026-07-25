@@ -68,10 +68,9 @@ def patch_agent(monkeypatch, *, client, tmp_path, announce=None) -> None:
         ),
     )
     if announce is not None:
-        monkeypatch.setattr(
-            "app.assistant.tool_runner.GladosVoiceService.announce",
-            announce,
-        )
+        from app.runtime.activity import activity
+
+        monkeypatch.setattr(activity, "announce_voice", announce)
 
 
 class RunPythonClient:

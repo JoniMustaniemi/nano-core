@@ -79,6 +79,19 @@ def resolve_verify_command() -> list[str] | None:
     return None
 
 
+def resolve_ruff_format_command() -> list[str] | None:
+    """
+    Resolve the ruff format command for the current workspace.
+
+    Returns:
+        Command argv list, or None when ruff is not configured.
+    """
+    command = resolve_lint_command()
+    if command is None:
+        return None
+    return [command[0], command[1], command[2], "format", *command[4:]]
+
+
 def run_pr_lint() -> VerifyResult:
     """
     Run lint and type-check commands in the workspace.
@@ -122,7 +135,7 @@ def _run_ruff_lint() -> VerifyResult:
 
     result = _run_command(command, failure_message="Lint checks failed.")
     if result.ok or not _has_fixable_ruff_issues(result.output):
-        return result
+        return _finalize_ruff_lint(result)
 
     fix_command = [*command, "--fix"]
     fix_result = _run_command(fix_command, failure_message="Lint auto-fix failed.")
@@ -139,13 +152,73 @@ def _run_ruff_lint() -> VerifyResult:
     if not recheck.ok:
         return recheck
 
+    return _finalize_ruff_lint(
+        VerifyResult(
+            ok=True,
+            command=command,
+            exit_code=0,
+            output=_append_output("Auto-fixed lint issues with ruff --fix.", recheck.output),
+            error=None,
+            auto_fixed=True,
+        )
+    )
+
+
+def _finalize_ruff_lint(result: VerifyResult) -> VerifyResult:
+    if not result.ok:
+        return VerifyResult(
+            ok=False,
+            command=result.command,
+            exit_code=result.exit_code,
+            output=result.output,
+            error=_summarize_check_failure(result.error or "Lint checks failed.", result.output),
+        )
+
+    format_result = _run_ruff_format()
+    if not format_result.ok:
+        return format_result
+
+    output = _append_output(result.output, format_result.output)
     return VerifyResult(
         ok=True,
-        command=command,
+        command=result.command,
         exit_code=0,
-        output=_append_output("Auto-fixed lint issues with ruff --fix.", recheck.output),
+        output=output,
         error=None,
-        auto_fixed=True,
+        auto_fixed=result.auto_fixed or format_result.auto_fixed,
+    )
+
+
+def _run_ruff_format() -> VerifyResult:
+    """
+    Run ruff format so generated edits match repository style before commit.
+
+    Returns:
+        Ruff format result. Skipped projects return ok=True.
+    """
+    command = resolve_ruff_format_command()
+    if command is None:
+        return VerifyResult(ok=True, command=[], exit_code=0, output="")
+
+    result = _run_command(command, failure_message="Format checks failed.")
+    if result.ok:
+        if "reformatted" in result.output.lower():
+            return VerifyResult(
+                ok=True,
+                command=command,
+                exit_code=0,
+                output=_append_output("Auto-formatted files with ruff format.", result.output),
+                error=None,
+                auto_fixed=True,
+            )
+        return result
+
+    return VerifyResult(
+        ok=False,
+        command=result.command,
+        exit_code=result.exit_code,
+        output=result.output,
+        error=_summarize_check_failure(result.error or "Format checks failed.", result.output),
     )
 
 
@@ -159,7 +232,16 @@ def _run_mypy_check() -> VerifyResult:
     command = resolve_mypy_command()
     if command is None:
         return VerifyResult(ok=True, command=[], exit_code=0, output="")
-    return _run_command(command, failure_message="Type checks failed.")
+    result = _run_command(command, failure_message="Type checks failed.")
+    if result.ok:
+        return result
+    return VerifyResult(
+        ok=False,
+        command=result.command,
+        exit_code=result.exit_code,
+        output=result.output,
+        error=_summarize_check_failure(result.error or "Type checks failed.", result.output),
+    )
 
 
 def run_pr_verification() -> VerifyResult:
@@ -244,6 +326,20 @@ def _has_fixable_ruff_issues(output: str) -> bool:
     if "fixable with the --fix option" in lowered:
         return True
     return "[*]" in output
+
+
+def _summarize_check_failure(message: str, output: str) -> str:
+    for line in output.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        lowered = stripped.lower()
+        if "error:" in lowered or lowered.startswith("error "):
+            return f"{message.rstrip('.')}: {stripped}"
+    tail = output.strip().splitlines()[-1].strip() if output.strip() else ""
+    if tail and tail not in message:
+        return f"{message.rstrip('.')}: {tail}"
+    return message
 
 
 def _append_output(*parts: str) -> str:

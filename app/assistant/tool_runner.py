@@ -9,23 +9,22 @@ from app.runtime.status_copy import (
     RUNNING_TOOL_DETAIL,
     could_not_call_tool_title,
     failed_tool_title,
+    pr_failure_voice_message,
     running_tool_title,
     tool_error_title,
 )
 from app.tools import get_tool, list_tools
 from app.tools.errors import ToolError
 from app.tools.registry import tool_announcement_for
-from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
 _STRUCTURED_RESULT_TOOLS = frozenset({"draft_improvement_plan", "create_pull_request"})
-_SERVER_ANNOUNCE_SKIP: frozenset[str] = frozenset()
+_SERVER_ANNOUNCE_SKIP: frozenset[str] = frozenset({"create_pull_request"})
 _STRUCTURED_FAILURE_TITLES: dict[str, str] = {
     "draft_improvement_plan": failed_tool_title("draft_improvement_plan"),
     "create_pull_request": failed_tool_title("create_pull_request"),
 }
 _STRUCTURED_FAILURE_SPOKEN: dict[str, str] = {
     "draft_improvement_plan": "I could not draft the improvement plan.",
-    "create_pull_request": "I could not complete the pull request.",
 }
 
 
@@ -80,17 +79,28 @@ class ToolRunner:
                 and structured.get("ok") is False
             ):
                 error_message = str(structured.get("error", "")).strip()
-                self.report_error(
-                    title=_STRUCTURED_FAILURE_TITLES.get(
-                        tool_name,
-                        tool_error_title(tool_name),
-                    ),
-                    detail=error_message or "The tool reported a failure.",
-                    spoken_message=_STRUCTURED_FAILURE_SPOKEN.get(
-                        tool_name,
-                        "I hit an error while trying to complete the task.",
-                    ),
+                spoken_message = self._structured_failure_spoken(
+                    tool_name,
+                    error_message,
+                    structured,
                 )
+                failure_title = _STRUCTURED_FAILURE_TITLES.get(
+                    tool_name,
+                    tool_error_title(tool_name),
+                )
+                failure_detail = error_message or "The tool reported a failure."
+                if tool_name in _SERVER_ANNOUNCE_SKIP:
+                    activity.error(
+                        title=failure_title,
+                        detail=failure_detail,
+                        source="assistant.agent",
+                    )
+                else:
+                    self.report_error(
+                        title=failure_title,
+                        detail=failure_detail,
+                        spoken_message=spoken_message,
+                    )
                 return ToolResult(
                     tool=tool_name,
                     content=content if isinstance(content, str) else json.dumps(structured),
@@ -173,10 +183,7 @@ class ToolRunner:
         Returns:
             None.
         """
-        try:
-            GladosVoiceService().announce(message)
-        except VoiceUnavailableError:
-            return
+        activity.announce_voice(message)
 
     def _parse_structured_result(self, content: Any) -> dict[str, Any] | None:
         if isinstance(content, dict):
@@ -189,3 +196,19 @@ class ToolRunner:
         else:
             return None
         return payload if isinstance(payload, dict) and "ok" in payload else None
+
+    @staticmethod
+    def _structured_failure_spoken(
+        tool_name: str,
+        error_message: str,
+        structured: dict[str, Any],
+    ) -> str:
+        if tool_name == "create_pull_request":
+            return pr_failure_voice_message(
+                error_message,
+                str(structured.get("step", "")),
+            )
+        return _STRUCTURED_FAILURE_SPOKEN.get(
+            tool_name,
+            "I hit an error while trying to complete the task.",
+        )

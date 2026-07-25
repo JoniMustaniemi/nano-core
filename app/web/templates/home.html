@@ -10,16 +10,16 @@
 
 <title>{app_name}</title>
 
-<link rel="stylesheet" href="/static/home.css?v=user-speech-1" />
+<link rel="stylesheet" href="/static/home.css?v=user-speech-3" />
 
 <script defer src="/static/three.min.js?v=0.160.1"></script>
 <script defer src="/static/essence_visualizer.js?v=idle-essence-3"></script>
 <script defer src="/static/home-state.js?v=user-speech-1"></script>
 <script defer src="/static/home-plans.js?v=view-modals-1"></script>
-<script defer src="/static/home-ui.js?v=user-speech-1"></script>
+<script defer src="/static/home-ui.js?v=user-speech-3"></script>
 <script defer src="/static/home-view-session.js?v=view-close-controls-2"></script>
-<script defer src="/static/home-voice.js?v=user-speech-1"></script>
-<script defer src="/static/home-activity.js?v=view-modals-1"></script>
+<script defer src="/static/home-voice.js?v=implement-busy-wake-1"></script>
+<script defer src="/static/home-activity.js?v=voice-announce-1"></script>
 <script defer src="/static/home-chat.js?v=user-speech-1"></script>
 <script defer src="/static/home.js?v=view-modals-1"></script>
 
@@ -39,12 +39,6 @@
 
 </p>
 
-<p id="user-speech" class="user-speech" aria-live="polite" hidden>
-
-<span class="user-speech-text"></span>
-
-</p>
-
 <div class="response-zone">
 <h1 id="answer-output" class="response-headline empty"></h1>
 </div>
@@ -52,6 +46,14 @@
 <div class="sr-only" id="state-line">standby</div>
 
 </header>
+
+<p id="user-speech" class="user-speech" aria-live="polite" hidden>
+
+<span class="user-speech-label">You said</span>
+
+<span class="user-speech-text"></span>
+
+</p>
 
 <section class="essence-zone" aria-hidden="true">
 

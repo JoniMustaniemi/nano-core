@@ -1,6 +1,7 @@
 """Centralized activity status strings for the UI and SSE stream."""
 
 import random
+import re
 
 STANDBY_TITLE = "I'm in standby."
 STANDBY_DETAIL_DEFAULT = "Awaiting your input."
@@ -250,3 +251,91 @@ def route_acknowledgment(
         }
         return interaction_titles.get(interaction or "", (RECEIVED_TITLE, RECEIVED_DETAIL))
     return RECEIVED_TITLE, RECEIVED_DETAIL
+
+
+def _check_failure_file_hint(error: str) -> str | None:
+    match = re.search(r"([\w./\\]+\.py):\d+", error)
+    if not match:
+        return None
+    path = match.group(1).replace("\\", "/")
+    return path.rsplit("/", 1)[-1]
+
+
+def lint_failure_detail(error: str, output: str | None = None) -> str:
+    """
+    Build a Brains-friendly lint/type failure detail with full checker output.
+
+    Args:
+        error: Short failure summary from the checker.
+        output: Optional captured stdout/stderr from the checker.
+
+    Returns:
+        Combined detail text for activity logging.
+    """
+    parts = [part.strip() for part in (error, output or "") if part and part.strip()]
+    return "\n\n".join(parts)
+
+
+def lint_failure_user_message(error: str) -> str:
+    """
+    Build a user-facing lint/type failure message for the answer area.
+
+    Args:
+        error: Checker failure summary.
+
+    Returns:
+        Readable failure message without URLs.
+    """
+    cleaned = error.strip()
+    if not cleaned:
+        return "Lint checks failed, so I declined to commit anything or open a pull request."
+
+    file_hint = _check_failure_file_hint(cleaned)
+    if file_hint:
+        return (
+            f"I couldn't open a pull request because type checks failed in {file_hint}. {cleaned}"
+        )
+    return f"I couldn't open a pull request because checks failed. {cleaned}"
+
+
+def lint_failure_voice_message(error: str) -> str:
+    """
+    Build a short spoken lint/type failure summary.
+
+    Args:
+        error: Checker failure summary.
+
+    Returns:
+        Voice-friendly failure line.
+    """
+    file_hint = _check_failure_file_hint(error)
+    if file_hint:
+        return (
+            f"Lint checks failed. There's a type error in {file_hint}. "
+            "Open Brains for the full message."
+        )
+    if error.strip():
+        return f"Lint checks failed. {error.strip()}"
+    return "Lint checks failed, so I didn't open a pull request."
+
+
+def pr_failure_voice_message(error: str, step: str | None = None) -> str:
+    """
+    Build a spoken pull-request failure summary.
+
+    Args:
+        error: Workflow error text.
+        step: Optional workflow step name.
+
+    Returns:
+        Voice-friendly failure line.
+    """
+    step_name = (step or "").strip().lower()
+    if step_name == "lint":
+        return lint_failure_voice_message(error)
+    if step_name == "verify":
+        return "Your tests failed, so I didn't open a pull request."
+    cleaned = error.strip()
+    if cleaned:
+        return cleaned.rstrip(".")
+    return PR_WORKFLOW_FAILED_TITLE.rstrip(".")

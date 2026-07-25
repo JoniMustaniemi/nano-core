@@ -288,7 +288,8 @@ function waitForRecognitionToStop(timeoutMs = 1200) {
 }
 
 function startVoiceListening(mode = "manual", preserveCommandMode = false) {
-  if (!preserveCommandMode && isBusy()) {
+  const resumeWhileBusy = mode === "resume" || preserveCommandMode;
+  if (!resumeWhileBusy && isBusy()) {
     return;
   }
   if (!SpeechRecognitionCtor) {

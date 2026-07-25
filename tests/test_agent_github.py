@@ -2,6 +2,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from helpers.voice_announce import patch_announce_voice
 
 from app.assistant.agent import AgentService
 from app.assistant.agent_rules import is_pull_request_request
@@ -36,10 +37,7 @@ def test_agent_routes_pull_request_request_directly(monkeypatch: pytest.MonkeyPa
         "app.assistant.orchestrator.get_settings",
         lambda: SimpleNamespace(chat_history_limit=12, workspace_root="."),
     )
-    monkeypatch.setattr(
-        "app.assistant.tool_runner.GladosVoiceService.announce",
-        lambda self, text: calls.append(text),
-    )
+    patch_announce_voice(monkeypatch, calls)
     monkeypatch.setattr(
         "app.tools.github_tools.PullRequestService",
         lambda: SimpleNamespace(

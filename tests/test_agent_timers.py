@@ -33,7 +33,7 @@ def test_agent_handles_explicit_timer_requests_without_model(monkeypatch, tmp_pa
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
 
     content = AgentService().respond("Start a timer for 30 seconds.")
@@ -61,7 +61,7 @@ def test_agent_lists_active_timers_without_model(monkeypatch, tmp_path) -> None:
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
     repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
 
@@ -87,7 +87,7 @@ def test_agent_cancels_active_timers_without_model(monkeypatch, tmp_path) -> Non
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
     repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
 
@@ -113,7 +113,7 @@ def test_agent_cancel_timer_never_starts_timer(monkeypatch, tmp_path) -> None:
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
 
     content = AgentService().respond("Cancel timer for two minutes.")
@@ -138,7 +138,7 @@ def test_agent_checks_timers_instead_of_completing_pending_timer(monkeypatch, tm
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
     repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
 
@@ -169,7 +169,7 @@ def test_agent_cancels_pending_timer_duration_request(monkeypatch, tmp_path) -> 
         monkeypatch,
         client=client,
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
 
     first = AgentService().respond("Start a timer.")
@@ -215,7 +215,7 @@ def test_agent_starts_timer_after_duration_follow_up(monkeypatch, tmp_path) -> N
         monkeypatch,
         client=ShouldNotBeCalledClient(),
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
 
     first = AgentService().respond("Start a timer.")
@@ -243,7 +243,7 @@ def test_agent_starts_timer_after_spoken_duration_follow_up(monkeypatch, tmp_pat
         monkeypatch,
         client=ShouldNotBeCalledClient(),
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
 
     first = AgentService().respond("Start a timer.")
@@ -261,7 +261,7 @@ def test_agent_cancels_pending_timer_with_never_mind(monkeypatch, tmp_path) -> N
         monkeypatch,
         client=ShouldNotBeCalledClient(),
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
 
     first = AgentService().respond("Start a timer.")
@@ -278,7 +278,7 @@ def test_agent_retries_after_invalid_timer_duration_follow_up(monkeypatch, tmp_p
         monkeypatch,
         client=ShouldNotBeCalledClient(),
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
 
     first = AgentService().respond("Start a timer.")
@@ -303,7 +303,7 @@ def test_agent_retries_after_invalid_timer_duration_follow_up(monkeypatch, tmp_p
         monkeypatch,
         client=ShouldNotBeCalledClient(),
         tmp_path=tmp_path,
-        announce=lambda self, text: None,
+        announce=lambda text: None,
     )
 
     content = AgentService().respond("Start a timer for five minutes.")

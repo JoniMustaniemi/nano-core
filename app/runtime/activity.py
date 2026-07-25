@@ -21,6 +21,7 @@ _SELF_IMPROVE_BUSY_SOURCES = frozenset(
         "tools.improvement_plan_implementation",
     }
 )
+VOICE_ANNOUNCE_SOURCE = "runtime.voice.announce"
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +86,7 @@ class ActivityHub:
         self._updated_at = datetime.now(UTC)
         self._task_timer: TaskTimer | None = None
         self._working_source: str | None = None
+        self._last_voice_announcement: str | None = None
         self._record(
             kind="state",
             state="standby",
@@ -109,6 +111,7 @@ class ActivityHub:
             self._updated_at = datetime.now(UTC)
             self._task_timer = None
             self._working_source = None
+            self._last_voice_announcement = None
             self._record(
                 kind="state",
                 state="standby",
@@ -238,6 +241,28 @@ class ActivityHub:
             detail=detail,
         )
 
+    def announce_voice(self, message: str) -> ActivityEvent | None:
+        """
+        Queue one spoken status line for the browser voice UI.
+
+        Duplicate messages are ignored until a different line is announced.
+
+        Args:
+            message: Message suitable for voice playback.
+
+        Returns:
+            ActivityEvent when queued, otherwise None.
+        """
+        spoken = message.strip().rstrip(".")
+        if not spoken:
+            return None
+        normalized = _normalize_voice_announcement(spoken)
+        with self._lock:
+            if normalized == self._last_voice_announcement:
+                return None
+            self._last_voice_announcement = normalized
+        return self.log(title=spoken, detail=spoken, source=VOICE_ANNOUNCE_SOURCE)
+
     def snapshot(self) -> dict[str, object]:
         with self._lock:
             from app.assistant.pending import pending_interactions
@@ -304,6 +329,12 @@ class ActivityHub:
                 self._working_source = None
             self._updated_at = datetime.now(UTC)
             return event
+
+
+def _normalize_voice_announcement(message: str) -> str:
+    lowered = message.strip().rstrip(".").lower()
+    skip = frozenset({"the", "a"})
+    return " ".join(word for word in lowered.split() if word not in skip)
 
 
 activity = ActivityHub()

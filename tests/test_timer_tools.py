@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from helpers.voice_announce import patch_announce_voice
 
 from app.memory import repository
 from app.runtime.activity import activity
@@ -163,10 +164,7 @@ def test_due_timer_announces_completion(monkeypatch) -> None:
     """
     spoken: list[str] = []
     repository.add_timer("Tea", datetime.now(UTC) - timedelta(seconds=10))
-    monkeypatch.setattr(
-        "app.scheduler.jobs.GladosVoiceService.announce",
-        lambda self, text: spoken.append(text),
-    )
+    patch_announce_voice(monkeypatch, spoken)
 
     check_due_timers()
 
