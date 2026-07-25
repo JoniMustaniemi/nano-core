@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from app.system.specs import (
     collect_system_specs,
     estimate_max_context_tokens,
@@ -37,7 +39,30 @@ def test_collect_system_specs_includes_llm_fields() -> None:
     assert "configured_chat_context" in specs["llm"]
 
 
-def test_format_system_analysis_report_is_human_readable() -> None:
+def test_format_system_analysis_report_is_human_readable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    chat_model = tmp_path / "chat.gguf"
+    code_model = tmp_path / "code.gguf"
+    chat_model.write_bytes(b"x" * 500_000_000)
+    code_model.write_bytes(b"x" * 800_000_000)
+    monkeypatch.setattr(
+        "app.system.specs.get_settings",
+        lambda: type(
+            "Settings",
+            (),
+            {
+                "app_name": "nano",
+                "llm_provider": "local",
+                "llm_model_path": str(chat_model),
+                "llm_code_model_path": str(code_model),
+                "llm_context_size": 32768,
+                "llm_code_context_size": 32768,
+            },
+        )(),
+    )
+
     report = format_system_analysis_report()
     assert "Here's how I'm running" in report
     assert "You have" in report
