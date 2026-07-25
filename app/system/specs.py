@@ -69,7 +69,10 @@ def _probe_memory_windows() -> MemoryInfo:
 
         status = MEMORYSTATUSEX()
         status.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        win_dll = getattr(ctypes, "WinDLL", None)
+        if win_dll is None:
+            return MemoryInfo(total_bytes=None, available_bytes=None)
+        kernel32 = win_dll("kernel32", use_last_error=True)
         if not kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
             return MemoryInfo(total_bytes=None, available_bytes=None)
         return MemoryInfo(
