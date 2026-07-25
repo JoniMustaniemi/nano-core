@@ -772,11 +772,16 @@ def test_implementation_service_switches_to_full_file_correction_after_json_fail
             nonlocal call_count
             call_count += 1
             for message in reversed(messages):
-                if message.get("role") == "user" and "invalid" in str(message.get("content", "")).lower():
+                if (
+                    message.get("role") == "user"
+                    and "invalid" in str(message.get("content", "")).lower()
+                ):
                     captured_corrections.append(str(message["content"]))
                     break
             if call_count == 3:
-                return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
+                return (
+                    '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
+                )
             return '{"files": [{"path": "app/runtime/status_copy.py", "replacements":'
 
     monkeypatch.setattr(
@@ -818,7 +823,9 @@ def test_implementation_service_refreshes_system_prompt_on_full_file_transition(
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'system-refresh.sqlite3'}")
     (tmp_path / "app" / "runtime").mkdir(parents=True)
     target = tmp_path / "app" / "runtime" / "status_copy.py"
-    target.write_text("".join(f"LINE_{index} = {index}\n" for index in range(201)), encoding="utf-8")
+    target.write_text(
+        "".join(f"LINE_{index} = {index}\n" for index in range(201)), encoding="utf-8"
+    )
 
     plan_id = _create_plan()
     assert improvement_plans.try_mark_implementing(plan_id) is True
@@ -833,7 +840,9 @@ def test_implementation_service_refreshes_system_prompt_on_full_file_transition(
             call_count += 1
             captured_system_prompts.append(str(messages[0]["content"]))
             if call_count == 3:
-                return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
+                return (
+                    '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
+                )
             return "not json"
 
     monkeypatch.setattr(
@@ -893,7 +902,9 @@ def test_implementation_service_retry_conversation_uses_short_assistant_preview(
             call_count += 1
             captured_messages.append(list(messages))
             if call_count == 2:
-                return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
+                return (
+                    '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
+                )
             return huge_truncated
 
     monkeypatch.setattr(
@@ -925,9 +936,7 @@ def test_implementation_service_retry_conversation_uses_short_assistant_preview(
     assert result.ok is True
     retry_messages = captured_messages[1]
     assistant_messages = [
-        message["content"]
-        for message in retry_messages
-        if message.get("role") == "assistant"
+        message["content"] for message in retry_messages if message.get("role") == "assistant"
     ]
     assert assistant_messages
     assert len(assistant_messages[-1]) < len(huge_truncated)

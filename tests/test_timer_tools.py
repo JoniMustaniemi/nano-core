@@ -186,3 +186,13 @@ def test_due_default_timer_omits_default_label() -> None:
     )
 
     assert detail == "Your 30 seconds timer is complete."
+
+
+def test_due_one_hour_timer_uses_hour_phrasing() -> None:
+    _, detail = _format_due_timer(
+        "Tea",
+        datetime.now(UTC) - timedelta(hours=1),
+        datetime.now(UTC),
+    )
+
+    assert detail == "Your 1 hour timer for Tea is complete."

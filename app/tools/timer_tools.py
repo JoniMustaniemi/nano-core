@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.duration import parse_duration_to_seconds
+from app.duration import duration_seconds_from_tool_args, humanize_duration_seconds
 from app.memory import repository
 from app.memory.models import Timer
 from app.tools.base import ToolSpec
@@ -44,28 +44,7 @@ def _resolve_duration_seconds(args: dict[str, Any]) -> int:
     Returns:
         Computed integer value.
     """
-    if "duration_seconds" in args:
-        return int(args.get("duration_seconds", 0))
-    if "duration_minutes" in args:
-        return int(args.get("duration_minutes", 0)) * 60
-    if "duration_hours" in args:
-        return int(args.get("duration_hours", 0)) * 3600
-    if "duration_text" in args:
-        return _parse_duration_text(str(args.get("duration_text", "")))
-    return 0
-
-
-def _parse_duration_text(raw: str) -> int:
-    """
-    Parse duration text.
-
-    Args:
-        raw: Raw input value to parse.
-
-    Returns:
-        Computed integer value.
-    """
-    return parse_duration_to_seconds(raw)
+    return duration_seconds_from_tool_args(args)
 
 
 def _list_timers(args: dict[str, Any]) -> str:
@@ -206,47 +185,7 @@ def _timer_remaining_text(due_at: datetime, now: datetime) -> str:
     if due_at.tzinfo is None:
         due_at = due_at.replace(tzinfo=UTC)
     remaining_seconds = max(0, int((due_at - now).total_seconds()))
-    return _humanize_remaining_time(remaining_seconds)
-
-
-def _humanize_remaining_time(total_seconds: int) -> str:
-    """
-    Humanize remaining time.
-
-    Args:
-        total_seconds: Total seconds value.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    if total_seconds <= 0:
-        return "less than a second"
-
-    hours, remainder = divmod(total_seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    parts: list[str] = []
-    if hours:
-        parts.append(_format_unit(hours, "hour"))
-    if minutes:
-        parts.append(_format_unit(minutes, "minute"))
-    if seconds or not parts:
-        parts.append(_format_unit(seconds, "second"))
-    return " and ".join(parts[:2])
-
-
-def _format_unit(amount: int, unit: str) -> str:
-    """
-    Format a singular or plural duration unit.
-
-    Args:
-        amount: Amount value.
-        unit: Duration unit text.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    suffix = "" if amount == 1 else "s"
-    return f"{amount} {unit}{suffix}"
+    return humanize_duration_seconds(remaining_seconds)
 
 
 register_tool(
@@ -266,10 +205,10 @@ register_tool(
         handler=_start_timer,
         announcement="Starting a timer.",
         keywords=("timer", "countdown"),
-        ui_label="Start 5 min timer",
-        ui_message="Start a 5 minute timer.",
+        ui_label="Start timer",
+        ui_message="Start a timer.",
         ui_category="Timers",
-        ui_description="Set a five-minute countdown.",
+        ui_description="Set a countdown timer.",
     )
 )
 
