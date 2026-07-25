@@ -26,6 +26,8 @@ from app.assistant.rules.messages import (
 from app.assistant.rules.parsing import extract_json, parse_decision
 from app.assistant.rules.timers import (
     duration_args_from_message,
+    is_stopwatch_start_request,
+    is_stopwatch_stop_request,
     is_timer_cancel_request,
     is_timer_start_request,
     is_timer_status_request,
@@ -61,6 +63,8 @@ __all__ = [
     "extract_self_improve_goal",
     "is_vague_self_improve_goal",
     "is_rejection_message",
+    "is_stopwatch_start_request",
+    "is_stopwatch_stop_request",
     "is_timer_cancel_request",
     "is_timer_start_request",
     "is_timer_status_request",

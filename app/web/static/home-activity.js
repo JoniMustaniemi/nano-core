@@ -116,6 +116,7 @@ function applyStatusSnapshot(snapshot) {
       ? (snapshot.detail ?? STANDBY_DETAIL_DEFAULT)
       : (snapshot.detail ?? currentActivitySnapshot.detail),
     task_timer: snapshot.task_timer ?? null,
+    active_timers: Array.isArray(snapshot.active_timers) ? snapshot.active_timers : [],
   };
   if (
     nextState === "standby" &&
@@ -127,6 +128,7 @@ function applyStatusSnapshot(snapshot) {
   applyProactiveSnapshot(snapshot.proactive);
   applyPendingSnapshot(snapshot.pending, snapshot.proactive);
   syncTaskWaitTimer(snapshot.task_timer ?? null);
+  syncActiveTimers(snapshot.active_timers ?? []);
   renderState();
 }
 
@@ -174,6 +176,136 @@ function renderTaskWaitTimer(taskTimer) {
     taskWaitClock.textContent = `${formatTaskWaitClock(elapsedSeconds)} / ${formatTaskWaitClock(expectedSeconds)}`;
   }
   taskWaitTimer.hidden = false;
+}
+
+function getActiveTimerRemainingSeconds(timer) {
+  if (!timer || !timer.due_at) {
+    return 0;
+  }
+  const dueAt = Date.parse(timer.due_at);
+  if (Number.isNaN(dueAt)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor((dueAt - Date.now()) / 1000));
+}
+
+function getActiveTimerElapsedSeconds(timer) {
+  if (!timer || !timer.started_at) {
+    return 0;
+  }
+  const startedAt = Date.parse(timer.started_at);
+  if (Number.isNaN(startedAt)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+}
+
+function getActiveTimerDisplaySeconds(timer) {
+  if (timer && timer.kind === "stopwatch") {
+    return getActiveTimerElapsedSeconds(timer);
+  }
+  return getActiveTimerRemainingSeconds(timer);
+}
+
+function renderActiveTimerItem(timer) {
+  const item = document.createElement("div");
+  item.className = "active-timer-item";
+
+  const label = (timer.label || "").trim();
+  const defaultLabel = timer.kind === "stopwatch" ? "Stopwatch" : "Timer";
+  if (label && label !== defaultLabel) {
+    const labelEl = document.createElement("span");
+    labelEl.className = "active-timer-label";
+    labelEl.textContent = label;
+    item.append(labelEl);
+  }
+
+  const clock = document.createElement("span");
+  clock.className = "active-timer-clock";
+  clock.textContent = formatTaskWaitClock(getActiveTimerDisplaySeconds(timer));
+  if (label && label !== defaultLabel) {
+    clock.setAttribute("aria-label", `${label} ${clock.textContent}`);
+  } else {
+    clock.setAttribute("aria-label", clock.textContent);
+  }
+
+  item.append(clock);
+  return item;
+}
+
+function renderActiveTimersGrid(timers, { singleTypeMode = false } = {}) {
+  const grid = document.createElement("div");
+  grid.className = "active-timers-grid";
+  if (singleTypeMode) {
+    grid.classList.add("active-timers-grid--single-type");
+  }
+  for (const timer of timers) {
+    grid.appendChild(renderActiveTimerItem(timer));
+  }
+  return grid;
+}
+
+function renderActiveTimersSection(title, timers) {
+  const section = document.createElement("section");
+  section.className = "active-timers-section";
+
+  const heading = document.createElement("h2");
+  heading.className = "active-timers-section-title";
+  heading.textContent = title;
+
+  section.append(heading, renderActiveTimersGrid(timers));
+  return section;
+}
+
+function renderActiveTimers(timers) {
+  if (!activeTimersRoot) {
+    return;
+  }
+  const items = Array.isArray(timers) ? timers : [];
+  if (!items.length) {
+    activeTimersRoot.hidden = true;
+    activeTimersRoot.replaceChildren();
+    return;
+  }
+  activeTimersRoot.hidden = false;
+  activeTimersRoot.replaceChildren();
+
+  const countdownTimers = items.filter((timer) => timer.kind !== "stopwatch");
+  const stopwatches = items.filter((timer) => timer.kind === "stopwatch");
+  const showSections = countdownTimers.length > 0 && stopwatches.length > 0;
+
+  if (showSections) {
+    if (countdownTimers.length) {
+      activeTimersRoot.appendChild(renderActiveTimersSection("Timers", countdownTimers));
+    }
+    if (stopwatches.length) {
+      activeTimersRoot.appendChild(renderActiveTimersSection("Stopwatches", stopwatches));
+    }
+    return;
+  }
+
+  activeTimersRoot.appendChild(
+    renderActiveTimersGrid(items, { singleTypeMode: true }),
+  );
+}
+
+function clearActiveTimersInterval() {
+  if (activeTimersInterval !== null) {
+    window.clearInterval(activeTimersInterval);
+    activeTimersInterval = null;
+  }
+}
+
+function syncActiveTimers(timers) {
+  currentActiveTimers = Array.isArray(timers) ? timers : [];
+  clearActiveTimersInterval();
+  renderActiveTimers(currentActiveTimers);
+  if (!currentActiveTimers.length) {
+    return;
+  }
+  activeTimersInterval = window.setInterval(() => {
+    renderActiveTimers(currentActiveTimers);
+  }, 1000);
 }
 
 function clearTaskWaitTimerInterval() {
@@ -361,6 +493,14 @@ function applyActivityEvent(event) {
     return;
   }
 
+  if (
+    event.kind === "log" &&
+    (event.source === "assistant.flows.timer" || event.source === "scheduler.timers")
+  ) {
+    void syncRuntimeActiveTimers();
+    return;
+  }
+
   if (event.kind === "log" && (requestInFlight || currentActivitySnapshot.state === "working")) {
     if (selfImprovementRunSettled && !requestInFlight) {
       return;
@@ -433,6 +573,19 @@ async function syncRuntimeTaskTimer() {
   }
 }
 
+async function syncRuntimeActiveTimers() {
+  try {
+    const snapshot = await loadSnapshot();
+    syncActiveTimers(snapshot.active_timers ?? []);
+    currentActivitySnapshot = {
+      ...currentActivitySnapshot,
+      active_timers: Array.isArray(snapshot.active_timers) ? snapshot.active_timers : [],
+    };
+  } catch (_error) {
+    return;
+  }
+}
+
 async function fetchProactiveStatus() {
   try {
     const response = await fetch("/api/proactive");
@@ -464,6 +617,7 @@ async function syncRuntimeStatus() {
     applyStatusSnapshot(snapshot);
   } catch (error) {
     syncTaskWaitTimer(null);
+    syncActiveTimers([]);
     resetStandbySnapshot();
     replyStatus.textContent = error.message;
   }

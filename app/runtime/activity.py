@@ -264,6 +264,9 @@ class ActivityHub:
         return self.log(title=spoken, detail=spoken, source=VOICE_ANNOUNCE_SOURCE)
 
     def snapshot(self) -> dict[str, object]:
+        from app.runtime.active_timers import serialize_active_timers
+
+        active_timers = serialize_active_timers()
         with self._lock:
             from app.assistant.pending import pending_interactions
             from app.config import get_settings
@@ -281,6 +284,7 @@ class ActivityHub:
                 "working_source": self._working_source,
                 "updated_at": self._updated_at.isoformat(),
                 "task_timer": task_timer,
+                "active_timers": active_timers,
                 "events": [event.to_dict() for event in self._events],
                 "proactive": proactive_store.snapshot(),
                 "pending": {"kind": pending_kind},

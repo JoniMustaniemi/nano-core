@@ -11,6 +11,9 @@ from app.memory.models import (
     Timer,
 )
 
+COUNTDOWN_KIND = "countdown"
+STOPWATCH_KIND = "stopwatch"
+
 
 def add_chat_message(conversation_id: str, role: str, content: str) -> ChatMessage:
     """
@@ -93,7 +96,32 @@ def add_timer(label: str, due_at: datetime) -> Timer:
         Timer result.
     """
     with Session(db.engine) as session:
-        timer = Timer(label=label or "Timer", due_at=due_at)
+        timer = Timer(label=label or "Timer", due_at=due_at, kind=COUNTDOWN_KIND)
+        session.add(timer)
+        session.commit()
+        session.refresh(timer)
+        return timer
+
+
+def add_stopwatch(label: str, started_at: datetime | None = None) -> Timer:
+    """
+    Add stopwatch.
+
+    Args:
+        label: Stopwatch label.
+        started_at: Optional start timestamp.
+
+    Returns:
+        Timer result.
+    """
+    start_time = started_at or datetime.now(UTC)
+    with Session(db.engine) as session:
+        timer = Timer(
+            label=label or "Stopwatch",
+            kind=STOPWATCH_KIND,
+            due_at=None,
+            created_at=start_time,
+        )
         session.add(timer)
         session.commit()
         session.refresh(timer)
@@ -102,14 +130,58 @@ def add_timer(label: str, due_at: datetime) -> Timer:
 
 def list_timers() -> list[Timer]:
     """
-    List active timers.
+    List active timers and stopwatches.
 
     Returns:
         List of matching records or values.
     """
-    statement = select(Timer).order_by(col(Timer.due_at), col(Timer.id))
+    statement = select(Timer).order_by(col(Timer.created_at), col(Timer.id))
     with Session(db.engine) as session:
         return list(session.exec(statement))
+
+
+def list_countdown_timers() -> list[Timer]:
+    """
+    List active countdown timers.
+
+    Returns:
+        List of matching records or values.
+    """
+    statement = (
+        select(Timer).where(Timer.kind == COUNTDOWN_KIND).order_by(col(Timer.due_at), col(Timer.id))
+    )
+    with Session(db.engine) as session:
+        return list(session.exec(statement))
+
+
+def list_stopwatches() -> list[Timer]:
+    """
+    List active stopwatches.
+
+    Returns:
+        List of matching records or values.
+    """
+    statement = (
+        select(Timer)
+        .where(Timer.kind == STOPWATCH_KIND)
+        .order_by(col(Timer.created_at), col(Timer.id))
+    )
+    with Session(db.engine) as session:
+        return list(session.exec(statement))
+
+
+def get_timer(timer_id: int) -> Timer | None:
+    """
+    Get a timer by id.
+
+    Args:
+        timer_id: Timer id value.
+
+    Returns:
+        Timer when found; otherwise None.
+    """
+    with Session(db.engine) as session:
+        return session.get(Timer, timer_id)
 
 
 def list_due_timers(now: datetime | None = None) -> list[Timer]:
@@ -125,6 +197,8 @@ def list_due_timers(now: datetime | None = None) -> list[Timer]:
     current_time = now or datetime.now(UTC)
     statement = (
         select(Timer)
+        .where(Timer.kind == COUNTDOWN_KIND)
+        .where(col(Timer.due_at).is_not(None))
         .where(col(Timer.due_at) <= current_time)
         .order_by(col(Timer.due_at), col(Timer.id))
     )

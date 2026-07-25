@@ -53,8 +53,9 @@ def test_homepage_shows_standby_ui(api_client) -> None:
     assert 'class="user-speech-label"' in response.text
     answer_index = response.text.index('id="answer-output"')
     user_speech_index = response.text.index('id="user-speech"')
+    active_timers_index = response.text.index('id="active-timers"')
     essence_index = response.text.index('class="essence-zone"')
-    assert answer_index < user_speech_index < essence_index
+    assert answer_index < user_speech_index < active_timers_index < essence_index
 
     assert 'id="answer-output"' in response.text
     assert 'class="response-zone"' in response.text
@@ -65,6 +66,8 @@ def test_homepage_shows_standby_ui(api_client) -> None:
     assert 'id="task-wait-timer"' in response.text
     assert 'class="task-wait-label"' in response.text
     assert 'class="task-wait-clock"' in response.text
+    assert 'id="active-timers"' in response.text
+    assert 'class="active-timers"' in response.text
 
     assert 'id="controls-reveal-zone"' in response.text
 
@@ -116,7 +119,8 @@ def test_homepage_shows_standby_ui(api_client) -> None:
 
     assert 'id="voice-status"' in response.text
 
-    assert 'href="/static/home.css?v=user-speech-3"' in response.text
+    assert 'href="/static/favicon.svg"' in response.text
+    assert 'href="/static/home.css?v=active-timers-7"' in response.text
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/essence_visualizer.js?v=idle-essence-3"' in response.text
@@ -125,7 +129,7 @@ def test_homepage_shows_standby_ui(api_client) -> None:
     assert 'src="/static/home-view-session.js?v=view-close-controls-2"' in response.text
     assert 'src="/static/home-ui.js?v=user-speech-3"' in response.text
     assert 'src="/static/home-voice.js?v=implement-busy-wake-1"' in response.text
-    assert 'src="/static/home-activity.js?v=voice-announce-1"' in response.text
+    assert 'src="/static/home-activity.js?v=active-timers-7"' in response.text
     assert 'src="/static/home-chat.js?v=user-speech-1"' in response.text
     assert 'src="/static/home.js?v=view-modals-1"' in response.text
 
@@ -135,6 +139,14 @@ def test_homepage_shows_standby_ui(api_client) -> None:
     assert 'id="voice-volume-value"' in response.text
     assert "Voice settings" in response.text or 'aria-label="Voice settings"' in response.text
     assert 'id="commands-drawer"' not in response.text
+
+
+def test_favicon_is_served(api_client) -> None:
+    response = api_client.get("/favicon.ico")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/svg+xml")
+    assert "<svg" in response.text
 
 
 def test_homepage_serves_static_assets() -> None:
@@ -312,6 +324,19 @@ def test_homepage_serves_static_assets() -> None:
     assert "runtime.task_timer" in js_text
     assert "syncTaskWaitTimer" in js_text
     assert "task-wait-timer" in css_text
+    assert "active_timers" in js_text
+    assert "syncActiveTimers" in js_text
+    assert "getActiveTimerDisplaySeconds" in js_text
+    assert "syncRuntimeActiveTimers" in js_text
+    assert "assistant.flows.timer" in js_text
+    assert "scheduler.timers" in js_text
+    assert "active-timers" in css_text
+    assert "active-timers-section-title" in css_text
+    assert "active-timers-grid" in css_text
+    assert "active-timer-item" in css_text
+    assert "active-timer-clock" in css_text
+    assert "renderActiveTimersSection" in js_text
+    assert "active-timers-grid--single-type" in css_text
     assert "formatBusyWakeTimerPhrase" in js_text
     assert "busyWakeVariantIndex" in js_text
 

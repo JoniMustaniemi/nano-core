@@ -11,6 +11,8 @@ from app.assistant.agent_rules import (
     is_internal_note_list_request,
     is_pull_request_request,
     is_self_improve_request,
+    is_stopwatch_start_request,
+    is_stopwatch_stop_request,
     is_system_analysis_request,
     is_timer_cancel_request,
     is_timer_start_request,
@@ -38,19 +40,22 @@ class AgentRouter:
     Unified router for new user messages.
 
     Priority order:
-    1. Timer status/cancel (clears pending timer follow-ups)
-    2. Pending interaction resume
-    3. Self-improvement tool
-    4. Timer start/duration
-    5. Wipe confirmation
-    6. Health check tool
-    7. System analysis tool
-    8. Pull request tool
-    9. Internal note list tool
-    10. Direct answer without tools
-    11. Capabilities answer from tool catalog
-    12. Identity answer with dynamic context
-    13. Planner fallback
+    1. Timer status (clears pending timer follow-ups)
+    2. Stopwatch stop (clears pending timer follow-ups)
+    3. Timer cancel (clears pending timer follow-ups)
+    4. Pending interaction resume
+    5. Self-improvement tool
+    6. Stopwatch start
+    7. Timer start/duration
+    8. Wipe confirmation
+    9. Health check tool
+    10. System analysis tool
+    11. Pull request tool
+    12. Internal note list tool
+    13. Direct answer without tools
+    14. Capabilities answer from tool catalog
+    15. Identity answer with dynamic context
+    16. Planner fallback
     """
 
     def decide(
@@ -77,6 +82,10 @@ class AgentRouter:
             pending_interactions.clear(conversation_id)
             return RouteDecision(mode="tool", tool_name="list_timers", tool_args={})
 
+        if is_stopwatch_stop_request(message):
+            pending_interactions.clear(conversation_id)
+            return RouteDecision(mode="tool", tool_name="stop_stopwatches", tool_args={})
+
         if is_timer_cancel_request(message):
             pending_interactions.clear(conversation_id)
             return RouteDecision(mode="tool", tool_name="cancel_timers", tool_args={})
@@ -90,6 +99,9 @@ class AgentRouter:
                 tool_name="draft_improvement_plan",
                 tool_args={"goal": extract_self_improve_goal(message)},
             )
+
+        if is_stopwatch_start_request(message):
+            return RouteDecision(mode="tool", tool_name="start_stopwatch", tool_args={})
 
         if needs_timer_duration(message) or is_timer_start_request(message):
             return RouteDecision(mode="interaction", interaction="timer")

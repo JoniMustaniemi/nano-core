@@ -2,7 +2,7 @@ from html import escape
 from pathlib import Path
 
 from fastapi import APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from app.config import get_settings
 from app.web.tool_commands import list_tool_commands
@@ -10,6 +10,7 @@ from app.web.tool_commands import list_tool_commands
 router = APIRouter(tags=["web"])
 
 _TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "home.html"
+_FAVICON_PATH = Path(__file__).resolve().parent / "static" / "favicon.svg"
 
 
 @router.get("/api/tool-commands")
@@ -21,6 +22,17 @@ def tool_commands() -> list[dict[str, str]]:
         Tool command definitions.
     """
     return list_tool_commands()
+
+
+@router.get("/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    """
+    Serve the site favicon for browsers that request /favicon.ico directly.
+
+    Returns:
+        SVG favicon file response.
+    """
+    return FileResponse(_FAVICON_PATH, media_type="image/svg+xml")
 
 
 @router.get("/", response_class=HTMLResponse)

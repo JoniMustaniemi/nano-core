@@ -327,6 +327,94 @@ body[data-display-state="working"] .commands-reveal-zone {
   font-weight: 600;
 }
 
+.active-timers {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(12px, 2vh, 22px);
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 clamp(8px, 2vw, 16px);
+  min-height: 0;
+  overflow-y: auto;
+  text-align: center;
+  pointer-events: none;
+}
+
+.active-timers[hidden] {
+  display: none;
+}
+
+.active-timers-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.active-timers-section-title {
+  margin: 0 0 clamp(6px, 1vh, 10px);
+  color: var(--accent-soft);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.active-timers-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(8px, 1.4vh, 16px) clamp(12px, 2vw, 20px);
+  width: 100%;
+}
+
+.active-timer-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 calc(25% - 0.9rem);
+  max-width: calc(25% - 0.9rem);
+  min-width: 4.5rem;
+  min-height: 0;
+}
+
+.active-timers-grid--single-type .active-timer-item:only-child {
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+
+.active-timer-label {
+  margin-bottom: 0.25rem;
+  color: var(--accent-soft);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.active-timer-clock {
+  color: var(--accent-strong);
+  font: 700 clamp(1.6rem, 4.5vw, 2.75rem) / 1 "Cascadia Mono", "Consolas", monospace;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 20px rgba(57, 255, 20, 0.2);
+}
+
+.active-timers-grid--single-type .active-timer-item:only-child .active-timer-clock {
+  font-size: clamp(3.5rem, 14vw, 7rem);
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 28px rgba(57, 255, 20, 0.22);
+}
+
 .activity-status {
   margin: 0;
   width: 100%;

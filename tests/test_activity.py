@@ -182,6 +182,50 @@ def test_task_timer_cleared_on_error() -> None:
     activity.standby()
 
 
+def test_active_timers_appear_in_snapshot() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.memory import repository
+    from app.runtime.activity import activity
+
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    timer = repository.add_timer("Tea", due_at)
+    snapshot = activity.snapshot()
+
+    assert len(snapshot["active_timers"]) == 1
+    entry = snapshot["active_timers"][0]
+    assert entry["id"] == timer.id
+    assert entry["kind"] == "countdown"
+    assert entry["label"] == "Tea"
+    assert entry["due_at"] == due_at.isoformat()
+    assert 290 <= entry["remaining_seconds"] <= 300
+
+
+def test_active_timers_empty_when_none() -> None:
+    from app.runtime.activity import activity
+
+    assert activity.snapshot()["active_timers"] == []
+
+
+def test_active_stopwatches_appear_in_snapshot() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.memory import repository
+    from app.runtime.activity import activity
+
+    started_at = datetime.now(UTC) - timedelta(seconds=42)
+    stopwatch = repository.add_stopwatch("Lap", started_at=started_at)
+    snapshot = activity.snapshot()
+
+    assert len(snapshot["active_timers"]) == 1
+    entry = snapshot["active_timers"][0]
+    assert entry["id"] == stopwatch.id
+    assert entry["kind"] == "stopwatch"
+    assert entry["label"] == "Lap"
+    assert entry["started_at"] == started_at.isoformat()
+    assert 40 <= entry["elapsed_seconds"] <= 45
+
+
 def test_announce_voice_uses_single_runtime_source() -> None:
     from app.runtime.activity import VOICE_ANNOUNCE_SOURCE, activity
 

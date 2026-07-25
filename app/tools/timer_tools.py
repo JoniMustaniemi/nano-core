@@ -6,6 +6,9 @@ from typing import Any
 from app.duration import duration_seconds_from_tool_args, humanize_duration_seconds
 from app.memory import repository
 from app.memory.models import Timer
+from app.runtime.activity import activity
+from app.runtime.status_copy import STOPWATCH_STARTED_MESSAGE
+from app.scheduler.jobs import schedule_timer, unschedule_timer
 from app.tools.base import ToolSpec
 from app.tools.errors import ToolError
 from app.tools.registry import register_tool
@@ -28,10 +31,32 @@ def _start_timer(args: dict[str, Any]) -> str:
     label = str(args.get("label", "")).strip() or "Timer"
     due_at = datetime.now(UTC) + timedelta(seconds=duration_seconds)
     timer = repository.add_timer(label, due_at)
+    if timer.id is not None:
+        schedule_timer(timer.id, due_at)
     return (
         f"started timer {timer.id}: {label} "
         f"for {duration_seconds} seconds, due at {due_at.isoformat()}"
     )
+
+
+def _start_stopwatch(args: dict[str, Any]) -> str:
+    """
+    Start stopwatch.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
+    label = str(args.get("label", "")).strip() or "Stopwatch"
+    repository.add_stopwatch(label)
+    activity.log(
+        title=STOPWATCH_STARTED_MESSAGE,
+        detail=label,
+        source="assistant.flows.timer",
+    )
+    return STOPWATCH_STARTED_MESSAGE
 
 
 def _resolve_duration_seconds(args: dict[str, Any]) -> int:
@@ -58,21 +83,22 @@ def _list_timers(args: dict[str, Any]) -> str:
         Generated or formatted string value.
     """
     del args
-    timers = _active_timers()
-    if not timers:
+    countdown_timers = _active_countdown_timers()
+    stopwatches = _active_stopwatches()
+    if not countdown_timers and not stopwatches:
         return "No active timers."
 
     now = datetime.now(UTC)
-    if len(timers) == 1:
-        timer = timers[0]
-        remaining = _timer_remaining_text(timer.due_at, now)
-        if timer.label == "Timer":
-            return f"You have one timer active and it has {remaining} remaining."
-        return f"You have one timer active. {timer.label} has {remaining} remaining."
+    lines: list[str] = []
+    for timer in countdown_timers:
+        lines.append(_format_countdown_timer(timer.label, timer.due_at, now))
+    for stopwatch in stopwatches:
+        lines.append(_format_stopwatch(stopwatch.label, stopwatch.created_at, now))
 
-    count = len(timers)
-    lines = [_format_active_timer(timer.label, timer.due_at, now) for timer in timers]
-    return f"You have {count} timers active:\n" + "\n".join(lines)
+    total = len(lines)
+    if total == 1:
+        return f"You have one timer active. {lines[0]}"
+    return f"You have {total} timers active:\n" + "\n".join(lines)
 
 
 def _cancel_timers(args: dict[str, Any]) -> str:
@@ -87,7 +113,7 @@ def _cancel_timers(args: dict[str, Any]) -> str:
     """
     timer_id = args.get("timer_id")
     label = str(args.get("label", "")).strip().lower()
-    timers = _active_timers()
+    timers = _active_countdown_timers()
     selected = [
         timer
         for timer in timers
@@ -102,6 +128,7 @@ def _cancel_timers(args: dict[str, Any]) -> str:
     labels: list[str] = []
     for timer in selected:
         if timer.id is not None:
+            unschedule_timer(timer.id)
             repository.delete_timer(timer.id)
         labels.append(timer.label)
 
@@ -112,14 +139,66 @@ def _cancel_timers(args: dict[str, Any]) -> str:
     return f"Cancelled {count} {noun}: {', '.join(labels)}."
 
 
-def _active_timers() -> list[Timer]:
+def _stop_stopwatches(args: dict[str, Any]) -> str:
     """
-    Return active timers.
+    Stop active stopwatches.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
+    stopwatch_id = args.get("stopwatch_id")
+    label = str(args.get("label", "")).strip().lower()
+    stopwatches = _active_stopwatches()
+    selected = [
+        stopwatch
+        for stopwatch in stopwatches
+        if _timer_matches_cancel_request(stopwatch.id, stopwatch.label, stopwatch_id, label)
+    ]
+
+    if not selected:
+        if stopwatches:
+            return "No matching active stopwatches to stop."
+        return "No active stopwatches."
+
+    for stopwatch in selected:
+        if stopwatch.id is not None:
+            repository.delete_timer(stopwatch.id)
+
+    activity.log(
+        title="Stopwatch stopped.",
+        detail="",
+        source="assistant.flows.timer",
+    )
+
+    count = len(selected)
+    if count == 1:
+        return "Stopped 1 stopwatch."
+    return f"Stopped {count} stopwatches."
+
+
+def _active_countdown_timers() -> list[Timer]:
+    """
+    Return active countdown timers.
 
     Returns:
         List of matching records or values.
     """
-    return sorted(repository.list_timers(), key=lambda timer: timer.due_at)
+    return sorted(
+        repository.list_countdown_timers(), key=lambda timer: timer.due_at or datetime.min
+    )
+
+
+def _active_stopwatches() -> list[Timer]:
+    """
+    Return active stopwatches.
+
+    Returns:
+        List of matching records or values.
+    """
+    return repository.list_stopwatches()
 
 
 def _timer_matches_cancel_request(
@@ -151,13 +230,13 @@ def _timer_matches_cancel_request(
     return bool(requested_label and timer_label.lower() == requested_label)
 
 
-def _format_active_timer(
+def _format_countdown_timer(
     label: str,
-    due_at: datetime,
+    due_at: datetime | None,
     now: datetime,
 ) -> str:
     """
-    Format active timer.
+    Format active countdown timer.
 
     Args:
         label: Timer label.
@@ -167,8 +246,30 @@ def _format_active_timer(
     Returns:
         Generated or formatted string value.
     """
+    if due_at is None:
+        return f"{label} countdown is active."
     remaining = _timer_remaining_text(due_at, now)
     return f"{label} has {remaining} remaining."
+
+
+def _format_stopwatch(
+    label: str,
+    started_at: datetime,
+    now: datetime,
+) -> str:
+    """
+    Format active stopwatch.
+
+    Args:
+        label: Stopwatch label.
+        started_at: Stopwatch start timestamp.
+        now: Current timestamp used for time-based filtering.
+
+    Returns:
+        Generated or formatted string value.
+    """
+    elapsed = _timer_elapsed_text(started_at, now)
+    return f"{label} stopwatch has been running for {elapsed}."
 
 
 def _timer_remaining_text(due_at: datetime, now: datetime) -> str:
@@ -188,12 +289,29 @@ def _timer_remaining_text(due_at: datetime, now: datetime) -> str:
     return humanize_duration_seconds(remaining_seconds)
 
 
+def _timer_elapsed_text(started_at: datetime, now: datetime) -> str:
+    """
+    Format elapsed time for an active stopwatch.
+
+    Args:
+        started_at: Stopwatch start timestamp.
+        now: Current timestamp used for time-based filtering.
+
+    Returns:
+        Generated or formatted string value.
+    """
+    if started_at.tzinfo is None:
+        started_at = started_at.replace(tzinfo=UTC)
+    elapsed_seconds = max(0, int((now - started_at).total_seconds()))
+    return humanize_duration_seconds(elapsed_seconds)
+
+
 register_tool(
     ToolSpec(
         name="start_timer",
         description=(
-            "start a timer for a specific duration; use this only when the user has given "
-            "an explicit time length."
+            "start or add a timer for a specific duration; use this only when the user has "
+            "given an explicit time length."
         ),
         args_schema={
             "duration_seconds": "Length of the timer in seconds.",
@@ -204,33 +322,50 @@ register_tool(
         },
         handler=_start_timer,
         announcement="Starting a timer.",
-        keywords=("timer", "countdown"),
-        ui_label="Start timer",
-        ui_message="Start a timer.",
+        keywords=("timer", "countdown", "add timer", "start timer", "set timer"),
+        ui_label="Add timer",
+        ui_message="Add a timer.",
         ui_category="Timers",
-        ui_description="Set a countdown timer.",
+        ui_description="Start or add a countdown timer.",
+    )
+)
+
+register_tool(
+    ToolSpec(
+        name="start_stopwatch",
+        description="start a stopwatch that counts up until stopped.",
+        args_schema={
+            "label": "Optional short stopwatch label.",
+        },
+        handler=_start_stopwatch,
+        announcement="Starting a stopwatch.",
+        keywords=("stopwatch", "stop watch", "start stopwatch", "add stopwatch"),
+        ui_label="Start stopwatch",
+        ui_message="Start a stopwatch.",
+        ui_category="Timers",
+        ui_description="Start a count-up stopwatch.",
     )
 )
 
 register_tool(
     ToolSpec(
         name="list_timers",
-        description="list timers that have been created through the timer tool.",
+        description="list timers and stopwatches that have been created through the timer tools.",
         args_schema={},
         handler=_list_timers,
         announcement="Checking timers.",
-        keywords=("timer", "timers"),
+        keywords=("timer", "timers", "stopwatch", "stopwatches"),
         ui_label="Active timers",
         ui_message="Check active timers.",
         ui_category="Timers",
-        ui_description="Show running timers.",
+        ui_description="Show running timers and stopwatches.",
     )
 )
 
 register_tool(
     ToolSpec(
         name="cancel_timers",
-        description="cancel active timers that were created through the timer tool.",
+        description="cancel active countdown timers that were created through the timer tool.",
         args_schema={
             "timer_id": "Optional timer id to cancel. If omitted, cancel all active timers.",
             "label": "Optional timer label to cancel. If omitted, cancel all active timers.",
@@ -241,6 +376,24 @@ register_tool(
         ui_label="Cancel timers",
         ui_message="Cancel timers.",
         ui_category="Timers",
-        ui_description="Stop active timers.",
+        ui_description="Stop active countdown timers.",
+    )
+)
+
+register_tool(
+    ToolSpec(
+        name="stop_stopwatches",
+        description="stop active stopwatches that were created through the stopwatch tool.",
+        args_schema={
+            "stopwatch_id": "Optional stopwatch id to stop. If omitted, stop all active stopwatches.",
+            "label": "Optional stopwatch label to stop. If omitted, stop all active stopwatches.",
+        },
+        handler=_stop_stopwatches,
+        announcement="Stopping stopwatches.",
+        keywords=("stopwatch", "stopwatches", "stop watch"),
+        ui_label="Stop stopwatch",
+        ui_message="Stop stopwatch.",
+        ui_category="Timers",
+        ui_description="Stop active stopwatches.",
     )
 )

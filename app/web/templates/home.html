@@ -10,7 +10,10 @@
 
 <title>{app_name}</title>
 
-<link rel="stylesheet" href="/static/home.css?v=user-speech-3" />
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/static/favicon.svg" />
+
+<link rel="stylesheet" href="/static/home.css?v=active-timers-7" />
 
 <script defer src="/static/three.min.js?v=0.160.1"></script>
 <script defer src="/static/essence_visualizer.js?v=idle-essence-3"></script>
@@ -19,7 +22,7 @@
 <script defer src="/static/home-ui.js?v=user-speech-3"></script>
 <script defer src="/static/home-view-session.js?v=view-close-controls-2"></script>
 <script defer src="/static/home-voice.js?v=implement-busy-wake-1"></script>
-<script defer src="/static/home-activity.js?v=voice-announce-1"></script>
+<script defer src="/static/home-activity.js?v=active-timers-7"></script>
 <script defer src="/static/home-chat.js?v=user-speech-1"></script>
 <script defer src="/static/home.js?v=view-modals-1"></script>
 
@@ -54,6 +57,8 @@
 <span class="user-speech-text"></span>
 
 </p>
+
+<div id="active-timers" class="active-timers" hidden aria-live="off"></div>
 
 <section class="essence-zone" aria-hidden="true">
 
