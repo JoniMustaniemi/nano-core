@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
+from app.assistant.rules.parsing import looks_like_truncated_json
 from app.config import get_settings
 from app.llm.factory import get_code_llm_client, get_llm_client
 from app.memory import improvement_plans
@@ -43,6 +44,9 @@ APPLY_FULL_FILE_HINT = '{"files": [{"path": "app/...", "content": "..."}]}'
 IMPLEMENTATION_SOURCE = "tools.improvement_plan_implementation"
 _NO_DIFF_ERROR = "Planned changes produced no file diff."
 _RAW_PREVIEW_MAX_CHARS = 200
+_RETRY_RAW_PREVIEW_MAX_CHARS = 500
+_SMALL_FILE_LINE_THRESHOLD = 200
+_FULL_FILE_FALLBACK_AFTER_FAILURES = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,12 +220,49 @@ def _parse_apply_payload(
     return parsed
 
 
+def _prefer_full_file_apply(file_contents: dict[str, str]) -> bool:
+    if len(file_contents) != 1:
+        return False
+    content = next(iter(file_contents.values()))
+    return len(content.splitlines()) <= _SMALL_FILE_LINE_THRESHOLD
+
+
+def _build_apply_correction(
+    *,
+    full_file_only: bool,
+    truncated: bool = False,
+) -> str:
+    if full_file_only:
+        base = (
+            "Your previous response was invalid. Return JSON only with key files. "
+            f"Required shape: {APPLY_FULL_FILE_HINT}. "
+            "Return the complete updated file content for each path. "
+            "Do not use replacements or markdown fences."
+        )
+    else:
+        base = (
+            "Your previous response was invalid. Return JSON only with key files. "
+            f"Preferred example: {APPLY_REPLACEMENT_HINT}"
+        )
+    if truncated:
+        return f"Your JSON was cut off. Return one complete JSON object. {base}"
+    return base
+
+
+def _retry_assistant_content(last_raw: str) -> str:
+    if len(last_raw) <= _RETRY_RAW_PREVIEW_MAX_CHARS:
+        return last_raw
+    preview = _truncate_raw_preview(last_raw, max_chars=_RETRY_RAW_PREVIEW_MAX_CHARS)
+    return f"{preview}\n...[response truncated for context]"
+
+
 def _build_apply_messages(
     *,
     goal: str,
     body: str,
     file_contents: dict[str, str],
     allowed_files: list[str],
+    prefer_full_file: bool = False,
 ) -> list[dict[str, str]]:
     sections = [
         f"Goal: {goal}",
@@ -234,25 +275,54 @@ def _build_apply_messages(
     for path, content in file_contents.items():
         sections.extend([f"### {path}", content, ""])
     required_paths = ", ".join(allowed_files)
+    if prefer_full_file:
+        system_content = (
+            "You implement a focused improvement plan for Nano, a local AI assistant codebase. "
+            "Return JSON only with full updated file contents. "
+            f"Required shape: {APPLY_FULL_FILE_HINT}. "
+            f"You must return exactly these paths: {required_paths}. "
+            "Include every listed target file exactly once. "
+            "Do not use replacements, markdown fences, or commentary."
+        )
+    else:
+        system_content = (
+            "You implement a focused improvement plan for Nano, a local AI assistant codebase. "
+            "Return JSON only with minimal search/replace edits. "
+            f"Preferred shape: {APPLY_REPLACEMENT_HINT}. "
+            "Each replacement find string must match the current file exactly once. "
+            f"You must return exactly these paths: {required_paths}. "
+            "Include every listed target file exactly once. "
+            f"Alternatively you may return full file contents using: {APPLY_FULL_FILE_HINT}. "
+            "Do not add markdown fences or commentary."
+        )
     return [
         {
             "role": "system",
-            "content": (
-                "You implement a focused improvement plan for Nano, a local AI assistant codebase. "
-                "Return JSON only with minimal search/replace edits. "
-                f"Preferred shape: {APPLY_REPLACEMENT_HINT}. "
-                "Each replacement find string must match the current file exactly once. "
-                f"You must return exactly these paths: {required_paths}. "
-                "Include every listed target file exactly once. "
-                f"Alternatively you may return full file contents using: {APPLY_FULL_FILE_HINT}. "
-                "Do not add markdown fences or commentary."
-            ),
+            "content": system_content,
         },
         {
             "role": "user",
             "content": "\n".join(sections),
         },
     ]
+
+
+def _sync_apply_system_message(
+    conversation: list[dict[str, str]],
+    *,
+    goal: str,
+    body: str,
+    file_contents: dict[str, str],
+    allowed_files: list[str],
+    full_file_only: bool,
+) -> None:
+    conversation[0] = _build_apply_messages(
+        goal=goal,
+        body=body,
+        file_contents=file_contents,
+        allowed_files=allowed_files,
+        prefer_full_file=full_file_only,
+    )[0]
 
 
 def _restore_plan_files(paths: list[str]) -> None:
@@ -389,11 +459,9 @@ class ImprovementPlanImplementationService:
             body=plan.body,
             file_contents=file_contents,
             allowed_files=allowed_files,
+            prefer_full_file=_prefer_full_file_apply(file_contents),
         )
-        apply_correction = (
-            "Your previous response was invalid. Return JSON only with key files. "
-            f"Preferred example: {APPLY_REPLACEMENT_HINT}"
-        )
+        full_file_only = _prefer_full_file_apply(file_contents)
         max_tokens = settings.self_improve_plan_max_tokens
         max_attempts = settings.self_improve_apply_max_attempts
         payload: dict[str, Any] | None = None
@@ -407,6 +475,16 @@ class ImprovementPlanImplementationService:
             if apply_error is not None:
                 break
             conversation = list(messages)
+            if full_file_only:
+                _sync_apply_system_message(
+                    conversation,
+                    goal=plan.goal,
+                    body=plan.body,
+                    file_contents=file_contents,
+                    allowed_files=allowed_files,
+                    full_file_only=True,
+                )
+            json_failures = 0
             for _attempt in range(max_attempts):
                 total_attempts += 1
                 if reporter is not None:
@@ -415,7 +493,6 @@ class ImprovementPlanImplementationService:
                 payload, last_raw = complete_json_dict_with_raw(
                     client,
                     conversation,
-                    correction=apply_correction,
                     attempts=1,
                     max_tokens=max_tokens,
                     temperature=PLAN_TEMPERATURE,
@@ -424,10 +501,26 @@ class ImprovementPlanImplementationService:
                     if looks_like_llm_unavailable(last_raw):
                         apply_error = last_raw
                         break
+                    json_failures += 1
+                    if json_failures >= _FULL_FILE_FALLBACK_AFTER_FAILURES and not full_file_only:
+                        full_file_only = True
+                        _sync_apply_system_message(
+                            conversation,
+                            goal=plan.goal,
+                            body=plan.body,
+                            file_contents=file_contents,
+                            allowed_files=allowed_files,
+                            full_file_only=True,
+                        )
+                    truncated = looks_like_truncated_json(last_raw)
+                    retry_correction = _build_apply_correction(
+                        full_file_only=full_file_only,
+                        truncated=truncated,
+                    )
                     conversation.extend(
                         [
-                            {"role": "assistant", "content": last_raw},
-                            {"role": "user", "content": apply_correction},
+                            {"role": "assistant", "content": _retry_assistant_content(last_raw)},
+                            {"role": "user", "content": retry_correction},
                         ]
                     )
                     continue
@@ -441,12 +534,26 @@ class ImprovementPlanImplementationService:
                     break
                 except ValueError as exc:
                     last_parse_error = str(exc)
+                    json_failures += 1
+                    if json_failures >= _FULL_FILE_FALLBACK_AFTER_FAILURES and not full_file_only:
+                        full_file_only = True
+                        _sync_apply_system_message(
+                            conversation,
+                            goal=plan.goal,
+                            body=plan.body,
+                            file_contents=file_contents,
+                            allowed_files=allowed_files,
+                            full_file_only=True,
+                        )
+                    parse_correction = _build_apply_correction(
+                        full_file_only=full_file_only,
+                    )
                     parse_correction = (
-                        f"Your JSON structure was invalid: {exc}. Fix the JSON. {apply_correction}"
+                        f"Your JSON structure was invalid: {exc}. Fix the JSON. {parse_correction}"
                     )
                     conversation.extend(
                         [
-                            {"role": "assistant", "content": last_raw},
+                            {"role": "assistant", "content": _retry_assistant_content(last_raw)},
                             {"role": "user", "content": parse_correction},
                         ]
                     )
@@ -508,7 +615,13 @@ def _truncate_raw_preview(raw: str, max_chars: int = _RAW_PREVIEW_MAX_CHARS) -> 
 
 
 def _format_invalid_json_error(attempts: int, last_raw: str) -> str:
-    message = f"Model returned invalid JSON after {attempts} attempts."
+    if looks_like_truncated_json(last_raw):
+        message = (
+            f"Model returned truncated JSON after {attempts} attempts. "
+            "Try a larger code model or re-draft the plan."
+        )
+    else:
+        message = f"Model returned invalid JSON after {attempts} attempts."
     preview = _truncate_raw_preview(last_raw)
     if preview:
         message = f"{message} Last response preview: {preview}"

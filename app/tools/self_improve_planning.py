@@ -32,7 +32,7 @@ def complete_json_dict_with_raw(
     client: Any,
     messages: list[dict[str, str]],
     *,
-    correction: str,
+    correction: str = "",
     attempts: int = 2,
     max_tokens: int | None = None,
     temperature: float | None = None,
