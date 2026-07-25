@@ -1,5 +1,3 @@
-import pytest
-
 from app.duration import (
     _normalize_unit,
     _words_to_number,
@@ -9,9 +7,8 @@ from app.duration import (
 )
 
 
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
+def test_words_to_number() -> None:
+    cases = [
         ("zero", 0),
         ("one", 1),
         ("a", 1),
@@ -23,15 +20,13 @@ from app.duration import (
         ("twenty-one", 21),
         ("not a number", None),
         ("", None),
-    ],
-)
-def test_words_to_number(raw: str, expected: int | None) -> None:
-    assert _words_to_number(raw) == expected
+    ]
+    for raw, expected in cases:
+        assert _words_to_number(raw) == expected
 
 
-@pytest.mark.parametrize(
-    ("unit", "expected"),
-    [
+def test_normalize_unit() -> None:
+    cases = [
         ("s", "seconds"),
         ("sec", "seconds"),
         ("secs", "seconds"),
@@ -49,15 +44,13 @@ def test_words_to_number(raw: str, expected: int | None) -> None:
         ("hours", "hours"),
         ("month", None),
         ("unknown", None),
-    ],
-)
-def test_normalize_unit(unit: str, expected: str | None) -> None:
-    assert _normalize_unit(unit) == expected
+    ]
+    for unit, expected in cases:
+        assert _normalize_unit(unit) == expected
 
 
-@pytest.mark.parametrize(
-    ("message", "expected"),
-    [
+def test_parse_duration_phrase() -> None:
+    cases = [
         ("30s", (30, "seconds")),
         ("2m", (2, "minutes")),
         ("0s", (0, "seconds")),
@@ -72,30 +65,26 @@ def test_normalize_unit(unit: str, expected: str | None) -> None:
         ("h", (1, "hours")),
         ("soon", None),
         ("", None),
-    ],
-)
-def test_parse_duration_phrase(message: str, expected: tuple[int, str] | None) -> None:
-    assert parse_duration_phrase(message) == expected
+    ]
+    for message, expected in cases:
+        assert parse_duration_phrase(message) == expected
 
 
-@pytest.mark.parametrize(
-    ("message", "expected"),
-    [
+def test_extract_duration_args() -> None:
+    cases = [
         ("30 seconds", {"duration_seconds": 30}),
         ("zero seconds", {"duration_seconds": 0}),
         ("one minute", {"duration_minutes": 1}),
         ("an hour", {"duration_hours": 1}),
         ("2 hours", {"duration_hours": 2}),
         ("soon", None),
-    ],
-)
-def test_extract_duration_args(message: str, expected: dict[str, int] | None) -> None:
-    assert extract_duration_args(message) == expected
+    ]
+    for message, expected in cases:
+        assert extract_duration_args(message) == expected
 
 
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
+def test_parse_duration_to_seconds() -> None:
+    cases = [
         ("30s", 30),
         ("5 minutes", 300),
         ("1 hour", 3600),
@@ -104,7 +93,6 @@ def test_extract_duration_args(message: str, expected: dict[str, int] | None) ->
         ("h", 3600),
         ("zero seconds", 0),
         ("soon", 0),
-    ],
-)
-def test_parse_duration_to_seconds(raw: str, expected: int) -> None:
-    assert parse_duration_to_seconds(raw) == expected
+    ]
+    for raw, expected in cases:
+        assert parse_duration_to_seconds(raw) == expected

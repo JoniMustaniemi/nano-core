@@ -1,9 +1,7 @@
-from fastapi.testclient import TestClient
 from helpers.agent_fixtures import wrap_with_alignment_intercept
 
 from app.assistant.pending import pending_interactions
 from app.config import get_settings
-from app.main import app
 from app.runtime.status_copy import RECEIVED_TITLE, STANDBY_GREETINGS, route_acknowledgment
 
 
@@ -38,11 +36,12 @@ class _HealthClient:
         return "My health checks are complete."
 
 
-def test_chat_updates_activity(monkeypatch) -> None:
+def test_chat_updates_activity(api_client, monkeypatch) -> None:
     """
     Verify that chat updates activity.
 
     Args:
+        api_client: Shared FastAPI test client.
         monkeypatch: Pytest monkeypatch fixture.
 
     Returns:
@@ -53,9 +52,8 @@ def test_chat_updates_activity(monkeypatch) -> None:
         lambda: wrap_with_alignment_intercept(_FakeClient()),
     )
 
-    with TestClient(app) as client:
-        response = client.post("/chat", json={"message": "Hello", "mode": "chat"})
-        status = client.get("/api/status")
+    response = api_client.post("/chat", json={"message": "Hello", "mode": "chat"})
+    status = api_client.get("/api/status")
 
     assert response.status_code == 200
     assert response.json()["content"] == "Hi there!"
@@ -66,11 +64,12 @@ def test_chat_updates_activity(monkeypatch) -> None:
     assert any(event["source"] == "assistant.chat" for event in payload["events"])
 
 
-def test_health_check_sets_working_activity(monkeypatch) -> None:
+def test_health_check_sets_working_activity(api_client, monkeypatch) -> None:
     """
     Verify that health diagnostics report working activity.
 
     Args:
+        api_client: Shared FastAPI test client.
         monkeypatch: Pytest monkeypatch fixture.
 
     Returns:
@@ -85,9 +84,8 @@ def test_health_check_sets_working_activity(monkeypatch) -> None:
         lambda self, text: None,
     )
 
-    with TestClient(app) as client:
-        response = client.post("/chat", json={"message": "Check your health.", "mode": "agent"})
-        status = client.get("/api/status")
+    response = api_client.post("/chat", json={"message": "Check your health.", "mode": "agent"})
+    status = api_client.get("/api/status")
 
     assert response.status_code == 200
     payload = status.json()
@@ -108,15 +106,14 @@ def test_route_acknowledgment_uses_personality_copy() -> None:
     assert identity_detail
 
 
-def test_agent_request_acknowledges_before_processing(monkeypatch) -> None:
+def test_agent_request_acknowledges_before_processing(api_client, monkeypatch) -> None:
     monkeypatch.setattr(
         "app.assistant.service.get_llm_client",
         lambda: wrap_with_alignment_intercept(_FakeClient()),
     )
 
-    with TestClient(app) as client:
-        response = client.post("/chat", json={"message": "Hello", "mode": "chat"})
-        status = client.get("/api/status")
+    response = api_client.post("/chat", json={"message": "Hello", "mode": "chat"})
+    status = api_client.get("/api/status")
 
     assert response.status_code == 200
     payload = status.json()
@@ -126,7 +123,7 @@ def test_agent_request_acknowledges_before_processing(monkeypatch) -> None:
     )
 
 
-def test_status_snapshot_exposes_pending_kind() -> None:
+def test_status_snapshot_exposes_pending_kind(api_client) -> None:
     settings = get_settings()
     pending_interactions.set(
         conversation_id=settings.proactive_conversation_id,
@@ -134,21 +131,54 @@ def test_status_snapshot_exposes_pending_kind() -> None:
         payload={},
     )
     try:
-        with TestClient(app) as client:
-            response = client.get("/api/status")
+        response = api_client.get("/api/status")
         assert response.status_code == 200
         assert response.json()["pending"] == {"kind": "timer_duration"}
     finally:
         pending_interactions.clear(settings.proactive_conversation_id)
 
 
-def test_greeting_api_returns_standby_greeting() -> None:
+def test_greeting_api_returns_standby_greeting(api_client) -> None:
     from app.runtime.status_copy import STANDBY_GREETINGS, choose_standby_greeting
 
     assert len(STANDBY_GREETINGS) >= 10
     assert choose_standby_greeting() in STANDBY_GREETINGS
 
-    with TestClient(app) as client:
-        response = client.get("/api/greeting")
+    response = api_client.get("/api/greeting")
     assert response.status_code == 200
     assert response.json()["greeting"] in STANDBY_GREETINGS
+
+
+def test_task_timer_appears_in_snapshot() -> None:
+    from app.runtime.activity import activity
+
+    activity.start_task_timer("Running tests", 300)
+    try:
+        snapshot = activity.snapshot()
+        assert snapshot["task_timer"] == {
+            "label": "Running tests",
+            "started_at": snapshot["task_timer"]["started_at"],
+            "expected_seconds": 300,
+        }
+        assert isinstance(snapshot["task_timer"]["started_at"], str)
+    finally:
+        activity.clear_task_timer()
+
+
+def test_task_timer_cleared_on_standby() -> None:
+    from app.runtime.activity import activity
+
+    activity.start_task_timer("Lint checks", 60)
+    activity.standby()
+    snapshot = activity.snapshot()
+    assert snapshot["task_timer"] is None
+
+
+def test_task_timer_cleared_on_error() -> None:
+    from app.runtime.activity import activity
+
+    activity.start_task_timer("Running tests", 300)
+    activity.error(title="Verification failed.", detail="Tests failed.")
+    snapshot = activity.snapshot()
+    assert snapshot["task_timer"] is None
+    activity.standby()

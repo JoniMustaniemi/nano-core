@@ -1,20 +1,13 @@
 from datetime import UTC, datetime
 
-from fastapi.testclient import TestClient
-
 from app.assistant.agent_router import AgentRouter
 from app.assistant.rules.intents import is_internal_note_list_request
-from app.main import app
-from app.memory.db import create_db_and_tables
 from app.memory.internal_note_service import InternalNoteService
 from app.proactive.types import ProactiveOffer
 from app.tools import get_tool
 
 
-def test_list_internal_notes_tool_formats_saved_notes(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'internal.sqlite3'}")
-    create_db_and_tables()
-
+def test_list_internal_notes_tool_formats_saved_notes() -> None:
     offer = ProactiveOffer(
         kind="self_improvement_suggestion",
         title="Improve timers",
@@ -33,10 +26,7 @@ def test_list_internal_notes_tool_formats_saved_notes(tmp_path, monkeypatch) -> 
     assert "[pending]" in result
 
 
-def test_storage_snapshot_includes_internal_notes(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'storage.sqlite3'}")
-    create_db_and_tables()
-
+def test_storage_snapshot_includes_internal_notes(api_client) -> None:
     offer = ProactiveOffer(
         kind="self_improvement_suggestion",
         title="Improve timers",
@@ -46,8 +36,7 @@ def test_storage_snapshot_includes_internal_notes(tmp_path, monkeypatch) -> None
     )
     InternalNoteService().record_from_offer(offer, next_attempt_at=datetime.now(UTC))
 
-    with TestClient(app) as client:
-        response = client.get("/api/storage")
+    response = api_client.get("/api/storage")
 
     assert response.status_code == 200
     payload = response.json()

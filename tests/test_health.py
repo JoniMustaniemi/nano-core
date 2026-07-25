@@ -1,14 +1,11 @@
 from pathlib import Path
 from types import SimpleNamespace
 
-from fastapi.testclient import TestClient
-
 from app.health.checks import HealthCheckResult, run_health_checks
-from app.main import app
 from app.scheduler import jobs
 
 
-def test_health_endpoint_reports_checks(monkeypatch) -> None:
+def test_health_endpoint_reports_checks(api_client, monkeypatch) -> None:
     """
     Verify that health endpoint reports checks.
 
@@ -30,8 +27,7 @@ def test_health_endpoint_reports_checks(monkeypatch) -> None:
         ],
     )
 
-    with TestClient(app) as client:
-        response = client.get("/health")
+    response = api_client.get("/health")
 
     assert response.status_code == 200
     payload = response.json()

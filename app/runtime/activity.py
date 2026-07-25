@@ -17,6 +17,20 @@ EventKind = Literal["state", "action", "log"]
 
 
 @dataclass(frozen=True, slots=True)
+class TaskTimer:
+    label: str
+    started_at: str
+    expected_seconds: int
+
+    def to_dict(self) -> dict[str, str | int]:
+        return {
+            "label": self.label,
+            "started_at": self.started_at,
+            "expected_seconds": self.expected_seconds,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ActivityEvent:
     id: int
     kind: EventKind
@@ -62,6 +76,7 @@ class ActivityHub:
         self._headline = STANDBY_TITLE
         self._detail: str | None = STANDBY_DETAIL_DEFAULT
         self._updated_at = datetime.now(UTC)
+        self._task_timer: TaskTimer | None = None
         self._record(
             kind="state",
             state="standby",
@@ -84,6 +99,7 @@ class ActivityHub:
             self._headline = STANDBY_TITLE
             self._detail = STANDBY_DETAIL_DEFAULT
             self._updated_at = datetime.now(UTC)
+            self._task_timer = None
             self._record(
                 kind="state",
                 state="standby",
@@ -91,6 +107,19 @@ class ActivityHub:
                 title=STANDBY_TITLE,
                 detail=STANDBY_DETAIL_READY,
             )
+
+    def start_task_timer(self, label: str, expected_seconds: int) -> None:
+        with self._lock:
+            self._task_timer = TaskTimer(
+                label=label,
+                started_at=datetime.now(UTC).isoformat(),
+                expected_seconds=expected_seconds,
+            )
+        self.log(title=label, source="runtime.task_timer")
+
+    def clear_task_timer(self) -> None:
+        with self._lock:
+            self._task_timer = None
 
     def standby(
         self,
@@ -109,6 +138,8 @@ class ActivityHub:
         Returns:
             ActivityEvent result.
         """
+        with self._lock:
+            self._task_timer = None
         return self._record(
             kind="state",
             state="standby",
@@ -159,6 +190,8 @@ class ActivityHub:
         Returns:
             ActivityEvent result.
         """
+        with self._lock:
+            self._task_timer = None
         return self._record(
             kind="state",
             state="error",
@@ -202,11 +235,13 @@ class ActivityHub:
             pending = pending_interactions.get(settings.proactive_conversation_id)
             pending_kind = pending.kind if pending is not None else None
 
+            task_timer = self._task_timer.to_dict() if self._task_timer is not None else None
             return {
                 "state": self._state,
                 "headline": self._headline,
                 "detail": self._detail,
                 "updated_at": self._updated_at.isoformat(),
+                "task_timer": task_timer,
                 "events": [event.to_dict() for event in self._events],
                 "proactive": proactive_store.snapshot(),
                 "pending": {"kind": pending_kind},

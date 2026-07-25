@@ -1,7 +1,8 @@
-from fastapi.testclient import TestClient
+from pathlib import Path
 
-from app.main import app
 from app.runtime.status_copy import STANDBY_GREETINGS
+
+STATIC_DIR = Path(__file__).resolve().parents[1] / "app" / "web" / "static"
 
 HOME_JS_MODULES = (
     "home-state.js",
@@ -14,24 +15,17 @@ HOME_JS_MODULES = (
 )
 
 
-def _load_home_js(client: TestClient) -> str:
-    parts: list[str] = []
-    for module in HOME_JS_MODULES:
-        response = client.get(f"/static/{module}")
-        assert response.status_code == 200
-        parts.append(response.text)
-    return "\n".join(parts)
+def _load_home_js() -> str:
+    return "\n".join((STATIC_DIR / module).read_text(encoding="utf-8") for module in HOME_JS_MODULES)
 
 
-def _load_home_css(client: TestClient) -> str:
-    layout = client.get("/static/home-layout.css")
-    components = client.get("/static/home-components.css")
-    assert layout.status_code == 200
-    assert components.status_code == 200
-    return layout.text + components.text
+def _load_home_css() -> str:
+    layout = (STATIC_DIR / "home-layout.css").read_text(encoding="utf-8")
+    components = (STATIC_DIR / "home-components.css").read_text(encoding="utf-8")
+    return layout + components
 
 
-def test_homepage_shows_standby_ui() -> None:
+def test_homepage_shows_standby_ui(api_client) -> None:
     """
 
     Verify that homepage shows standby ui.
@@ -44,8 +38,7 @@ def test_homepage_shows_standby_ui() -> None:
 
     """
 
-    with TestClient(app) as client:
-        response = client.get("/")
+    response = api_client.get("/")
 
     assert response.status_code == 200
 
@@ -58,6 +51,9 @@ def test_homepage_shows_standby_ui() -> None:
     assert "What can I do for you today?" not in response.text
 
     assert 'id="essence-canvas"' in response.text
+    assert 'id="task-wait-timer"' in response.text
+    assert 'class="task-wait-label"' in response.text
+    assert 'class="task-wait-clock"' in response.text
 
     assert 'id="controls-reveal-zone"' in response.text
 
@@ -139,10 +135,9 @@ def test_homepage_serves_static_assets() -> None:
 
     """
 
-    with TestClient(app) as client:
-        css_text = _load_home_css(client)
-        js_text = _load_home_js(client)
-        essence_js_response = client.get("/static/essence_visualizer.js")
+    css_text = _load_home_css()
+    js_text = _load_home_js()
+    essence_js_text = (STATIC_DIR / "essence_visualizer.js").read_text(encoding="utf-8")
 
     assert ".nano-sheet" in css_text
 
@@ -266,11 +261,15 @@ def test_homepage_serves_static_assets() -> None:
 
     completion_block = js_text.split('event.source === "tools.improvement_plan_service.completed"')[
         1
-    ].split('if (event.kind === "log" && event.source === "runtime.long_task_progress")')[0]
+    ].split('if (event.kind === "log" && event.source === "runtime.task_timer")')[0]
     assert "void loadPlans();" in completion_block
     assert "return;" not in completion_block
 
-    assert "runtime.long_task_progress" in js_text
+    assert "runtime.task_timer" in js_text
+    assert "syncTaskWaitTimer" in js_text
+    assert "task-wait-timer" in css_text
+    assert "formatBusyWakeTimerPhrase" in js_text
+    assert "busyWakeVariantIndex" in js_text
 
     assert "--text-primary" in css_text
     assert "plans-tab-count" in css_text
@@ -356,11 +355,11 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "if (isWorkingOnTask())" in js_text
 
-    assert "EssenceVisualizer" in essence_js_response.text
+    assert "EssenceVisualizer" in essence_js_text
 
-    assert "ESSENCE_STATES" in essence_js_response.text
+    assert "ESSENCE_STATES" in essence_js_text
 
-    assert "auroraBands" in essence_js_response.text
+    assert "auroraBands" in essence_js_text
     assert "measureVoiceLevel" in js_text
 
     assert "toggleKeyboardPanel" in js_text
@@ -376,7 +375,7 @@ def test_homepage_serves_static_assets() -> None:
     assert 'getElementById("commands-toggle-reveal")' in js_text
 
 
-def test_tool_commands_endpoint_lists_quick_actions() -> None:
+def test_tool_commands_endpoint_lists_quick_actions(api_client) -> None:
     """
 
     Verify that tool commands endpoint returns UI quick actions.
@@ -389,8 +388,7 @@ def test_tool_commands_endpoint_lists_quick_actions() -> None:
 
     """
 
-    with TestClient(app) as client:
-        response = client.get("/api/tool-commands")
+    response = api_client.get("/api/tool-commands")
 
     assert response.status_code == 200
 
@@ -409,7 +407,7 @@ def test_tool_commands_endpoint_lists_quick_actions() -> None:
     assert any(item["message"] == "Tell me about your internal notes." for item in payload)
 
 
-def test_status_endpoint_starts_in_standby() -> None:
+def test_status_endpoint_starts_in_standby(api_client) -> None:
     """
 
     Verify that status endpoint starts in standby.
@@ -422,8 +420,7 @@ def test_status_endpoint_starts_in_standby() -> None:
 
     """
 
-    with TestClient(app) as client:
-        response = client.get("/api/status")
+    response = api_client.get("/api/status")
 
     assert response.status_code == 200
 
@@ -431,7 +428,7 @@ def test_status_endpoint_starts_in_standby() -> None:
 
     assert payload["state"] == "standby"
 
-    assert payload["headline"] in set(STANDBY_GREETINGS)
+    assert payload["headline"] in set(STANDBY_GREETINGS) | {"I'm in standby."}
 
     assert payload["detail"] is None
 

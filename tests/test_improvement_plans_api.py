@@ -1,17 +1,11 @@
 from datetime import UTC, datetime
 
-from fastapi.testclient import TestClient
-
-from app.main import app
 from app.memory import improvement_plans, internal_notes
-from app.memory.db import create_db_and_tables
+from app.memory.internal_note_service import InternalNoteService
 from app.proactive.types import ProactiveOffer
 
 
-def test_improvement_plan_api_list_get_and_process(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'api.sqlite3'}")
-    create_db_and_tables()
-
+def test_improvement_plan_api_list_get_and_process(api_client) -> None:
     plan = improvement_plans.create_plan(
         title="Clearer timer errors",
         goal="clearer timer errors",
@@ -20,35 +14,31 @@ def test_improvement_plan_api_list_get_and_process(tmp_path, monkeypatch) -> Non
     )
     assert plan.id is not None
 
-    with TestClient(app) as client:
-        listed = client.get("/api/improvement-plans")
-        assert listed.status_code == 200
-        payload = listed.json()
-        assert len(payload) == 1
-        assert payload[0]["title"] == "Clearer timer errors"
-        assert payload[0]["status"] == "pending"
-        assert payload[0]["kind"] == "drafted"
+    listed = api_client.get("/api/improvement-plans")
+    assert listed.status_code == 200
+    payload = listed.json()
+    assert len(payload) == 1
+    assert payload[0]["title"] == "Clearer timer errors"
+    assert payload[0]["status"] == "pending"
+    assert payload[0]["kind"] == "drafted"
 
-        detail = client.get(f"/api/improvement-plans/{plan.id}")
-        assert detail.status_code == 200
-        assert detail.json()["body"].startswith("Summary")
+    detail = api_client.get(f"/api/improvement-plans/{plan.id}")
+    assert detail.status_code == 200
+    assert detail.json()["body"].startswith("Summary")
 
-        processed = client.post(f"/api/improvement-plans/{plan.id}/process")
-        assert processed.status_code == 204
-        assert processed.content == b""
+    processed = api_client.post(f"/api/improvement-plans/{plan.id}/process")
+    assert processed.status_code == 204
+    assert processed.content == b""
 
-        assert improvement_plans.get_plan(plan.id) is None
-        assert improvement_plans.has_unprocessed_plan() is False
+    assert improvement_plans.get_plan(plan.id) is None
+    assert improvement_plans.has_unprocessed_plan() is False
 
-        listed_after = client.get("/api/improvement-plans")
-        assert listed_after.status_code == 200
-        assert listed_after.json() == []
+    listed_after = api_client.get("/api/improvement-plans")
+    assert listed_after.status_code == 200
+    assert listed_after.json() == []
 
 
-def test_improvement_plan_api_lists_pending_suggestions(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'suggestions.sqlite3'}")
-    create_db_and_tables()
-
+def test_improvement_plan_api_lists_pending_suggestions(api_client) -> None:
     offer = ProactiveOffer(
         kind="self_improvement_suggestion",
         title="Improve timers",
@@ -65,37 +55,31 @@ def test_improvement_plan_api_lists_pending_suggestions(tmp_path, monkeypatch) -
     )
     assert note.id is not None
 
-    with TestClient(app) as client:
-        listed = client.get("/api/improvement-plans")
-        assert listed.status_code == 200
-        payload = listed.json()
-        assert len(payload) == 1
-        assert payload[0]["id"] == note.id
-        assert payload[0]["status"] == "waiting"
-        assert payload[0]["kind"] == "suggestion"
+    listed = api_client.get("/api/improvement-plans")
+    assert listed.status_code == 200
+    payload = listed.json()
+    assert len(payload) == 1
+    assert payload[0]["id"] == note.id
+    assert payload[0]["status"] == "waiting"
+    assert payload[0]["kind"] == "suggestion"
 
-        detail = client.get(f"/api/improvement-plans/suggestions/{note.id}")
-        assert detail.status_code == 200
-        body = detail.json()["body"]
-        assert "Make timer errors clearer." in body
-        assert "app/assistant/flows/timer.py" in body
+    detail = api_client.get(f"/api/improvement-plans/suggestions/{note.id}")
+    assert detail.status_code == 200
+    body = detail.json()["body"]
+    assert "Make timer errors clearer." in body
+    assert "app/assistant/flows/timer.py" in body
 
-        processed = client.post(f"/api/improvement-plans/suggestions/{note.id}/process")
-        assert processed.status_code == 204
-        assert processed.content == b""
-        assert internal_notes.get_internal_note(note.id) is None
+    processed = api_client.post(f"/api/improvement-plans/suggestions/{note.id}/process")
+    assert processed.status_code == 204
+    assert processed.content == b""
+    assert internal_notes.get_internal_note(note.id) is None
 
-        listed_after = client.get("/api/improvement-plans")
-        assert listed_after.status_code == 200
-        assert listed_after.json() == []
+    listed_after = api_client.get("/api/improvement-plans")
+    assert listed_after.status_code == 200
+    assert listed_after.json() == []
 
 
-def test_improvement_plan_api_hides_suggestions_when_drafted_plan_pending(
-    tmp_path, monkeypatch
-) -> None:
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'hide-suggestions.sqlite3'}")
-    create_db_and_tables()
-
+def test_improvement_plan_api_hides_suggestions_when_drafted_plan_pending(api_client) -> None:
     improvement_plans.create_plan(
         title="Existing plan",
         goal="existing",
@@ -117,21 +101,15 @@ def test_improvement_plan_api_hides_suggestions_when_drafted_plan_pending(
         next_attempt_at=datetime.now(UTC),
     )
 
-    with TestClient(app) as client:
-        listed = client.get("/api/improvement-plans")
-        assert listed.status_code == 200
-        payload = listed.json()
-        assert len(payload) == 1
-        assert payload[0]["kind"] == "drafted"
-        assert payload[0]["status"] == "pending"
+    listed = api_client.get("/api/improvement-plans")
+    assert listed.status_code == 200
+    payload = listed.json()
+    assert len(payload) == 1
+    assert payload[0]["kind"] == "drafted"
+    assert payload[0]["status"] == "pending"
 
 
-def test_record_from_offer_skips_second_suggestion(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'one-suggestion.sqlite3'}")
-    create_db_and_tables()
-
-    from app.memory.internal_note_service import InternalNoteService
-
+def test_record_from_offer_skips_second_suggestion() -> None:
     offer = ProactiveOffer(
         kind="self_improvement_suggestion",
         title="Improve timers",

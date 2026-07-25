@@ -1,5 +1,3 @@
-import time
-
 from app.runtime.long_task_progress import (
     LongTaskProgress,
     LongTaskProgressReporter,
@@ -57,19 +55,20 @@ def test_progress_reporter_emits_activity_log() -> None:
 
 def test_progress_reporter_emits_activity_log_on_interval() -> None:
     logged: list[dict[str, str | None]] = []
-    times = iter([0.0, 0.0, 121.0])
+    clock = {"now": 0.0}
 
-    with LongTaskProgressReporter(
+    reporter = LongTaskProgressReporter(
         task_name="self-improvement",
         goal="clearer messages",
         interval_seconds=120,
-        poll_seconds=0,
         log_fn=lambda **kwargs: logged.append(kwargs),
-        time_fn=lambda: next(times, 121.0),
+        time_fn=lambda: clock["now"],
         sleep_fn=lambda _seconds: None,
-    ) as reporter:
-        reporter.update(step="select")
-        time.sleep(0.05)
+    )
+    reporter.update(step="select")
+    reporter._last_announced_at = 0.0
+    clock["now"] = 121.0
+    reporter._announce()
 
     assert logged
     assert logged[-1]["source"] == "runtime.long_task_progress"

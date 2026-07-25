@@ -115,6 +115,7 @@ function applyStatusSnapshot(snapshot) {
     detail: useServerCopy
       ? (snapshot.detail ?? STANDBY_DETAIL_DEFAULT)
       : (snapshot.detail ?? currentActivitySnapshot.detail),
+    task_timer: snapshot.task_timer ?? null,
   };
   if (
     nextState === "standby" &&
@@ -125,7 +126,73 @@ function applyStatusSnapshot(snapshot) {
   }
   applyProactiveSnapshot(snapshot.proactive);
   applyPendingSnapshot(snapshot.pending, snapshot.proactive);
+  syncTaskWaitTimer(snapshot.task_timer ?? null);
   renderState();
+}
+
+function formatTaskWaitClock(seconds) {
+  const total = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(total / 60);
+  const remainder = total % 60;
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+function formatTaskTimerElapsedPhrase(elapsedSeconds, expectedSeconds) {
+  if (elapsedSeconds < 60) {
+    return `about ${Math.max(1, elapsedSeconds)} seconds in`;
+  }
+  const elapsedMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
+  const expectedMinutes = Math.max(1, Math.round(expectedSeconds / 60));
+  return `about ${elapsedMinutes} minute${elapsedMinutes === 1 ? "" : "s"} in, up to ${expectedMinutes} minute${expectedMinutes === 1 ? "" : "s"}`;
+}
+
+function getTaskTimerElapsedSeconds(taskTimer) {
+  if (!taskTimer || !taskTimer.started_at) {
+    return 0;
+  }
+  const startedAt = Date.parse(taskTimer.started_at);
+  if (Number.isNaN(startedAt)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+}
+
+function renderTaskWaitTimer(taskTimer) {
+  if (!taskWaitTimer || !taskWaitLabel || !taskWaitClock) {
+    return;
+  }
+  if (!taskTimer || !taskTimer.label) {
+    taskWaitTimer.hidden = true;
+    return;
+  }
+  const elapsedSeconds = getTaskTimerElapsedSeconds(taskTimer);
+  const expectedSeconds = Number(taskTimer.expected_seconds) || 0;
+  taskWaitLabel.textContent = taskTimer.label;
+  if (expectedSeconds > 0 && elapsedSeconds >= expectedSeconds) {
+    taskWaitClock.textContent = `${formatTaskWaitClock(elapsedSeconds)} / ${formatTaskWaitClock(expectedSeconds)}+`;
+  } else {
+    taskWaitClock.textContent = `${formatTaskWaitClock(elapsedSeconds)} / ${formatTaskWaitClock(expectedSeconds)}`;
+  }
+  taskWaitTimer.hidden = false;
+}
+
+function clearTaskWaitTimerInterval() {
+  if (taskWaitClockInterval !== null) {
+    window.clearInterval(taskWaitClockInterval);
+    taskWaitClockInterval = null;
+  }
+}
+
+function syncTaskWaitTimer(taskTimer) {
+  currentTaskTimer = taskTimer && taskTimer.label ? taskTimer : null;
+  clearTaskWaitTimerInterval();
+  renderTaskWaitTimer(currentTaskTimer);
+  if (!currentTaskTimer) {
+    return;
+  }
+  taskWaitClockInterval = window.setInterval(() => {
+    renderTaskWaitTimer(currentTaskTimer);
+  }, 1000);
 }
 
 function formatProgressAnnouncement(event) {
@@ -162,14 +229,9 @@ function applyActivityEvent(event) {
     void loadPlans();
   }
 
-  if (event.kind === "log" && event.source === "runtime.long_task_progress") {
-    const message = formatProgressAnnouncement(event);
-    if (message && !speakingActive) {
-      setAnswer(message, { animate: false, deferClearUntilSpeech: voiceAvailable });
-      if (voiceAvailable) {
-        void playVoice(message, { resumeListening: false });
-      }
-    }
+  if (event.kind === "log" && event.source === "runtime.task_timer") {
+    void syncRuntimeTaskTimer();
+    return;
   }
 
   if (event.kind === "log" && (requestInFlight || currentActivitySnapshot.state === "working")) {
@@ -208,7 +270,27 @@ function applyActivityEvent(event) {
   if (event.source === "proactive.presence_gate") {
     void fetchProactiveStatus();
   }
+  if (event.state === "standby" || event.state === "error") {
+    syncTaskWaitTimer(null);
+  } else {
+    void syncRuntimeTaskTimer();
+  }
   renderState();
+}
+
+async function syncRuntimeTaskTimer() {
+  try {
+    const snapshot = await loadSnapshot();
+    syncTaskWaitTimer(snapshot.task_timer ?? null);
+    if (snapshot.task_timer) {
+      currentActivitySnapshot = {
+        ...currentActivitySnapshot,
+        task_timer: snapshot.task_timer,
+      };
+    }
+  } catch (_error) {
+    return;
+  }
 }
 
 async function fetchProactiveStatus() {
@@ -241,6 +323,7 @@ async function syncRuntimeStatus() {
     const snapshot = await loadSnapshot();
     applyStatusSnapshot(snapshot);
   } catch (error) {
+    syncTaskWaitTimer(null);
     resetStandbySnapshot();
     replyStatus.textContent = error.message;
   }
