@@ -34,6 +34,7 @@ from app.runtime.status_copy import (
     VERIFICATION_FAILED_TITLE,
     VERIFICATION_PASSED_TITLE,
     VERIFYING_PROJECT_TITLE,
+    running_tool_title,
 )
 from app.tools.git_github import (
     collect_change_context,
@@ -56,6 +57,19 @@ from app.tools.git_github import (
 )
 from app.tools.pr_naming import PrNamingService
 from app.tools.pr_verify import command_display, run_pr_lint, run_pr_verification
+
+PR_ANNOUNCE_SOURCE = "tools.pr_service.announce"
+
+
+def _emit_pr_announcement(message: str) -> None:
+    spoken = message.strip().rstrip(".")
+    if not spoken:
+        return
+    activity.log(
+        title=spoken,
+        detail=spoken,
+        source=PR_ANNOUNCE_SOURCE,
+    )
 
 
 def _finalize_pr_activity(result: PrResult) -> None:
@@ -105,12 +119,13 @@ class PullRequestService:
         """
         self.naming_service = naming_service or PrNamingService()
 
-    def run(self, *, client: Any) -> PrResult:
+    def run(self, *, client: Any, announce: bool = True) -> PrResult:
         """
         Run the full pull request workflow.
 
         Args:
             client: LLM client used for naming.
+            announce: When True, emit a spoken intent before starting the workflow.
 
         Returns:
             Structured pull request result.
@@ -120,6 +135,8 @@ class PullRequestService:
             detail=PREPARING_PR_PREFLIGHT_DETAIL,
             source="tools.pr_service",
         )
+        if announce:
+            _emit_pr_announcement(running_tool_title("create_pull_request"))
 
         if not is_git_repo():
             if resolve_executable("git") is None:
@@ -311,6 +328,7 @@ class PullRequestService:
             detail=f"{current_branch} -> {base_branch}",
             source="tools.pr_service",
         )
+        _emit_pr_announcement(OPENING_PR_TITLE)
         activity.start_task_timer(PR_OPENING_TIMER_LABEL, PR_OPENING_TIMER_SECONDS)
         pr_result = run_gh(
             "pr",

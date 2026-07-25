@@ -101,7 +101,7 @@ Registered in `app/scheduler/jobs.py`:
 |-----|------------------|--------|
 | `check_due_timers` | `timer_poll_interval_seconds` | Fire due timers, announce via voice |
 | `check_system_health` | `health_check_interval_seconds` | DB, LLM, voice checks; log/announce failures |
-| `run_proactive_background_tick` | `proactive_background_interval_seconds` | Code-model file crawl; outreach when idle |
+| `run_proactive_background_tick` | `proactive_background_interval_seconds` | Code-model file crawl; silent background plan draft when idle |
 | `check_presence_timeouts` | `presence_check_poll_interval_seconds` | Defer unanswered presence checks |
 
 ## Configuration

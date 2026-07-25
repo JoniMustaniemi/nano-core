@@ -81,5 +81,21 @@ def test_orchestrator_blocks_plan_implementation_when_plan_is_waiting(
 
     content, _speak = AgentOrchestrator().respond("Go ahead.", conversation_id="default")
 
-    assert "only saves a text plan" in content.lower()
-    assert "do not create branches" in content.lower()
+    assert "plans tab" in content.lower()
+    assert "implement" in content.lower()
+
+
+def test_orchestrator_returns_busy_reply_during_self_improve_draft(monkeypatch) -> None:
+    from app.runtime.activity import activity
+
+    activity.working(
+        title="I'm drafting an improvement plan.",
+        detail="Reviewing code.",
+        source="tools.improvement_plan_service",
+    )
+
+    content, speak = AgentOrchestrator().respond("What time is it?", conversation_id="default")
+
+    assert speak is True
+    assert "still working" in content.lower()
+    activity.standby()

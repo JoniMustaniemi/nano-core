@@ -28,6 +28,7 @@ from app.tools.self_improve_planning import (
 
 IMPROVEMENT_PLAN_MAX_FILES = 1
 IMPROVEMENT_PLAN_COMPLETED_SOURCE = "tools.improvement_plan_service.completed"
+IMPROVEMENT_PLAN_COMPLETED_SILENT_SOURCE = "tools.improvement_plan_service.completed.silent"
 
 PLAN_TEMPERATURE = 0.2
 
@@ -221,10 +222,22 @@ def _plan_title(*, goal: str, files: list[str], body: str | None = None) -> str:
     return "Improvement plan"
 
 
-def _finalize_draft_activity(result: ImprovementPlanResult, *, theme: str | None = None) -> None:
+def _finalize_draft_activity(
+    result: ImprovementPlanResult,
+    *,
+    theme: str | None = None,
+    silent: bool = False,
+) -> None:
     if result.step == "gate":
         return
     if result.ok:
+        if silent:
+            activity.standby(
+                title="Saved an improvement plan.",
+                detail=f"Theme: {theme or 'a codebase improvement'}.",
+                source=IMPROVEMENT_PLAN_COMPLETED_SILENT_SOURCE,
+            )
+            return
         activity.standby(
             title="I saved an improvement plan.",
             detail=f"Theme: {theme or 'a codebase improvement'}. Open the Plans tab to read it.",
@@ -249,6 +262,7 @@ class ImprovementPlanService:
         preferred_files: list[str] | None = None,
         source_note_id: int | None = None,
         passive: bool = False,
+        silent: bool = False,
     ) -> ImprovementPlanResult:
         if improvement_plans.has_unprocessed_plan():
             return ImprovementPlanResult(
@@ -274,6 +288,7 @@ class ImprovementPlanService:
                 preferred_files=preferred_files,
                 source_note_id=source_note_id,
                 passive=passive,
+                silent=silent,
                 allowed=allowed,
             )
         except Exception:
@@ -283,7 +298,7 @@ class ImprovementPlanService:
                 goal=goal,
                 error="Could not draft an improvement plan.",
             )
-            _finalize_draft_activity(result)
+            _finalize_draft_activity(result, silent=silent)
             return result
 
     def _draft_after_working(
@@ -294,6 +309,7 @@ class ImprovementPlanService:
         preferred_files: list[str] | None,
         source_note_id: int | None,
         passive: bool,
+        silent: bool,
         allowed: str,
     ) -> ImprovementPlanResult:
         settings = get_settings()
@@ -311,7 +327,7 @@ class ImprovementPlanService:
                 goal=goal,
                 error="No files selected.",
             )
-            _finalize_draft_activity(result)
+            _finalize_draft_activity(result, silent=silent)
             return result
 
         file_contents = _read_file_contents(
@@ -326,7 +342,7 @@ class ImprovementPlanService:
                 goal=goal,
                 error="Could not read target files.",
             )
-            _finalize_draft_activity(result)
+            _finalize_draft_activity(result, silent=silent)
             return result
 
         messages = _build_plan_prompt(
@@ -349,7 +365,7 @@ class ImprovementPlanService:
                 goal=goal,
                 error="Could not draft an improvement plan.",
             )
-            _finalize_draft_activity(result)
+            _finalize_draft_activity(result, silent=silent)
             return result
 
         file_list = list(file_contents.keys())
@@ -369,10 +385,16 @@ class ImprovementPlanService:
             title=plan.title,
             goal=goal,
         )
-        _finalize_draft_activity(result, theme=theme)
+        _finalize_draft_activity(result, theme=theme, silent=silent)
         return result
 
-    def draft_from_note(self, note: InternalNote, *, client: Any) -> ImprovementPlanResult:
+    def draft_from_note(
+        self,
+        note: InternalNote,
+        *,
+        client: Any,
+        silent: bool = False,
+    ) -> ImprovementPlanResult:
         goal = internal_note_service.goal_from_internal_note(note)
         preferred_files = internal_note_service.preferred_files_from_note(note)
         return self.draft(
@@ -381,4 +403,5 @@ class ImprovementPlanService:
             preferred_files=preferred_files or None,
             source_note_id=note.id,
             passive=True,
+            silent=silent,
         )

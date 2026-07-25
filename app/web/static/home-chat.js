@@ -10,7 +10,7 @@ async function sendMessage() {
     return;
   }
   if (isBusy()) {
-    replyStatus.textContent = "I'm still working. Wait for the current answer.";
+    replyStatus.textContent = "I'm still working. Wait for the current task to finish.";
     return;
   }
   await submitMessage(message, "text");

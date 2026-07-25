@@ -15,6 +15,13 @@ from app.runtime.status_copy import (
 ActivityState = Literal["standby", "working", "error"]
 EventKind = Literal["state", "action", "log"]
 
+_SELF_IMPROVE_BUSY_SOURCES = frozenset(
+    {
+        "tools.improvement_plan_service",
+        "tools.improvement_plan_implementation",
+    }
+)
+
 
 @dataclass(frozen=True, slots=True)
 class TaskTimer:
@@ -77,6 +84,7 @@ class ActivityHub:
         self._detail: str | None = STANDBY_DETAIL_DEFAULT
         self._updated_at = datetime.now(UTC)
         self._task_timer: TaskTimer | None = None
+        self._working_source: str | None = None
         self._record(
             kind="state",
             state="standby",
@@ -100,6 +108,7 @@ class ActivityHub:
             self._detail = STANDBY_DETAIL_DEFAULT
             self._updated_at = datetime.now(UTC)
             self._task_timer = None
+            self._working_source = None
             self._record(
                 kind="state",
                 state="standby",
@@ -147,6 +156,10 @@ class ActivityHub:
             title=title,
             detail=detail,
         )
+
+    def is_self_improve_busy(self) -> bool:
+        with self._lock:
+            return self._state == "working" and self._working_source in _SELF_IMPROVE_BUSY_SOURCES
 
     def working(
         self,
@@ -240,6 +253,7 @@ class ActivityHub:
                 "state": self._state,
                 "headline": self._headline,
                 "detail": self._detail,
+                "working_source": self._working_source,
                 "updated_at": self._updated_at.isoformat(),
                 "task_timer": task_timer,
                 "events": [event.to_dict() for event in self._events],
@@ -284,6 +298,10 @@ class ActivityHub:
             self._state = state
             self._headline = title
             self._detail = detail
+            if state == "working":
+                self._working_source = source
+            elif state in {"standby", "error"}:
+                self._working_source = None
             self._updated_at = datetime.now(UTC)
             return event
 

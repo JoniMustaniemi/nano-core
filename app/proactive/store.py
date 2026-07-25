@@ -13,6 +13,7 @@ class ProactiveState:
     internal_note_id: int | None = None
     presence_started_at: datetime | None = None
     waiting_for_presence: bool = False
+    background_draft_running: bool = False
     last_dismissal: str | None = None
     last_delivered_goal: str | None = None
     last_delivered_files: list[str] | None = None
@@ -46,6 +47,21 @@ class ProactiveStore:
     def has_offer(self) -> bool:
         with self._lock:
             return self._state.offer is not None
+
+    def try_start_background_draft(self) -> bool:
+        with self._lock:
+            if self._state.background_draft_running:
+                return False
+            self._state.background_draft_running = True
+            return True
+
+    def finish_background_draft(self) -> None:
+        with self._lock:
+            self._state.background_draft_running = False
+
+    def is_background_draft_running(self) -> bool:
+        with self._lock:
+            return self._state.background_draft_running
 
     def start_presence(self, *, started_at: datetime | None = None) -> None:
         with self._lock:

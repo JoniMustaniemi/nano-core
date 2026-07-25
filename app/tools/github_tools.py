@@ -33,7 +33,7 @@ register_tool(
         ),
         args_schema={},
         handler=_create_pull_request,
-        announcement="Opening a pull request.",
+        announcement="I'm opening a pull request.",
         keywords=("pull request", "open pr", "create pr", "github pr"),
         ui_label="Create pull request",
         ui_message="Create a pull request.",

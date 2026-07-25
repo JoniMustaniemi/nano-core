@@ -16,8 +16,8 @@ term.
 - **Health checks** — diagnose database, voice, and model issues in plain language
 - **GitHub pull requests** — inspect your changes, run lint and verification, name the work,
   create a feature branch, commit, push, and open a pull request on GitHub when you ask
-- **Self-improvement plans** — while idle, review its own codebase and draft readable
-  improvement plans in the **Plans** tab for you to review and implement if you so choose
+- **Self-improvement plans** — while idle, review its own codebase and silently draft
+  improvement plans in the **Plans** tab; use **Implement** there to apply changes and open a PR
 - **Voice** — spoken replies and wake-phrase listening with `"hey nano"`
 
 ## Local models
