@@ -69,7 +69,8 @@ def _probe_memory_windows() -> MemoryInfo:
 
         status = MEMORYSTATUSEX()
         status.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
-        if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        if not kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
             return MemoryInfo(total_bytes=None, available_bytes=None)
         return MemoryInfo(
             total_bytes=int(status.ullTotalPhys),
@@ -110,8 +111,11 @@ def _probe_memory_macos() -> MemoryInfo:
         ):
             return MemoryInfo(total_bytes=None, available_bytes=None)
         total = int(memsize.value)
-        page_size = int(os.sysconf("SC_PAGE_SIZE"))
-        free_pages = int(os.sysconf("SC_AVPHYS_PAGES"))
+        sysconf = getattr(os, "sysconf", None)
+        if sysconf is None:
+            return MemoryInfo(total_bytes=None, available_bytes=None)
+        page_size = int(sysconf("SC_PAGE_SIZE"))
+        free_pages = int(sysconf("SC_AVPHYS_PAGES"))
         available = free_pages * page_size
         return MemoryInfo(total_bytes=total, available_bytes=available)
     except (AttributeError, OSError, ValueError, TypeError):
