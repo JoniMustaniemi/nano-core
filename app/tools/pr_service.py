@@ -169,7 +169,7 @@ class PullRequestService:
         with LongTaskProgressReporter(
             task_name="pull request",
             interval_seconds=PR_TASK_PROGRESS_INTERVAL_SECONDS,
-            announce_on_start=True,
+            announce_on_start=False,
         ) as progress:
             progress.update(step="lint")
             lint = run_pr_lint()

@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from app.llm.client import LocalLLMClient
+from app.llm.roles import ModelRole
 
 
 class _LocalModel:
@@ -150,3 +151,102 @@ def test_llm_client_auto_falls_back_when_no_local_model(monkeypatch) -> None:
     content = client.complete([{"role": "user", "content": "hi"}])
 
     assert "Local LLM is not available yet" in content
+
+
+def test_llm_client_code_role_uses_code_model_path_and_context(monkeypatch) -> None:
+    client = LocalLLMClient(role=ModelRole.CODE)
+    model = _LocalModel()
+    loaded: list[tuple[str, int]] = []
+
+    def record_load(path: str, context_size: int) -> _LocalModel:
+        loaded.append((path, context_size))
+        return model
+
+    monkeypatch.setattr(
+        "app.llm.client.get_settings",
+        lambda: SimpleNamespace(
+            llm_provider="local",
+            llm_model_path="./models/chat.gguf",
+            llm_code_model_path="./models/code.gguf",
+            llm_context_size=4096,
+            llm_code_context_size=8192,
+            llm_max_tokens=512,
+            llm_temperature=0.7,
+            llm_base_url="http://localhost:11434",
+            llm_model="chat-model",
+            llm_code_model="code-model",
+            llm_timeout_seconds=30,
+        ),
+    )
+    monkeypatch.setattr("app.llm.client._load_local_model", record_load)
+
+    content = client.complete([{"role": "user", "content": "hi"}])
+
+    assert content == "hello from local model"
+    assert loaded == [("./models/code.gguf", 8192)]
+
+
+def test_llm_client_code_role_falls_back_to_chat_model_path(monkeypatch) -> None:
+    client = LocalLLMClient(role=ModelRole.CODE)
+    loaded: list[str] = []
+
+    monkeypatch.setattr(
+        "app.llm.client.get_settings",
+        lambda: SimpleNamespace(
+            llm_provider="local",
+            llm_model_path="./models/chat.gguf",
+            llm_code_model_path="",
+            llm_context_size=4096,
+            llm_code_context_size=8192,
+            llm_max_tokens=512,
+            llm_temperature=0.7,
+            llm_base_url="http://localhost:11434",
+            llm_model="chat-model",
+            llm_code_model="",
+            llm_timeout_seconds=30,
+        ),
+    )
+    monkeypatch.setattr(
+        "app.llm.client._load_local_model",
+        lambda path, context_size: loaded.append(path) or _LocalModel(),
+    )
+
+    client.complete([{"role": "user", "content": "hi"}])
+
+    assert loaded == ["./models/chat.gguf"]
+
+
+def test_llm_client_code_role_ollama_uses_code_model_name(monkeypatch) -> None:
+    client = LocalLLMClient(role=ModelRole.CODE)
+    captured: dict[str, object] = {}
+
+    def fake_post(_self, path, payload, *, raise_on_error):
+        captured["payload"] = payload
+        return SimpleNamespace(
+            json=lambda: {"message": {"content": "hello from code ollama"}},
+        )
+
+    monkeypatch.setattr(
+        "app.llm.client.get_settings",
+        lambda: SimpleNamespace(
+            llm_provider="ollama",
+            llm_model_path="",
+            llm_code_model_path="",
+            llm_context_size=4096,
+            llm_code_context_size=8192,
+            llm_max_tokens=512,
+            llm_temperature=0.7,
+            llm_base_url="http://localhost:11434",
+            llm_model="chat-model",
+            llm_code_model="code-model",
+            llm_timeout_seconds=30,
+        ),
+    )
+    monkeypatch.setattr("app.llm.client.LocalLLMClient._post", fake_post)
+
+    content = client.complete([{"role": "user", "content": "hi"}])
+
+    assert content == "hello from code ollama"
+    payload = captured["payload"]
+    assert isinstance(payload, dict)
+    assert payload["model"] == "code-model"

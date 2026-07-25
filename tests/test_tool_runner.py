@@ -48,6 +48,35 @@ def test_tool_runner_announces_and_sets_working_before_handler(monkeypatch) -> N
     assert announced == ["Checking health"]
 
 
+def test_tool_runner_skips_server_announce_for_pull_request(monkeypatch) -> None:
+    announced: list[str] = []
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.activity.working",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.GladosVoiceService.announce",
+        lambda self, text: announced.append(text),
+    )
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.tool_announcement_for",
+        lambda name: "Opening a pull request.",
+    )
+    monkeypatch.setattr(
+        "app.assistant.tool_runner.get_tool",
+        lambda name: SimpleNamespace(
+            name=name,
+            handler=lambda _args: '{"ok": true, "step": "complete"}',
+        ),
+    )
+
+    runner = ToolRunner()
+    result = runner.execute("create_pull_request", {})
+
+    assert result.ok is True
+    assert announced == []
+
+
 def test_tool_runner_can_skip_announcement(monkeypatch) -> None:
     announced: list[str] = []
     monkeypatch.setattr(

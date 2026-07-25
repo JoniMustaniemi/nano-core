@@ -198,6 +198,29 @@ def test_test_failure_health_check_is_disabled_by_default(monkeypatch) -> None:
     assert not any(result.name == "test_failure" for result in results)
 
 
+def test_llm_health_check_reports_dual_model_config(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.health.checks.get_settings",
+        lambda: SimpleNamespace(
+            database_size_warning_bytes=10_000,
+            llm_provider="local",
+            llm_model_path="chat.gguf",
+            llm_code_model_path="code.gguf",
+            llm_code_model="",
+            llm_base_url="",
+        ),
+    )
+    monkeypatch.setattr(
+        "app.health.checks.GladosVoiceService.status",
+        lambda self: {"available": True, "detail": "Voice is ready."},
+    )
+
+    result = next(check for check in run_health_checks() if check.name == "llm")
+
+    assert result.ok is True
+    assert "Chat and code models configured" in result.detail
+
+
 def test_test_failure_health_check_can_be_enabled(monkeypatch) -> None:
     """
     Verify that test failure health check can be enabled.

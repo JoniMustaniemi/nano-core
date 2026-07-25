@@ -103,7 +103,7 @@ def test_draft_improvement_plan_marks_note_delivered_on_success(tmp_path, monkey
         ),
     )
     monkeypatch.setattr(
-        "app.tools.self_improve_tools.get_llm_client",
+        "app.tools.self_improve_tools.get_code_llm_client",
         lambda: object(),
     )
 

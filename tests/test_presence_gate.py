@@ -52,10 +52,14 @@ def test_presence_gate_yes_delivers(tmp_path, monkeypatch) -> None:
         lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
     )
 
+    monkeypatch.setattr(
+        "app.assistant.flows.presence_gate.get_code_llm_client",
+        lambda: _DraftClient(),
+    )
+
     source = handler.handle_pending(
         message="yes",
         conversation_id="agent-default",
-        client=_DraftClient(),
     )
     assert source is not None
     assert "plans tab" in source.facts.lower()

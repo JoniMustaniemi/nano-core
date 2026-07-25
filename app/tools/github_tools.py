@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.llm.factory import get_llm_client
+from app.llm.factory import get_code_llm_client
 from app.tools.base import ToolSpec
 from app.tools.pr_service import PullRequestService
 from app.tools.registry import register_tool
@@ -19,7 +19,7 @@ def _create_pull_request(args: dict[str, Any]) -> str:
         JSON-encoded pull request result.
     """
     _ = args
-    client = get_llm_client()
+    client = get_code_llm_client()
     result = PullRequestService().run(client=client)
     return result.to_json()
 
