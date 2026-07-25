@@ -64,6 +64,14 @@ def _find_balanced_json_object(text: str) -> str | None:
     return None
 
 
+def _strip_markdown_fence(text: str) -> str:
+    if text.startswith("```"):
+        text = text.strip("`")
+        if "\n" in text:
+            text = text.split("\n", 1)[1]
+    return text
+
+
 def looks_like_truncated_json(raw: str) -> bool:
     """
     Return True when raw text appears to start JSON but never closes an object.
@@ -76,11 +84,7 @@ def looks_like_truncated_json(raw: str) -> bool:
     """
     if not isinstance(raw, str):
         return False
-    text = raw.strip()
-    if text.startswith("```"):
-        text = text.strip("`")
-        if "\n" in text:
-            text = text.split("\n", 1)[1]
+    text = _strip_markdown_fence(raw.strip())
     if "{" not in text:
         return False
     return _find_balanced_json_object(text) is None
@@ -98,11 +102,7 @@ def extract_json(raw: str) -> Any:
     """
     if not isinstance(raw, str):
         return None
-    text = raw.strip()
-    if text.startswith("```"):
-        text = text.strip("`")
-        if "\n" in text:
-            text = text.split("\n", 1)[1]
+    text = _strip_markdown_fence(raw.strip())
     balanced = _find_balanced_json_object(text)
     if balanced is not None:
         text = balanced

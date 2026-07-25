@@ -463,11 +463,9 @@ class ImprovementPlanImplementationService:
                 if reporter is not None:
                     reporter.update(attempt=total_attempts)
 
-                apply_correction = _build_apply_correction(full_file_only=full_file_only)
                 payload, last_raw = complete_json_dict_with_raw(
                     client,
                     conversation,
-                    correction=apply_correction,
                     attempts=1,
                     max_tokens=max_tokens,
                     temperature=PLAN_TEMPERATURE,
