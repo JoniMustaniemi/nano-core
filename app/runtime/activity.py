@@ -268,6 +268,7 @@ class ActivityHub:
             from app.assistant.pending import pending_interactions
             from app.config import get_settings
             from app.proactive.store import proactive_store
+            from app.runtime.active_timers import serialize_active_timers
 
             settings = get_settings()
             pending = pending_interactions.get(settings.proactive_conversation_id)
@@ -281,6 +282,7 @@ class ActivityHub:
                 "working_source": self._working_source,
                 "updated_at": self._updated_at.isoformat(),
                 "task_timer": task_timer,
+                "active_timers": serialize_active_timers(),
                 "events": [event.to_dict() for event in self._events],
                 "proactive": proactive_store.snapshot(),
                 "pending": {"kind": pending_kind},

@@ -270,6 +270,8 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         True when the condition is met; otherwise false.
     """
     from app.assistant.rules.timers import (
+        is_stopwatch_start_request,
+        is_stopwatch_stop_request,
         is_timer_cancel_request,
         is_timer_start_request,
         is_timer_status_request,
@@ -284,6 +286,10 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return True
     if tool_name == "start_timer":
         return is_timer_start_request(message)
+    if tool_name == "start_stopwatch":
+        return is_stopwatch_start_request(message)
+    if tool_name == "stop_stopwatches":
+        return is_stopwatch_stop_request(message)
     if tool_name == "list_timers":
         return is_timer_status_request(message)
     if tool_name == "cancel_timers":

@@ -11,8 +11,10 @@ _REGISTERED_TOOLS: dict[str, ToolSpec] = {}
 FLOW_OWNED_TOOLS: frozenset[str] = frozenset(
     {
         "start_timer",
+        "start_stopwatch",
         "list_timers",
         "cancel_timers",
+        "stop_stopwatches",
     }
 )
 

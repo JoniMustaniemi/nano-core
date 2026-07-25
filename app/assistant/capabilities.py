@@ -34,7 +34,7 @@ _CAPABILITY_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
     (
         "Timers",
-        ("start_timer", "list_timers", "cancel_timers"),
+        ("start_timer", "start_stopwatch", "list_timers", "cancel_timers", "stop_stopwatches"),
     ),
     (
         "Files and code",

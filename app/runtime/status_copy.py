@@ -97,9 +97,7 @@ RUNNING_TOOL_DETAIL = "Give me a moment."
 SETTING_TIMER_TITLE = "I'm setting a timer."
 SETTING_TIMER_DETAIL = "Scheduling the requested timer."
 WAITING_TIMER_DURATION_DETAIL = "Waiting for the timer duration."
-TIMER_DURATION_PROMPT = (
-    "How long should the timer run? Say any duration like 10 minutes or 1 hour 30 minutes."
-)
+TIMER_DURATION_PROMPT = "How long should the timer run?"
 TIMER_DURATION_RETRY_PROMPT = (
     "I didn't catch a duration. Try something like 10 minutes or 1 hour 30 minutes."
 )
@@ -108,6 +106,7 @@ TIMER_START_FAILED_PROMPT = (
 )
 CANCELLED_TIMER_TITLE = "I cancelled the timer."
 TIMER_CANCELLED_PROMPT = "Timer cancelled."
+STOPWATCH_STARTED_MESSAGE = "Stopwatch started."
 WIPING_MEMORY_TITLE = "I'm wiping my memory."
 WIPED_MEMORY_TITLE = "I wiped my memory."
 PREPARING_WIPE_DETAIL = "Preparing confirmation for the destructive request."
@@ -165,6 +164,7 @@ PR_OPENING_TIMER_SECONDS = 120
 _TOOL_ACTIVITY_TITLES: dict[str, str] = {
     "analyze_system": "I'm analyzing system specs.",
     "cancel_timers": "I'm cancelling timers.",
+    "stop_stopwatches": "I'm stopping stopwatches.",
     "check_health": "I'm running a health check.",
     "create_pull_request": "I'm opening a pull request.",
     "list_files": "I'm listing files.",
@@ -174,6 +174,7 @@ _TOOL_ACTIVITY_TITLES: dict[str, str] = {
     "read_file": "I'm reading a file.",
     "run_python": "I'm running code.",
     "start_timer": "I'm setting a timer.",
+    "start_stopwatch": "I'm starting a stopwatch.",
     "write_file": "I'm writing a file.",
 }
 
@@ -189,6 +190,8 @@ _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
     "read_file": "I read a file.",
     "run_python": "I ran code.",
     "start_timer": "I set a timer.",
+    "start_stopwatch": "Stopwatch started.",
+    "stop_stopwatches": "I stopped the stopwatch.",
     "write_file": "I wrote a file.",
 }
 
