@@ -1,6 +1,6 @@
 """Regression tests for natural-language UI command phrase matching."""
 
-from tests.helpers.ui_command_match import match_ui_command
+from helpers.ui_command_match import match_ui_command
 
 
 def test_controls_show_phrases() -> None:
