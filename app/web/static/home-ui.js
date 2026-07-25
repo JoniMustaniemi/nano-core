@@ -155,7 +155,10 @@ function isBusy() {
   if (listeningForCommand || waitingForPresence || waitingForFollowUp) {
     return false;
   }
-  return requestInFlight || wakeAcknowledging;
+  if (requestInFlight || wakeAcknowledging) {
+    return true;
+  }
+  return currentActivitySnapshot.state === "working";
 }
 
 function getDisplayState() {

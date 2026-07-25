@@ -86,6 +86,9 @@ def test_homepage_shows_standby_ui(api_client) -> None:
     assert 'id="plan-reader"' in response.text
     assert 'id="plan-copy-button"' in response.text
     assert 'id="plan-implement-button"' in response.text
+    process_index = response.text.index("plan-process-button")
+    implement_index = response.text.index("plan-implement-button")
+    assert process_index < implement_index
 
     assert 'id="brains-clear"' in response.text
 
@@ -264,10 +267,20 @@ def test_homepage_serves_static_assets() -> None:
         1
     ].split('if (event.kind === "log" && event.source === "runtime.task_timer")')[0]
     assert "void loadPlans();" in completion_block
-    assert "return;" not in completion_block
+    assert "releaseSelfImprovementWorkingMode" in completion_block
+    assert "return;" in completion_block
 
-    assert "tools.improvement_plan_implementation.announce" in js_text
-    assert "formatImplementationAnnouncement" in js_text
+    silent_block = js_text.split(
+        'event.source === "tools.improvement_plan_service.completed.silent"'
+    )[1].split('event.source === "tools.improvement_plan_service.completed"')[0]
+    assert "void loadPlans();" in silent_block
+    assert "releaseSelfImprovementWorkingMode" in silent_block
+    assert "playVoice" not in silent_block
+
+    assert "formatImplementationFailureFromState" in js_text
+    assert "speakImplementationMessage" in js_text
+    assert "releaseSelfImprovementWorkingMode" in js_text
+    assert "selfImprovementRunSettled" in js_text
 
     assert "runtime.task_timer" in js_text
     assert "syncTaskWaitTimer" in js_text

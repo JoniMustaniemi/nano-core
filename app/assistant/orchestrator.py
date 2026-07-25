@@ -21,12 +21,15 @@ from app.llm.factory import get_llm_client
 from app.llm.protocol import LLMClient
 from app.memory import improvement_plans, repository
 from app.runtime import activity
-from app.runtime.status_copy import RECEIVED_TITLE, route_acknowledgment
+from app.runtime.status_copy import (
+    RECEIVED_TITLE,
+    format_self_improve_busy_reply,
+    route_acknowledgment,
+)
 from app.runtime.user_activity import user_activity
 
 _PLAN_ONLY_REPLY = (
-    "Self-improvement only saves a text plan in the Plans tab. "
-    "I do not create branches, edit code, or open pull requests from those plans."
+    "That plan is in the Plans tab. Use the Implement button there to edit code and open a pull request."
 )
 
 
@@ -95,6 +98,14 @@ class AgentOrchestrator:
         settings = get_settings()
         user_activity.touch()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
+        if activity.is_self_improve_busy():
+            busy_reply = format_self_improve_busy_reply(activity.snapshot())
+            repository.add_chat_message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=busy_reply,
+            )
+            return busy_reply, True
         if improvement_plans.has_unprocessed_plan() and is_self_improve_follow_up(message):
             repository.add_chat_message(
                 conversation_id=conversation_id,

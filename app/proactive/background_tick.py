@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from threading import Thread
 
 from app.assistant.pending import pending_interactions
 from app.config import get_settings
 from app.llm.factory import get_code_llm_client
-from app.memory import improvement_plans
+from app.memory import improvement_plans, internal_notes
 from app.memory.internal_note_service import internal_note_service
 from app.proactive.codebase_crawl import CodebaseCrawlService
 from app.proactive.store import proactive_store
 from app.runtime.activity import activity
 from app.runtime.user_activity import user_activity
+from app.tools.improvement_plan_service import ImprovementPlanService
 
 
 def run_proactive_background_tick() -> None:
-    """Silent internal-note check every 5 min; outreach when idle >= 10 min."""
+    """Silent internal-note check every 5 min; background plan draft when idle >= 10 min."""
     settings = get_settings()
     conversation_id = settings.proactive_conversation_id
 
@@ -25,6 +27,7 @@ def run_proactive_background_tick() -> None:
             settings.idle_examine_enabled
             and not proactive_store.has_offer()
             and not internal_note_service.has_active_plan_pipeline()
+            and not proactive_store.is_background_draft_running()
         ):
             pending = pending_interactions.get(conversation_id)
             if pending is None:
@@ -46,6 +49,9 @@ def run_proactive_background_tick() -> None:
     if proactive_store.has_offer():
         return
 
+    if proactive_store.is_background_draft_running():
+        return
+
     snapshot = activity.snapshot()
     if snapshot.get("state") != "standby":
         return
@@ -58,13 +64,53 @@ def run_proactive_background_tick() -> None:
         (candidate for candidate in due_notes if candidate.kind == "self_improvement_suggestion"),
         None,
     )
-    if note is None:
+    if note is None or note.id is None:
         return
 
-    from app.assistant.flows.presence_gate import presence_gate
+    if not proactive_store.try_start_background_draft():
+        return
 
-    offer = internal_note_service.offer_from_internal_note(note)
-    presence_gate.start(offer, internal_note_id=note.id, conversation_id=conversation_id)
+    thread = Thread(
+        target=_run_background_plan_draft,
+        args=(note.id,),
+        name=f"background-plan-draft-{note.id}",
+        daemon=True,
+    )
+    thread.start()
+
+
+def _run_background_plan_draft(note_id: int) -> None:
+    try:
+        note = internal_notes.get_internal_note(note_id)
+        if note is None:
+            return
+
+        offer = internal_note_service.offer_from_internal_note(note)
+        result = ImprovementPlanService().draft_from_note(
+            note,
+            client=get_code_llm_client(),
+            silent=True,
+        )
+        if result.ok:
+            internal_note_service.mark_delivered(note_id)
+            goal = str(offer.payload.get("goal", "")).strip()
+            if goal:
+                raw_files = offer.payload.get("files", [])
+                files = (
+                    [str(path) for path in raw_files if str(path).strip()]
+                    if isinstance(raw_files, list)
+                    else []
+                )
+                proactive_store.set_last_goal(goal, files=files or None)
+            return
+
+        internal_note_service.record_deferred_offer(
+            offer,
+            reason="background_draft_failed",
+            note_id=note_id,
+        )
+    finally:
+        proactive_store.finish_background_draft()
 
 
 def check_presence_timeouts() -> None:

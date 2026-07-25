@@ -1,17 +1,16 @@
 from datetime import UTC, datetime, timedelta
 
-from app.assistant.flows.presence_gate import PresenceGateHandler
 from app.assistant.pending import pending_interactions
 from app.config import get_settings
 from app.memory import improvement_plans, internal_notes
 from app.memory.db import create_db_and_tables
 from app.memory.internal_note_service import InternalNoteService
-from app.proactive.background_tick import run_proactive_background_tick
+from app.proactive.background_tick import _run_background_plan_draft, run_proactive_background_tick
 from app.proactive.store import proactive_store
 from app.proactive.types import ProactiveOffer
 from app.runtime.activity import activity
-from app.runtime.status_copy import PRESENCE_TITLE
 from app.runtime.user_activity import user_activity
+from app.tools.improvement_plan_service import IMPROVEMENT_PLAN_COMPLETED_SILENT_SOURCE
 
 
 class _DraftClient:
@@ -42,26 +41,57 @@ def _record_due_note() -> None:
     InternalNoteService().record_from_offer(offer, next_attempt_at=datetime.now(UTC))
 
 
-def test_background_tick_starts_presence_when_idle(tmp_path, monkeypatch) -> None:
+def test_background_tick_starts_background_draft_when_idle(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'tick.sqlite3'}")
     monkeypatch.setenv("IDLE_EXAMINE_ENABLED", "false")
     create_db_and_tables()
     get_settings.cache_clear()
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "main.py").write_text("value = 1\n", encoding="utf-8")
 
     _record_due_note()
+    notes = internal_notes.list_pending_self_improvement_notes(limit=1)
+    assert notes and notes[0].id is not None
+    note_id = notes[0].id
+
     activity.reset()
     proactive_store.reset()
     pending_interactions.reset()
     user_activity._last_activity_at = datetime.now(UTC) - timedelta(seconds=700)
 
+    monkeypatch.setattr(
+        "app.tools.self_improve_planning.file_selection_lines",
+        lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
+    )
+    monkeypatch.setattr(
+        "app.proactive.background_tick.get_code_llm_client",
+        lambda: _DraftClient(),
+    )
+
+    class _SyncThread:
+        def __init__(self, target=None, args=(), name=None, daemon=None) -> None:
+            self._target = target
+            self._args = args
+
+        def start(self) -> None:
+            if self._target is not None:
+                self._target(*self._args)
+
+    monkeypatch.setattr("app.proactive.background_tick.Thread", _SyncThread)
+
     run_proactive_background_tick()
 
-    pending = pending_interactions.get("agent-default")
-    assert pending is not None
-    assert pending.kind == "presence_check"
-    assert proactive_store.snapshot()["waiting_for_presence"] is True
-    assert activity.snapshot()["headline"] == PRESENCE_TITLE
-    assert improvement_plans.has_unprocessed_plan() is False
+    assert pending_interactions.get("agent-default") is None
+    assert proactive_store.snapshot()["waiting_for_presence"] is False
+    assert improvement_plans.has_unprocessed_plan() is True
+    plan = improvement_plans.get_unprocessed_plan()
+    assert plan is not None
+    assert plan.goal == "clearer timer errors"
+    note = internal_notes.get_internal_note(note_id)
+    assert note is not None
+    assert note.delivered_at is not None
+    assert internal_notes.list_pending_self_improvement_notes(limit=1) == []
     get_settings.cache_clear()
 
 
@@ -81,49 +111,42 @@ def test_background_tick_skips_when_outreach_disabled(tmp_path, monkeypatch) -> 
     run_proactive_background_tick()
 
     assert pending_interactions.get("agent-default") is None
-    assert proactive_store.snapshot()["waiting_for_presence"] is False
+    assert improvement_plans.has_unprocessed_plan() is False
     get_settings.cache_clear()
 
 
-def test_background_tick_yes_delivers_and_drafts_plan(tmp_path, monkeypatch) -> None:
+def test_background_draft_uses_silent_completion_source(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'tick-yes.sqlite3'}")
-    monkeypatch.setenv("IDLE_EXAMINE_ENABLED", "false")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'tick-silent.sqlite3'}")
     create_db_and_tables()
     get_settings.cache_clear()
     (tmp_path / "app").mkdir()
     (tmp_path / "app" / "main.py").write_text("value = 1\n", encoding="utf-8")
 
     _record_due_note()
+    note = internal_notes.list_pending_self_improvement_notes(limit=1)[0]
+    assert note.id is not None
+
     activity.reset()
-    proactive_store.reset()
-    pending_interactions.reset()
-    user_activity._last_activity_at = datetime.now(UTC) - timedelta(seconds=700)
-
-    run_proactive_background_tick()
-
     monkeypatch.setattr(
         "app.tools.self_improve_planning.file_selection_lines",
         lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
     )
-
     monkeypatch.setattr(
-        "app.assistant.flows.presence_gate.get_code_llm_client",
+        "app.proactive.background_tick.get_code_llm_client",
         lambda: _DraftClient(),
     )
 
-    handler = PresenceGateHandler()
-    source = handler.handle_pending(
-        message="yes",
-        conversation_id="agent-default",
-    )
+    _run_background_plan_draft(note.id)
 
-    assert source is not None
-    assert "plans tab" in source.facts.lower()
-    assert improvement_plans.has_unprocessed_plan() is True
-    plan = improvement_plans.get_unprocessed_plan()
-    assert plan is not None
-    assert plan.goal == "clearer timer errors"
+    snapshot = activity.snapshot()
+    events = snapshot.get("events", [])
+    completed = [
+        event
+        for event in events
+        if event.get("source") == IMPROVEMENT_PLAN_COMPLETED_SILENT_SOURCE
+    ]
+    assert completed
     get_settings.cache_clear()
 
 
@@ -177,6 +200,7 @@ def test_background_tick_skips_crawl_when_plan_pipeline_active(tmp_path, monkeyp
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'tick-crawl-skip.sqlite3'}")
     monkeypatch.setenv("IDLE_EXAMINE_ENABLED", "true")
+    monkeypatch.setenv("PROACTIVE_OUTREACH_ENABLED", "false")
     create_db_and_tables()
     get_settings.cache_clear()
     (tmp_path / "app").mkdir()

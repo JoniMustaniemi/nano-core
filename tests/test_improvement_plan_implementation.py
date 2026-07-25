@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import subprocess
+
 import pytest
 
 from app.memory import improvement_plans
@@ -9,6 +12,17 @@ from app.tools.improvement_plan_implementation import (
     check_implementation_preflight,
 )
 from app.tools.pr_service import PrResult
+
+
+def _init_git_repo(path) -> None:
+    subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "baseline"],
+        cwd=path,
+        check=True,
+        capture_output=True,
+    )
 
 
 def _create_plan(**overrides) -> int:
@@ -221,7 +235,51 @@ def test_implementation_service_announces_key_steps(
 
     assert announcements[0] == "I'm implementing an improvement plan."
     assert announcements[1] == "I'm opening a pull request."
-    assert "implemented the improvement plan" in announcements[-1].lower()
+    assert announcements[-1] == "I implemented the improvement plan."
+
+
+def test_implementation_service_announces_lint_failure_message(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'lint-announce.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    target = tmp_path / "app" / "runtime" / "status_copy.py"
+    target.write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    announcements: list[str] = []
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return (
+                '{"files": [{"path": "app/runtime/status_copy.py", '
+                '"content": "NEW = 2\\n"}]}'
+            )
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation._emit_voice_announcement",
+        lambda message: announcements.append(message),
+    )
+
+    class _PrService:
+        def run(self, *, client) -> PrResult:
+            return PrResult(ok=False, step="lint", error="Lint checks failed.")
+
+    ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
+
+    assert any(
+        "declined to commit anything or open a pull request" in msg.lower()
+        for msg in announcements
+    )
 
 
 def test_implementation_service_restores_pending_on_apply_failure(
@@ -250,6 +308,181 @@ def test_implementation_service_restores_pending_on_apply_failure(
 
     assert result.ok is False
     assert result.step == "apply"
+    plan = improvement_plans.get_plan(plan_id)
+    assert plan is not None
+    assert plan.status == "pending"
+
+
+def test_implementation_service_rejects_no_op_apply(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'noop.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    target = tmp_path / "app" / "runtime" / "status_copy.py"
+    original = "OLD = 1\n"
+    target.write_text(original, encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return json.dumps(
+                {
+                    "files": [
+                        {
+                            "path": "app/runtime/status_copy.py",
+                            "content": original,
+                        }
+                    ]
+                }
+            )
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+
+    result = ImprovementPlanImplementationService().run(plan_id)
+
+    assert result.ok is False
+    assert result.step == "apply"
+    assert "no file diff" in (result.error or "").lower()
+    assert target.read_text(encoding="utf-8") == original
+
+
+def test_implementation_service_normalizes_apply_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'normalize.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    target = tmp_path / "app" / "runtime" / "status_copy.py"
+    target.write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return (
+                '{"files": [{"path": "./app/runtime/status_copy.py", '
+                '"content": "NEW = 2\\n"}]}'
+            )
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+
+    class _PrService:
+        def run(self, *, client) -> PrResult:
+            return PrResult(ok=True, step="complete", url="https://github.com/example/repo/pull/2")
+
+    result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
+
+    assert result.ok is True
+    assert target.read_text(encoding="utf-8") == "NEW = 2\n"
+
+
+def test_implementation_success_activity_detail_has_no_url(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'detail.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    target = tmp_path / "app" / "runtime" / "status_copy.py"
+    target.write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    standby_calls: list[dict[str, str | None]] = []
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return (
+                '{"files": [{"path": "app/runtime/status_copy.py", '
+                '"content": "NEW = 2\\n"}]}'
+            )
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation._emit_voice_announcement",
+        lambda message: None,
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.activity.standby",
+        lambda **kwargs: standby_calls.append(kwargs) or None,
+    )
+
+    class _PrService:
+        def run(self, *, client) -> PrResult:
+            return PrResult(
+                ok=True,
+                step="complete",
+                url="https://github.com/example/repo/pull/3",
+            )
+
+    result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
+
+    assert result.ok is True
+    assert improvement_plans.get_plan(plan_id) is None
+    assert standby_calls
+    detail = standby_calls[-1].get("detail") or ""
+    assert "github.com" not in detail
+    assert "http" not in detail.lower()
+
+
+def test_implementation_service_restores_files_on_pr_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'restore.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    target = tmp_path / "app" / "runtime" / "status_copy.py"
+    target.write_text("OLD = 1\n", encoding="utf-8")
+    _init_git_repo(tmp_path)
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            return (
+                '{"files": [{"path": "app/runtime/status_copy.py", '
+                '"content": "NEW = 2\\n"}]}'
+            )
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation._emit_voice_announcement",
+        lambda message: None,
+    )
+
+    class _PrService:
+        def run(self, *, client) -> PrResult:
+            return PrResult(ok=False, step="lint", error="Lint checks failed.")
+
+    result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
+
+    assert result.ok is False
+    assert target.read_text(encoding="utf-8") == "OLD = 1\n"
     plan = improvement_plans.get_plan(plan_id)
     assert plan is not None
     assert plan.status == "pending"

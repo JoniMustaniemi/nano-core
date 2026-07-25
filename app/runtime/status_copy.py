@@ -59,6 +59,16 @@ def choose_wake_ack_response() -> str:
     return random.choice(WAKE_ACK_RESPONSES)
 
 
+def format_self_improve_busy_reply(snapshot: dict[str, object]) -> str:
+    headline = str(snapshot.get("headline") or "I'm working on something.").strip()
+    detail = str(snapshot.get("detail") or "").strip()
+    if detail and detail != headline and not headline.lower().startswith(detail.lower()):
+        return f"I'm still working. {headline} — {detail}"
+    if headline:
+        return f"I'm still working. {headline}"
+    return "I'm still working. Wait until the current self-improvement task finishes."
+
+
 PRESENCE_TITLE = "Are you there?"
 PRESENCE_TIMEOUT_TITLE = "I guess not."
 PRESENCE_TIMEOUT_DETAIL = "Topic saved for later."
@@ -111,6 +121,7 @@ IMPROVEMENT_PLAN_FAILED_TITLE = "I could not draft an improvement plan."
 IMPLEMENTING_IMPROVEMENT_PLAN_TITLE = "I'm implementing an improvement plan."
 APPLYING_PLANNED_CHANGES_DETAIL = "Applying planned code changes."
 IMPROVEMENT_PLAN_IMPLEMENTED_TITLE = "I implemented the improvement plan."
+IMPROVEMENT_PLAN_IMPLEMENTED_DETAIL = "Opened a pull request."
 IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE = "I could not implement the improvement plan."
 PREPARING_PR_TITLE = "I'm preparing a pull request."
 PREPARING_PR_PREFLIGHT_DETAIL = "Running preflight checks."

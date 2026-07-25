@@ -14,10 +14,12 @@ from app.runtime.status_copy import (
     APPLYING_PLANNED_CHANGES_DETAIL,
     IMPLEMENTING_IMPROVEMENT_PLAN_TITLE,
     IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
+    IMPROVEMENT_PLAN_IMPLEMENTED_DETAIL,
     IMPROVEMENT_PLAN_IMPLEMENTED_TITLE,
     running_tool_title,
 )
 from app.tools.files import read_text_file, write_text_file
+from app.tools.git_command import run_git
 from app.tools.git_github import (
     get_open_pull_request,
     gh_authenticated,
@@ -35,6 +37,7 @@ from app.tools.self_improve_planning import complete_json_dict
 APPLY_JSON_HINT = '{"files": [{"path": "app/...", "content": "..."}]}'
 IMPLEMENTATION_SOURCE = "tools.improvement_plan_implementation"
 IMPLEMENTATION_ANNOUNCE_SOURCE = "tools.improvement_plan_implementation.announce"
+_NO_DIFF_ERROR = "Planned changes produced no file diff."
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +64,22 @@ def _files_from_plan(plan: ImprovementPlan) -> list[str]:
     except json.JSONDecodeError:
         return []
     return [str(path) for path in files if str(path).strip()]
+
+
+def _normalize_plan_path(raw_path: str) -> str:
+    cleaned = str(raw_path).strip().replace("\\", "/")
+    while cleaned.startswith("./"):
+        cleaned = cleaned[2:]
+    return cleaned
+
+
+def _normalize_allowed_files(allowed_files: list[str]) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for path in allowed_files:
+        normalized = _normalize_plan_path(path)
+        if normalized:
+            mapping[normalized] = path
+    return mapping
 
 
 def check_implementation_preflight(
@@ -118,23 +137,32 @@ def check_implementation_preflight(
     return ImplementationPreflightResult(ok=True)
 
 
-def _parse_apply_payload(payload: dict[str, Any], *, allowed_files: list[str]) -> list[tuple[str, str]]:
+def _parse_apply_payload(
+    payload: dict[str, Any],
+    *,
+    allowed_files: list[str],
+) -> list[tuple[str, str]]:
     raw_files = payload.get("files", [])
     if not isinstance(raw_files, list) or not raw_files:
         raise ValueError("Response must include a non-empty files array.")
 
-    allowed = set(allowed_files)
+    allowed_map = _normalize_allowed_files(allowed_files)
     parsed: list[tuple[str, str]] = []
+    seen: set[str] = set()
     for item in raw_files:
         if not isinstance(item, dict):
             continue
-        path = str(item.get("path", "")).strip()
+        normalized = _normalize_plan_path(str(item.get("path", "")))
         content = item.get("content")
-        if not path or not isinstance(content, str):
+        if not normalized or not isinstance(content, str):
             continue
-        if path not in allowed:
-            raise ValueError(f"Unexpected file path: {path}")
-        parsed.append((path, content))
+        canonical = allowed_map.get(normalized)
+        if canonical is None:
+            raise ValueError(f"Unexpected file path: {normalized}")
+        if canonical in seen:
+            continue
+        seen.add(canonical)
+        parsed.append((canonical, content))
 
     if not parsed:
         raise ValueError("No valid file edits were returned.")
@@ -146,6 +174,7 @@ def _build_apply_messages(
     goal: str,
     body: str,
     file_contents: dict[str, str],
+    allowed_files: list[str],
 ) -> list[dict[str, str]]:
     sections = [
         f"Goal: {goal}",
@@ -157,6 +186,7 @@ def _build_apply_messages(
     ]
     for path, content in file_contents.items():
         sections.extend([f"### {path}", content, ""])
+    required_paths = ", ".join(allowed_files)
     return [
         {
             "role": "system",
@@ -164,6 +194,7 @@ def _build_apply_messages(
                 "You implement a focused improvement plan for Nano, a local AI assistant codebase. "
                 "Return JSON only with the full updated file contents. "
                 f"Use this shape: {APPLY_JSON_HINT}. "
+                f"You must return exactly these paths: {required_paths}. "
                 "Include every listed target file exactly once. "
                 "Do not add markdown fences or commentary."
             ),
@@ -173,6 +204,11 @@ def _build_apply_messages(
             "content": "\n".join(sections),
         },
     ]
+
+
+def _restore_plan_files(paths: list[str]) -> None:
+    for path in paths:
+        run_git("restore", "--", path)
 
 
 class ImprovementPlanImplementationService:
@@ -225,31 +261,28 @@ class ImprovementPlanImplementationService:
             apply_result = self._apply_plan(plan, allowed_files=allowed_files)
             if not apply_result.ok:
                 improvement_plans.restore_pending(plan_id)
-                failure_message = apply_result.error or "Could not apply planned code changes."
+                failure_message = _format_apply_failure_message(apply_result.error)
                 activity.standby(
                     title=IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
                     detail=failure_message,
                     source=IMPLEMENTATION_SOURCE,
                 )
-                _emit_voice_announcement(
-                    f"{IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE} {failure_message}"
-                )
+                _emit_voice_announcement(failure_message)
                 return apply_result
 
             reporter.update(step="lint")
             _emit_voice_announcement(running_tool_title("create_pull_request"))
             pr_result = self.pr_service.run(client=get_code_llm_client())
             if not pr_result.ok:
+                _restore_plan_files(allowed_files)
                 improvement_plans.restore_pending(plan_id)
-                failure_message = _pr_failure_detail(pr_result)
+                failure_message = _format_implementation_pr_failure(pr_result)
                 activity.standby(
                     title=IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
                     detail=failure_message,
                     source=IMPLEMENTATION_SOURCE,
                 )
-                _emit_voice_announcement(
-                    f"{IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE} {failure_message}"
-                )
+                _emit_voice_announcement(failure_message)
                 return ImplementationResult(
                     ok=False,
                     step=pr_result.step,
@@ -258,15 +291,12 @@ class ImprovementPlanImplementationService:
                 )
 
         improvement_plans.delete_plan(plan_id)
-        success_message = (
-            f"{IMPROVEMENT_PLAN_IMPLEMENTED_TITLE} Review the pull request on GitHub when you are ready."
-        )
         activity.standby(
             title=IMPROVEMENT_PLAN_IMPLEMENTED_TITLE,
-            detail=pr_result.url or "Pull request created.",
+            detail=IMPROVEMENT_PLAN_IMPLEMENTED_DETAIL,
             source=IMPLEMENTATION_SOURCE,
         )
-        _emit_voice_announcement(success_message)
+        _emit_voice_announcement(IMPROVEMENT_PLAN_IMPLEMENTED_TITLE)
         return ImplementationResult(
             ok=True,
             step="complete",
@@ -294,7 +324,12 @@ class ImprovementPlanImplementationService:
                 )
 
         client = get_code_llm_client()
-        messages = _build_apply_messages(goal=plan.goal, body=plan.body, file_contents=file_contents)
+        messages = _build_apply_messages(
+            goal=plan.goal,
+            body=plan.body,
+            file_contents=file_contents,
+            allowed_files=allowed_files,
+        )
         payload = complete_json_dict(
             client,
             messages,
@@ -321,7 +356,21 @@ class ImprovementPlanImplementationService:
                 error=str(exc),
             )
 
+        changed_edits: list[tuple[str, str]] = []
         for path, content in edits:
+            if file_contents.get(path) == content:
+                continue
+            changed_edits.append((path, content))
+
+        if not changed_edits:
+            return ImplementationResult(
+                ok=False,
+                step="apply",
+                plan_id=plan_id,
+                error=_NO_DIFF_ERROR,
+            )
+
+        for path, content in changed_edits:
             try:
                 write_text_file(path, content)
             except (OSError, ValueError) as exc:
@@ -335,10 +384,40 @@ class ImprovementPlanImplementationService:
         return ImplementationResult(ok=True, step="apply", plan_id=plan_id)
 
 
+def _format_implementation_pr_failure(result: PrResult) -> str:
+    step = str(result.step or "").strip()
+    error = str(result.error or "").strip()
+    if step == "lint":
+        return "Lint checks failed, so I declined to commit anything or open a pull request."
+    if step == "verify":
+        return "Your tests failed, so I declined to commit anything or open a pull request."
+    if step == "preflight" and "nothing" in error.lower():
+        return "There is nothing to publish, so I did not open a pull request."
+    if step == "preflight" and "already open" in error.lower():
+        title = str(result.title or "").strip()
+        if title:
+            return (
+                f"An open pull request is already waiting for your review ({title}). "
+                "Resolve it on GitHub before I open another."
+            )
+        return (
+            "An open pull request is already waiting for your review. "
+            "Resolve it on GitHub before I open another."
+        )
+    if error:
+        return f"I could not implement the improvement plan: {error}"
+    return IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE
+
+
+def _format_apply_failure_message(error: str | None) -> str:
+    cleaned = (error or "").strip()
+    if cleaned:
+        return f"{IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE} {cleaned}"
+    return IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE
+
+
 def _pr_failure_detail(result: PrResult) -> str:
-    if result.error:
-        return result.error
-    return "Pull request workflow failed."
+    return _format_implementation_pr_failure(result)
 
 
 def _emit_voice_announcement(message: str) -> None:
