@@ -810,6 +810,63 @@ def test_implementation_service_switches_to_full_file_correction_after_json_fail
     assert any("cut off" in correction.lower() for correction in captured_corrections)
 
 
+def test_implementation_service_refreshes_system_prompt_on_full_file_transition(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'system-refresh.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    target = tmp_path / "app" / "runtime" / "status_copy.py"
+    target.write_text("".join(f"LINE_{index} = {index}\n" for index in range(201)), encoding="utf-8")
+
+    plan_id = _create_plan()
+    assert improvement_plans.try_mark_implementing(plan_id) is True
+    _pass_preflight(monkeypatch)
+
+    captured_system_prompts: list[str] = []
+    call_count = 0
+
+    class _Client:
+        def complete(self, messages, **kwargs) -> str:
+            nonlocal call_count
+            call_count += 1
+            captured_system_prompts.append(str(messages[0]["content"]))
+            if call_count == 3:
+                return '{"files": [{"path": "app/runtime/status_copy.py", "content": "NEW = 2\\n"}]}'
+            return "not json"
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_code_llm_client",
+        lambda: _Client(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_llm_client",
+        lambda: _Client(),
+    )
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.get_settings",
+        lambda: SimpleNamespace(
+            self_improve_allowed_prefix="app/",
+            self_improve_plan_max_tokens=8192,
+            self_improve_apply_max_attempts=4,
+        ),
+    )
+    silence_announce_voice(monkeypatch)
+
+    class _PrService:
+        def run(self, *, client, announce=True) -> PrResult:
+            return PrResult(ok=True, step="complete", url="https://github.com/example/repo/pull/7")
+
+    result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
+
+    assert result.ok is True
+    assert "minimal search/replace" in captured_system_prompts[0]
+    assert "full updated file contents" in captured_system_prompts[2]
+
+
 def test_implementation_service_retry_conversation_uses_short_assistant_preview(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,

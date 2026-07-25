@@ -307,6 +307,24 @@ def _build_apply_messages(
     ]
 
 
+def _sync_apply_system_message(
+    conversation: list[dict[str, str]],
+    *,
+    goal: str,
+    body: str,
+    file_contents: dict[str, str],
+    allowed_files: list[str],
+    full_file_only: bool,
+) -> None:
+    conversation[0] = _build_apply_messages(
+        goal=goal,
+        body=body,
+        file_contents=file_contents,
+        allowed_files=allowed_files,
+        prefer_full_file=full_file_only,
+    )[0]
+
+
 def _restore_plan_files(paths: list[str]) -> None:
     for path in paths:
         run_git("restore", "--", path)
@@ -457,6 +475,15 @@ class ImprovementPlanImplementationService:
             if apply_error is not None:
                 break
             conversation = list(messages)
+            if full_file_only:
+                _sync_apply_system_message(
+                    conversation,
+                    goal=plan.goal,
+                    body=plan.body,
+                    file_contents=file_contents,
+                    allowed_files=allowed_files,
+                    full_file_only=True,
+                )
             json_failures = 0
             for _attempt in range(max_attempts):
                 total_attempts += 1
@@ -475,8 +502,16 @@ class ImprovementPlanImplementationService:
                         apply_error = last_raw
                         break
                     json_failures += 1
-                    if json_failures >= _FULL_FILE_FALLBACK_AFTER_FAILURES:
+                    if json_failures >= _FULL_FILE_FALLBACK_AFTER_FAILURES and not full_file_only:
                         full_file_only = True
+                        _sync_apply_system_message(
+                            conversation,
+                            goal=plan.goal,
+                            body=plan.body,
+                            file_contents=file_contents,
+                            allowed_files=allowed_files,
+                            full_file_only=True,
+                        )
                     truncated = looks_like_truncated_json(last_raw)
                     retry_correction = _build_apply_correction(
                         full_file_only=full_file_only,
@@ -500,8 +535,16 @@ class ImprovementPlanImplementationService:
                 except ValueError as exc:
                     last_parse_error = str(exc)
                     json_failures += 1
-                    if json_failures >= _FULL_FILE_FALLBACK_AFTER_FAILURES:
+                    if json_failures >= _FULL_FILE_FALLBACK_AFTER_FAILURES and not full_file_only:
                         full_file_only = True
+                        _sync_apply_system_message(
+                            conversation,
+                            goal=plan.goal,
+                            body=plan.body,
+                            file_contents=file_contents,
+                            allowed_files=allowed_files,
+                            full_file_only=True,
+                        )
                     parse_correction = _build_apply_correction(
                         full_file_only=full_file_only,
                     )
