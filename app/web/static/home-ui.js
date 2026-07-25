@@ -21,11 +21,45 @@ function updateEssenceState() {
 function formatBusyWakeMessage(snapshot) {
   const headline = (snapshot.headline || "I'm working on something.").trim();
   const detail = (snapshot.detail || "").trim();
-  if (detail && detail !== headline && !headline.includes(detail)) {
-    return `I'm still working. ${headline} — ${detail}`;
-  }
-  return `I'm still working. ${headline}`;
+  const timerPhrase = formatBusyWakeTimerPhrase(snapshot.task_timer);
+  const variants = [
+    (h, d, timer) => {
+      if (d && d !== h && !h.includes(d)) {
+        return `I'm still working. ${h} — ${d}${timer}`;
+      }
+      return `I'm still working. ${h}${timer}`;
+    },
+    (h, d, timer) => {
+      if (d && d !== h && !h.includes(d)) {
+        return `Still on it. ${h}. ${d}${timer}`;
+      }
+      return `Still on it. ${h}${timer}`;
+    },
+    (h, d, timer) => {
+      if (d && d !== h && !h.includes(d)) {
+        return `Hang on — ${h}. ${d}${timer}`;
+      }
+      return `Hang on — ${h}${timer}`;
+    },
+  ];
+  busyWakeVariantIndex = (busyWakeVariantIndex + 1) % variants.length;
+  return variants[busyWakeVariantIndex](headline, detail, timerPhrase);
 }
+
+function formatBusyWakeTimerPhrase(taskTimer) {
+  if (!taskTimer || !taskTimer.label) {
+    return "";
+  }
+  const elapsedSeconds = getTaskTimerElapsedSeconds(taskTimer);
+  const expectedSeconds = Number(taskTimer.expected_seconds) || 0;
+  if (expectedSeconds <= 0) {
+    return "";
+  }
+  const elapsedPhrase = formatTaskTimerElapsedPhrase(elapsedSeconds, expectedSeconds);
+  return ` ${elapsedPhrase}.`;
+}
+
+let busyWakeVariantIndex = -1;
 
 function isWorkingOnTask() {
   return requestInFlight || currentActivitySnapshot.state === "working";

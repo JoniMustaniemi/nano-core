@@ -284,7 +284,6 @@ class AgentOrchestrator:
             response = self.presence_handler.handle_pending(
                 message=message,
                 conversation_id=conversation_id,
-                client=get_llm_client(),
             )
             if response is not None:
                 return response

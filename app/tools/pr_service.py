@@ -4,11 +4,8 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from app.config import get_settings
 from app.runtime.activity import activity
-from app.runtime.long_task_progress import (
-    PR_TASK_PROGRESS_INTERVAL_SECONDS,
-    LongTaskProgressReporter,
-)
 from app.runtime.status_copy import (
     COLLECTED_CHANGE_CONTEXT_TITLE,
     COMMITTING_CHANGES_TITLE,
@@ -20,7 +17,14 @@ from app.runtime.status_copy import (
     NAMING_PR_TITLE,
     OPENING_PR_TITLE,
     PR_CREATED_TITLE,
+    PR_LINT_TIMER_LABEL,
+    PR_LINT_TIMER_SECONDS,
     PR_NAMING_FAILED_TITLE,
+    PR_NAMING_TIMER_LABEL,
+    PR_NAMING_TIMER_SECONDS,
+    PR_OPENING_TIMER_LABEL,
+    PR_OPENING_TIMER_SECONDS,
+    PR_VERIFY_TIMER_LABEL,
     PR_WORKFLOW_FAILED_TITLE,
     PREPARING_PR_LINT_DETAIL,
     PREPARING_PR_PREFLIGHT_DETAIL,
@@ -55,6 +59,7 @@ from app.tools.pr_verify import command_display, run_pr_lint, run_pr_verificatio
 
 
 def _finalize_pr_activity(result: PrResult) -> None:
+    activity.clear_task_timer()
     if result.ok:
         return
     activity.standby(
@@ -166,13 +171,8 @@ class PullRequestService:
             detail=PREPARING_PR_LINT_DETAIL,
             source="tools.pr_service",
         )
-        with LongTaskProgressReporter(
-            task_name="pull request",
-            interval_seconds=PR_TASK_PROGRESS_INTERVAL_SECONDS,
-            announce_on_start=True,
-        ) as progress:
-            progress.update(step="lint")
-            lint = run_pr_lint()
+        activity.start_task_timer(PR_LINT_TIMER_LABEL, PR_LINT_TIMER_SECONDS)
+        lint = run_pr_lint()
         if not lint.ok:
             activity.error(
                 title=LINT_CHECKS_FAILED_TITLE,
@@ -212,13 +212,12 @@ class PullRequestService:
             detail="Running the full test suite. This can take a few minutes.",
             source="tools.pr_service",
         )
-        with LongTaskProgressReporter(
-            task_name="pull request",
-            interval_seconds=PR_TASK_PROGRESS_INTERVAL_SECONDS,
-            announce_on_start=True,
-        ) as progress:
-            progress.update(step="verify")
-            verify = run_pr_verification()
+        settings = get_settings()
+        activity.start_task_timer(
+            PR_VERIFY_TIMER_LABEL,
+            settings.github_pr_verify_timeout_seconds,
+        )
+        verify = run_pr_verification()
         if not verify.ok:
             failure_detail = verify.output or verify.error or "Verification failed."
             activity.error(
@@ -247,6 +246,7 @@ class PullRequestService:
             detail=NAMING_PR_DETAIL,
             source="tools.pr_service",
         )
+        activity.start_task_timer(PR_NAMING_TIMER_LABEL, PR_NAMING_TIMER_SECONDS)
         try:
             naming = self.naming_service.generate(client=client, context=context)
         except RuntimeError as exc:
@@ -311,6 +311,7 @@ class PullRequestService:
             detail=f"{current_branch} -> {base_branch}",
             source="tools.pr_service",
         )
+        activity.start_task_timer(PR_OPENING_TIMER_LABEL, PR_OPENING_TIMER_SECONDS)
         pr_result = run_gh(
             "pr",
             "create",
@@ -353,6 +354,7 @@ class PullRequestService:
         url = pr_result.stdout.strip()
         if not url:
             return self._fail("pr_create", "GitHub CLI did not return a pull request URL.")
+        activity.clear_task_timer()
         activity.standby(
             title=PR_CREATED_TITLE,
             detail=url,

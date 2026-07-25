@@ -107,11 +107,15 @@ def test_background_tick_yes_delivers_and_drafts_plan(tmp_path, monkeypatch) -> 
         lambda goal, limit=40: ["- app/main.py: Main entrypoint."],
     )
 
+    monkeypatch.setattr(
+        "app.assistant.flows.presence_gate.get_code_llm_client",
+        lambda: _DraftClient(),
+    )
+
     handler = PresenceGateHandler()
     source = handler.handle_pending(
         message="yes",
         conversation_id="agent-default",
-        client=_DraftClient(),
     )
 
     assert source is not None
@@ -196,7 +200,7 @@ def test_background_tick_skips_crawl_when_plan_pipeline_active(tmp_path, monkeyp
             )
 
     monkeypatch.setattr(
-        "app.proactive.background_tick.get_llm_client",
+        "app.proactive.background_tick.get_code_llm_client",
         lambda: _CrawlClient(),
     )
     monkeypatch.setattr(

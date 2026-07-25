@@ -134,6 +134,14 @@ NOTED_FOR_LATER_TITLE = "I noted something to discuss later."
 DISMISSED_FOLLOW_UP_TITLE = "I dismissed a follow-up note."
 RESCHEDULED_FOLLOW_UP_TITLE = "I rescheduled a follow-up note."
 
+PR_LINT_TIMER_LABEL = "Lint checks"
+PR_VERIFY_TIMER_LABEL = "Running tests"
+PR_NAMING_TIMER_LABEL = "Naming pull request"
+PR_OPENING_TIMER_LABEL = "Opening pull request"
+PR_LINT_TIMER_SECONDS = 60
+PR_NAMING_TIMER_SECONDS = 120
+PR_OPENING_TIMER_SECONDS = 120
+
 _TOOL_ACTIVITY_TITLES: dict[str, str] = {
     "cancel_timers": "I'm cancelling timers.",
     "check_health": "I'm running a health check.",

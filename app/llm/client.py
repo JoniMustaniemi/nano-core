@@ -7,12 +7,34 @@ from typing import Any
 import httpx
 
 from app.config import get_settings
+from app.llm.roles import ModelRole
 
 _OLLAMA_CHAT_PATH = "/api/chat"
 _LLAMA_CPP_CHAT_PATH = "/v1/chat/completions"
 
 
 class LocalLLMClient:
+    def __init__(self, *, role: ModelRole = ModelRole.CHAT) -> None:
+        self._role = role
+
+    def _local_model_path(self) -> str:
+        settings = get_settings()
+        if self._role == ModelRole.CODE:
+            return settings.llm_code_model_path or settings.llm_model_path
+        return settings.llm_model_path
+
+    def _remote_model_name(self) -> str:
+        settings = get_settings()
+        if self._role == ModelRole.CODE:
+            return settings.llm_code_model or settings.llm_model
+        return settings.llm_model
+
+    def _context_size(self) -> int:
+        settings = get_settings()
+        if self._role == ModelRole.CODE:
+            return settings.llm_code_context_size
+        return settings.llm_context_size
+
     def complete(
         self,
         messages: Sequence[Mapping[str, str]],
@@ -143,8 +165,7 @@ class LocalLLMClient:
         Returns:
             Parsed value when available; otherwise None.
         """
-        settings = get_settings()
-        if not settings.llm_model_path:
+        if not self._local_model_path():
             if raise_on_error:
                 return (
                     "Local LLM is not available yet. Set LLM_MODEL_PATH to a GGUF "
@@ -159,8 +180,8 @@ class LocalLLMClient:
 
         try:
             model = _load_local_model(
-                settings.llm_model_path,
-                settings.llm_context_size,
+                self._local_model_path(),
+                self._context_size(),
             )
             result = model.create_chat_completion(
                 messages=list(messages),
@@ -298,13 +319,12 @@ class LocalLLMClient:
         Returns:
             Dictionary containing the requested data.
         """
-        settings = get_settings()
         resolved_max_tokens, resolved_temperature = self._resolve_completion_options(
             max_tokens=max_tokens,
             temperature=temperature,
         )
         return {
-            "model": settings.llm_model,
+            "model": self._remote_model_name(),
             "messages": list(messages),
             "stream": False,
             "options": {
@@ -331,13 +351,12 @@ class LocalLLMClient:
         Returns:
             Dictionary containing the requested data.
         """
-        settings = get_settings()
         resolved_max_tokens, resolved_temperature = self._resolve_completion_options(
             max_tokens=max_tokens,
             temperature=temperature,
         )
         return {
-            "model": settings.llm_model,
+            "model": self._remote_model_name(),
             "messages": list(messages),
             "stream": False,
             "max_tokens": resolved_max_tokens,

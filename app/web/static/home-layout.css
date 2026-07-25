@@ -323,12 +323,45 @@ body[data-display-state="working"] .commands-reveal-zone {
 .essence-zone {
   flex: 1 1 auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 0;
   position: relative;
   overflow: visible;
   background: transparent;
+}
+
+.task-wait-timer {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+  max-width: var(--content-max);
+  padding: 0 1rem;
+  color: var(--muted);
+  font: 500 0.82rem/1.4 "Cascadia Mono", "Consolas", monospace;
+  letter-spacing: 0.02em;
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.task-wait-timer[hidden] {
+  display: none;
+}
+
+.task-wait-label {
+  color: var(--accent-soft);
+}
+
+.task-wait-clock {
+  color: var(--muted);
 }
 
 .essence-canvas-wrap {

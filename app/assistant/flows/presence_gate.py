@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 
 from app.assistant.pending import pending_interactions
 from app.assistant.response_source import ResponseSource, answer_source
 from app.config import get_settings
-from app.llm.factory import get_llm_client
+from app.llm.factory import get_code_llm_client
 from app.memory.internal_note_service import internal_note_service
 from app.proactive.registry import delivery_registry
 from app.proactive.store import proactive_store
@@ -60,7 +59,6 @@ class PresenceGateHandler:
         *,
         message: str,
         conversation_id: str,
-        client: Any | None = None,
     ) -> ResponseSource | None:
         from app.assistant.rules.messages import is_presence_confirmation, is_rejection_message
 
@@ -103,10 +101,9 @@ class PresenceGateHandler:
 
         pending_interactions.clear(conversation_id)
         proactive_store.clear_presence()
-        llm_client = client or get_llm_client()
         source = delivery_registry.deliver(
             offer=offer,
-            client=llm_client,
+            client=get_code_llm_client(),
             conversation_id=conversation_id,
         )
         if parsed_note_id is not None and "could not draft" not in source.facts.lower():

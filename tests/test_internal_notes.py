@@ -1,15 +1,11 @@
 from datetime import UTC, datetime
 
 from app.memory import internal_notes
-from app.memory.db import create_db_and_tables
 from app.memory.internal_note_service import InternalNoteService
 from app.proactive.types import ProactiveOffer
 
 
-def test_internal_note_lifecycle(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'notes.sqlite3'}")
-    create_db_and_tables()
-
+def test_internal_note_lifecycle() -> None:
     offer = ProactiveOffer(
         kind="self_improvement_suggestion",
         title="Improve timers",
@@ -29,10 +25,8 @@ def test_internal_note_lifecycle(tmp_path, monkeypatch) -> None:
     assert not due_after
 
 
-def test_internal_note_reschedule_dismisses_after_max_attempts(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'notes2.sqlite3'}")
+def test_internal_note_reschedule_dismisses_after_max_attempts(monkeypatch) -> None:
     monkeypatch.setenv("INTERNAL_NOTE_MAX_ATTEMPTS", "2")
-    create_db_and_tables()
 
     from app.config import get_settings
 

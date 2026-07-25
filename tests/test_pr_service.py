@@ -133,6 +133,61 @@ def test_pr_service_verify_failure_does_not_mutate_git(monkeypatch: pytest.Monke
     assert not any(call[:2] == ("commit",) or call[:2] == ("push",) for call in git_calls)
 
 
+def test_pr_service_starts_verify_task_timer(monkeypatch: pytest.MonkeyPatch) -> None:
+    timer_calls: list[tuple[str, int]] = []
+
+    monkeypatch.setattr("app.tools.pr_service.is_git_repo", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.gh_available", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.gh_authenticated", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.get_open_pull_request", lambda: None)
+    monkeypatch.setattr("app.tools.pr_service.has_publishable_changes", lambda: True)
+    monkeypatch.setattr(
+        "app.tools.pr_service.collect_change_context",
+        lambda: {"changed_files": ["a.py"], "dirty": True},
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_pr_lint",
+        lambda: SimpleNamespace(
+            ok=True,
+            command=["python", "-m", "ruff", "check", "app", "tests"],
+            exit_code=0,
+            output="",
+            error=None,
+        ),
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_pr_verification",
+        lambda: SimpleNamespace(
+            ok=False,
+            command=["python", "-m", "pytest", "-q"],
+            exit_code=1,
+            output="FAILED",
+            error="Verification failed.",
+        ),
+    )
+    monkeypatch.setattr("app.tools.pr_service.run_git", lambda *args: SimpleNamespace(returncode=0, stdout="", stderr=""))
+    monkeypatch.setattr("app.tools.pr_service.activity.working", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.log", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.error", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.standby", lambda **kwargs: None)
+    monkeypatch.setattr(
+        "app.tools.pr_service.activity.start_task_timer",
+        lambda label, expected_seconds: timer_calls.append((label, expected_seconds)),
+    )
+    monkeypatch.setattr("app.tools.pr_service.activity.clear_task_timer", lambda: None)
+    monkeypatch.setattr(
+        "app.tools.pr_service.get_settings",
+        lambda: SimpleNamespace(github_pr_verify_timeout_seconds=300),
+    )
+
+    result = PullRequestService().run(client=SimpleNamespace())
+
+    assert result.ok is False
+    assert result.step == "verify"
+    assert ("Running tests", 300) in timer_calls
+    assert ("Lint checks", 60) in timer_calls
+
+
 def test_pr_service_lint_failure_does_not_mutate_git(monkeypatch: pytest.MonkeyPatch) -> None:
     git_calls: list[tuple[str, ...]] = []
 

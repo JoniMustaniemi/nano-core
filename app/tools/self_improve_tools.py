@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.llm.factory import get_llm_client
+from app.llm.factory import get_code_llm_client
 from app.memory.internal_note_service import internal_note_service
 from app.proactive.store import proactive_store
 from app.tools.base import ToolSpec
@@ -28,7 +28,7 @@ def _draft_improvement_plan(args: dict[str, Any]) -> str:
     )
     preferred_files = _merge_preferred_files(note_files, proactive_store.get_last_files())
     result = ImprovementPlanService().draft(
-        client=get_llm_client(),
+        client=get_code_llm_client(),
         goal=goal,
         preferred_files=preferred_files or None,
         source_note_id=internal_note_id,

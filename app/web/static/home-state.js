@@ -39,6 +39,9 @@ const planReaderBody = document.getElementById("plan-reader-body");
 const planProcessButton = document.getElementById("plan-process-button");
 const planCopyButton = document.getElementById("plan-copy-button");
 const essenceCanvas = document.getElementById("essence-canvas");
+const taskWaitTimer = document.getElementById("task-wait-timer");
+const taskWaitLabel = taskWaitTimer ? taskWaitTimer.querySelector(".task-wait-label") : null;
+const taskWaitClock = taskWaitTimer ? taskWaitTimer.querySelector(".task-wait-clock") : null;
 const controlsRevealZone = document.getElementById("controls-reveal-zone");
 const controlsRevealButton = document.getElementById("controls-reveal");
 const commandsRevealZone = document.getElementById("commands-reveal-zone");
@@ -66,6 +69,7 @@ let currentActivitySnapshot = {
   state: "standby",
   headline: "I'm in standby.",
   detail: "Awaiting your input.",
+  task_timer: null,
 };
 const activityStates = ["standby", "working", "error"];
 const STANDBY_HEADLINE = "I'm in standby.";
@@ -93,6 +97,8 @@ let statusClearPending = false;
 let statusRevealTimer = null;
 let lastRenderedStatusText = "";
 let workingDotsTimer = null;
+let currentTaskTimer = null;
+let taskWaitClockInterval = null;
 let savedResponseBeforeWorking = null;
 let suppressWorkingResponse = false;
 const ANSWER_CLEAR_DELAY_MS = 20000;

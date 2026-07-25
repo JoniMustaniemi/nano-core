@@ -379,6 +379,7 @@ async function acknowledgeBusyWake() {
         state: activityStates.includes(fresh.state) ? fresh.state : snapshot.state,
         headline: fresh.headline || snapshot.headline,
         detail: fresh.detail ?? snapshot.detail,
+        task_timer: fresh.task_timer ?? snapshot.task_timer ?? null,
       };
     } catch (_error) {
       // Fall back to the cached activity snapshot.

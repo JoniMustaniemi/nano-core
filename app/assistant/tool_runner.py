@@ -18,6 +18,7 @@ from app.tools.registry import tool_announcement_for
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
 
 _STRUCTURED_RESULT_TOOLS = frozenset({"draft_improvement_plan", "create_pull_request"})
+_SERVER_ANNOUNCE_SKIP = frozenset({"create_pull_request"})
 _STRUCTURED_FAILURE_TITLES: dict[str, str] = {
     "draft_improvement_plan": failed_tool_title("draft_improvement_plan"),
     "create_pull_request": failed_tool_title("create_pull_request"),
@@ -67,7 +68,7 @@ class ToolRunner:
             detail=RUNNING_TOOL_DETAIL,
             source="assistant.tool_runner",
         )
-        if announce:
+        if announce and tool_name not in _SERVER_ANNOUNCE_SKIP:
             self.announce_message(tool_announcement_for(tool_name))
 
         try:
