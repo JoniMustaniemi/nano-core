@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import platform
 import sys
@@ -300,7 +299,3 @@ def format_system_analysis_report() -> str:
         "and let you know."
     )
     return "\n".join(lines)
-
-
-def format_system_analysis_json() -> str:
-    return json.dumps(collect_system_specs(), indent=2)

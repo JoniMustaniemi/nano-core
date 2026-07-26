@@ -1,6 +1,5 @@
-from helpers.agent_fixtures import HealthSummaryClient, patch_agent
+from helpers.agent_fixtures import HealthSummaryClient, agent_respond, patch_agent
 
-from app.assistant.agent import AgentService
 from app.assistant.response_polish import is_polish_prompt
 
 
@@ -22,7 +21,7 @@ def test_agent_system_analysis_skips_polish_when_llm_unavailable(monkeypatch, tm
     client = _PolishFailsClient()
     patch_agent(monkeypatch, client=client, tmp_path=tmp_path, announce=lambda text: None)
 
-    content = AgentService().respond("Can you run a system analysis for me?")
+    content = agent_respond("Can you run a system analysis for me?")
 
     assert "Here's how I'm running on your machine." in content
     assert "Local LLM is not available yet" not in content
@@ -37,7 +36,7 @@ def test_agent_routes_system_analysis_request(monkeypatch, tmp_path) -> None:
         announce=lambda text: None,
     )
 
-    content = AgentService().respond("Can you run a system analysis for me?")
+    content = agent_respond("Can you run a system analysis for me?")
 
     assert "Here's how I'm running on your machine." in content
     assert client.calls == 0

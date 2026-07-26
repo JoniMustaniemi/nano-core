@@ -38,11 +38,6 @@ def disable_background_jobs(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.main.scheduler.shutdown", lambda wait=False: None)
 
 
-@pytest.fixture(autouse=True)
-def disable_uvicorn_reload_in_tests(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("NANO_UVICORN_RELOAD", raising=False)
-
-
 @pytest.fixture
 def api_client():
     from fastapi.testclient import TestClient

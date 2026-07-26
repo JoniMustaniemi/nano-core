@@ -4,9 +4,9 @@ import json
 import re
 from typing import Literal
 
-from app.assistant.agent_rules import wipe_confirmation_prompt
 from app.assistant.prompts import ALIGNMENT_CHECK_SYSTEM_PROMPT, GUARD_REWRITE_SYSTEM_PROMPT
 from app.assistant.response_source import ResponseSource
+from app.assistant.rules import IDENTITY_OR_CAPABILITY_TRIGGERS, wipe_confirmation_prompt
 from app.llm.protocol import LLMClient
 
 ViolationKind = Literal[
@@ -64,18 +64,6 @@ _SELF_DESCRIPTION_PATTERNS = (
     re.compile(r"\buse local tools\b", re.IGNORECASE),
     re.compile(r"\bread and write text files\b", re.IGNORECASE),
 )
-
-_IDENTITY_OR_CAPABILITY_TRIGGERS = (
-    "what can you do",
-    "what do you do",
-    "what are your capabilities",
-    "what are you able to do",
-    "capabilities",
-    "who are you",
-    "what are you",
-    "introduce yourself",
-)
-
 _UNSUPPORTED_CONTINUATION_PATTERNS = (
     re.compile(r"\bi\s+will\s+continue\s+to\b", re.IGNORECASE),
     re.compile(
@@ -157,7 +145,7 @@ def looks_like_self_description_instead_of_answer(user_message: str, content: st
         True when the response appears to be an accidental identity/capability fallback.
     """
     lowered_message = user_message.lower()
-    if any(trigger in lowered_message for trigger in _IDENTITY_OR_CAPABILITY_TRIGGERS):
+    if any(trigger in lowered_message for trigger in IDENTITY_OR_CAPABILITY_TRIGGERS):
         return False
     return any(pattern.search(content) for pattern in _SELF_DESCRIPTION_PATTERNS)
 

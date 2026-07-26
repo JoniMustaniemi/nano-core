@@ -49,11 +49,11 @@ def test_chat_updates_activity(api_client, monkeypatch) -> None:
         None.
     """
     monkeypatch.setattr(
-        "app.assistant.service.get_llm_client",
+        "app.assistant.orchestrator.get_llm_client",
         lambda: wrap_with_alignment_intercept(_FakeClient()),
     )
 
-    response = api_client.post("/chat", json={"message": "Hello", "mode": "chat"})
+    response = api_client.post("/api/chat", json={"message": "Hello", "mode": "chat"})
     status = api_client.get("/api/status")
 
     assert response.status_code == 200
@@ -82,7 +82,7 @@ def test_health_check_sets_working_activity(api_client, monkeypatch) -> None:
     )
     silence_announce_voice(monkeypatch)
 
-    response = api_client.post("/chat", json={"message": "Check your health.", "mode": "agent"})
+    response = api_client.post("/api/chat", json={"message": "Check your health.", "mode": "agent"})
     status = api_client.get("/api/status")
 
     assert response.status_code == 200
@@ -106,11 +106,11 @@ def test_route_acknowledgment_uses_personality_copy() -> None:
 
 def test_agent_request_acknowledges_before_processing(api_client, monkeypatch) -> None:
     monkeypatch.setattr(
-        "app.assistant.service.get_llm_client",
+        "app.assistant.orchestrator.get_llm_client",
         lambda: wrap_with_alignment_intercept(_FakeClient()),
     )
 
-    response = api_client.post("/chat", json={"message": "Hello", "mode": "chat"})
+    response = api_client.post("/api/chat", json={"message": "Hello", "mode": "chat"})
     status = api_client.get("/api/status")
 
     assert response.status_code == 200
@@ -182,15 +182,48 @@ def test_task_timer_cleared_on_error() -> None:
     activity.standby()
 
 
+def test_release_to_idle_returns_standby() -> None:
+    from app.runtime.activity import activity
+    from app.runtime.status_copy import STANDBY_GREETINGS
+
+    activity.working(title="Opening pull request", detail="Running checks.")
+    activity.release_to_idle(source="test.activity")
+    snapshot = activity.snapshot()
+
+    assert snapshot["state"] == "standby"
+    assert snapshot["headline"] in set(STANDBY_GREETINGS)
+    assert snapshot["task_timer"] is None
+
+
+def test_chat_exception_releases_activity_to_idle(api_client, monkeypatch) -> None:
+    from app.runtime.activity import activity
+
+    activity.working(title="Opening pull request", detail="Running checks.")
+
+    def _boom(self, message: str, mode: str = "agent"):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("app.assistant.service.AssistantService.respond", _boom)
+
+    response = api_client.post(
+        "/api/chat", json={"message": "Open a pull request.", "mode": "agent"}
+    )
+    status = api_client.get("/api/status")
+
+    assert response.status_code == 200
+    assert "went wrong" in response.json()["content"].lower()
+    assert status.json()["state"] == "standby"
+
+
 def test_active_timers_appear_in_snapshot() -> None:
     from datetime import UTC, datetime, timedelta
 
     from app.memory import repository
-    from app.runtime.activity import activity
+    from app.runtime.snapshot import build_runtime_snapshot
 
     due_at = datetime.now(UTC) + timedelta(minutes=5)
     timer = repository.add_timer("Tea", due_at)
-    snapshot = activity.snapshot()
+    snapshot = build_runtime_snapshot()
 
     assert len(snapshot["active_timers"]) == 1
     entry = snapshot["active_timers"][0]
@@ -202,20 +235,20 @@ def test_active_timers_appear_in_snapshot() -> None:
 
 
 def test_active_timers_empty_when_none() -> None:
-    from app.runtime.activity import activity
+    from app.runtime.snapshot import build_runtime_snapshot
 
-    assert activity.snapshot()["active_timers"] == []
+    assert build_runtime_snapshot()["active_timers"] == []
 
 
 def test_active_stopwatches_appear_in_snapshot() -> None:
     from datetime import UTC, datetime, timedelta
 
     from app.memory import repository
-    from app.runtime.activity import activity
+    from app.runtime.snapshot import build_runtime_snapshot
 
     started_at = datetime.now(UTC) - timedelta(seconds=42)
     stopwatch = repository.add_stopwatch("Lap", started_at=started_at)
-    snapshot = activity.snapshot()
+    snapshot = build_runtime_snapshot()
 
     assert len(snapshot["active_timers"]) == 1
     entry = snapshot["active_timers"][0]

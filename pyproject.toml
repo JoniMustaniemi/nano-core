@@ -28,8 +28,6 @@ dev = [
 local-llm = [
   "llama-cpp-python",
 ]
-voice = [
-]
 
 [project.scripts]
 nano-core = "app.cli:app"
@@ -63,3 +61,4 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --basetemp=.pytest-tmp"
+tmp_path_retention_policy = "failed"

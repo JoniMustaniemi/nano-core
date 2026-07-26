@@ -346,3 +346,22 @@ def pr_failure_voice_message(error: str, step: str | None = None) -> str:
     if cleaned:
         return cleaned.rstrip(".")
     return PR_WORKFLOW_FAILED_TITLE.rstrip(".")
+
+
+def client_copy_payload() -> dict[str, str]:
+    """Return UI copy constants for the web client (camelCase keys)."""
+    return {
+        "standbyHeadline": STANDBY_TITLE,
+        "standbyDetailDefault": STANDBY_DETAIL_DEFAULT,
+        "listeningActivityHeadline": "Waiting for your input.",
+        "wakeArmedHeadline": 'Say "hey nano" when ready.',
+        "wakeArmedDetail": "Microphone on.",
+        "viewSessionHeadline": "Say close to dismiss.",
+        "presenceListenHeadline": PRESENCE_TITLE,
+        "presenceListenDetail": "Reply yes or no.",
+        "workingDetailDefault": RECEIVED_DETAIL,
+        "receivedTitle": RECEIVED_TITLE,
+        "receivedDetail": RECEIVED_DETAIL,
+        "idleResponse": "How can I help?",
+        "defaultNoAnswer": "no",
+    }

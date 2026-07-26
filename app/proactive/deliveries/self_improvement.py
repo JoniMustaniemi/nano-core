@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from app.assistant.response_source import ResponseSource, answer_source
+from app.common.types import ProactiveOffer
 from app.llm.protocol import LLMClient
 from app.memory import improvement_plans, internal_notes
 from app.proactive.registry import ProactiveDeliveryRegistry
 from app.proactive.store import proactive_store
-from app.proactive.types import ProactiveOffer
 from app.tools.improvement_plan_service import ImprovementPlanService
 
 

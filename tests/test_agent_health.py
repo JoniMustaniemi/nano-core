@@ -4,10 +4,9 @@ from helpers.agent_fixtures import (
     HealthSummaryClient,
     StatusAnswerClient,
     StoryClient,
+    agent_respond,
     patch_agent,
 )
-
-from app.assistant.agent import AgentService
 
 
 def test_agent_can_check_its_own_health(monkeypatch, tmp_path) -> None:
@@ -36,7 +35,7 @@ def test_agent_can_check_its_own_health(monkeypatch, tmp_path) -> None:
         ],
     )
 
-    content = AgentService().respond("Check your health.")
+    content = agent_respond("Check your health.")
 
     assert content == "My voice check is failing: Voice backend is unavailable."
     assert client.calls == 0
@@ -67,7 +66,7 @@ def test_agent_health_summary_is_deterministic_all_clear(monkeypatch, tmp_path) 
         ],
     )
 
-    content = AgentService().respond("Check your health.")
+    content = agent_respond("Check your health.")
 
     assert content == "My diagnostics are clear. No issues were found."
     assert client.calls == 0
@@ -101,7 +100,7 @@ def test_agent_health_summary_never_thanks_or_mentions_user_health(
         ],
     )
 
-    content = AgentService().respond("Run diagnostics.")
+    content = agent_respond("Run diagnostics.")
 
     assert "My diagnostics" in content
     assert "your health" not in content.lower()
@@ -135,7 +134,7 @@ def test_agent_health_summary_names_failing_check(monkeypatch, tmp_path) -> None
         ],
     )
 
-    content = AgentService().respond("Check your health.")
+    content = agent_respond("Check your health.")
 
     assert content == "My test_failure check is failing: Testing the warning path."
     assert client.calls == 0
@@ -166,7 +165,7 @@ def test_agent_health_summary_handles_missing_failure_detail(monkeypatch, tmp_pa
         ],
     )
 
-    content = AgentService().respond("Check your health.")
+    content = agent_respond("Check your health.")
 
     assert content == "My voice check is failing."
     assert client.calls == 0
@@ -193,7 +192,7 @@ def test_agent_does_not_run_health_check_for_story_about_status(
         lambda: (_ for _ in ()).throw(AssertionError("health check should not run")),
     )
 
-    content = AgentService().respond("Tell me a story about a status light.")
+    content = agent_respond("Tell me a story about a status light.")
 
     assert content == "Once upon a protocol, a light learned restraint."
     assert client.calls == 1
@@ -220,7 +219,7 @@ def test_agent_does_not_run_health_check_for_status_question(
         lambda: (_ for _ in ()).throw(AssertionError("health check should not run")),
     )
 
-    content = AgentService().respond("What is your status?")
+    content = agent_respond("What is your status?")
 
     assert content == "Operational enough. A triumph by local standards."
     assert client.calls == 1
@@ -254,7 +253,7 @@ def test_agent_runs_health_check_for_explicit_diagnostics_request(
         ],
     )
 
-    content = AgentService().respond("Run diagnostics.")
+    content = agent_respond("Run diagnostics.")
 
     assert content == "My diagnostics are clear. No issues were found."
     assert client.calls == 0
@@ -289,7 +288,7 @@ def test_agent_health_summary_omits_passing_checks_when_everything_is_ok(
         ],
     )
 
-    content = AgentService().respond("Check your health.")
+    content = agent_respond("Check your health.")
 
     assert content == "My diagnostics are clear. No issues were found."
     assert "Database is reachable." not in content

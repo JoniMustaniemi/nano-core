@@ -16,12 +16,7 @@ class HealthPayload(BaseModel):
 
 @router.get("/health")
 def health() -> HealthPayload:
-    """
-    Return service health information.
-
-    Returns:
-        HealthPayload result.
-    """
+    """Return service health information."""
     settings = get_settings()
     checks = run_health_checks()
     overall = "ok" if all(check.ok for check in checks) else "error"

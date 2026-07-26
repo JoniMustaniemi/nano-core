@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 
+from app.common.types import ProactiveOffer
 from app.memory import internal_notes
 from app.memory.internal_note_service import InternalNoteService
-from app.proactive.types import ProactiveOffer
 
 
 def test_internal_note_lifecycle() -> None:

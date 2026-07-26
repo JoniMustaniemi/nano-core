@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from typing import Any
 
-from app.assistant.rules.parsing import looks_like_truncated_json
+from app.common.json_parsing import looks_like_truncated_json
 from app.config import get_settings
 from app.llm.factory import get_code_llm_client, get_llm_client
 from app.memory import improvement_plans
+from app.memory.improvement_plans import files_from_plan
 from app.memory.models import ImprovementPlan
 from app.runtime.activity import activity
 from app.runtime.long_task_progress import LongTaskProgressReporter
@@ -19,16 +19,17 @@ from app.runtime.status_copy import (
     IMPROVEMENT_PLAN_IMPLEMENTED_TITLE,
 )
 from app.tools.files import read_text_file, write_text_file
-from app.tools.git_command import run_git
-from app.tools.git_github import (
+from app.tools.git_command import (
+    gh_missing_message,
+    git_missing_message,
+    resolve_executable,
+    run_git,
+)
+from app.tools.git_ops import is_git_repo, working_tree_dirty
+from app.tools.github_ops import (
     get_open_pull_request,
     gh_authenticated,
     gh_available,
-    gh_missing_message,
-    git_missing_message,
-    is_git_repo,
-    resolve_executable,
-    working_tree_dirty,
 )
 from app.tools.improvement_plan_service import PLAN_TEMPERATURE, _validate_preferred_files
 from app.tools.pr_service import PrResult, PullRequestService
@@ -65,16 +66,6 @@ class ImplementationResult:
     error: str | None = None
 
 
-def _files_from_plan(plan: ImprovementPlan) -> list[str]:
-    try:
-        files = json.loads(plan.files_json)
-        if not isinstance(files, list):
-            return []
-    except json.JSONDecodeError:
-        return []
-    return [str(path) for path in files if str(path).strip()]
-
-
 def _normalize_plan_path(raw_path: str) -> str:
     cleaned = str(raw_path).strip().replace("\\", "/")
     while cleaned.startswith("./"):
@@ -109,7 +100,7 @@ def check_implementation_preflight(
 
     settings = get_settings()
     files = _validate_preferred_files(
-        _files_from_plan(plan), allowed=settings.self_improve_allowed_prefix
+        files_from_plan(plan), allowed=settings.self_improve_allowed_prefix
     )
     if not files:
         return ImplementationPreflightResult(
@@ -358,7 +349,7 @@ class ImprovementPlanImplementationService:
 
         settings = get_settings()
         allowed_files = _validate_preferred_files(
-            _files_from_plan(plan),
+            files_from_plan(plan),
             allowed=settings.self_improve_allowed_prefix,
         )
         if not allowed_files:

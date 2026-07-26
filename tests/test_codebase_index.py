@@ -10,7 +10,7 @@ from app.memory.codebase_index import (
 )
 from app.memory.db import create_db_and_tables
 from app.memory.models import CodebaseFileRecord
-from app.proactive.codebase_files import file_content_hash
+from app.workspace.files import file_content_hash
 
 
 @pytest.fixture

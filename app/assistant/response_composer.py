@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.assistant.agent_rules import confirmation_followup, wipe_confirmation_prompt
 from app.assistant.prompts import (
     COMPOSE_HINTS,
     RESPONSE_COMPOSER_PROMPT,
@@ -11,6 +10,7 @@ from app.assistant.prompts import (
 )
 from app.assistant.response_guard import looks_like_refusal
 from app.assistant.response_source import ResponseSource
+from app.assistant.rules import confirmation_followup, wipe_confirmation_prompt
 from app.intents.self_improve import normalize_self_improve_goal
 from app.llm.protocol import LLMClient
 from app.runtime.status_copy import lint_failure_user_message

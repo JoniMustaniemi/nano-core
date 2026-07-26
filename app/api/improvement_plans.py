@@ -1,20 +1,14 @@
 from __future__ import annotations
 
-import json
-from threading import Thread
+from dataclasses import asdict
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from app.memory import improvement_plans, internal_notes
-from app.memory.models import ImprovementPlan, InternalNote
-from app.proactive.types import ProactiveOffer
-from app.tools.improvement_plan_implementation import (
-    ImprovementPlanImplementationService,
-    check_implementation_preflight,
-)
+from app.tools.improvement_plan_facade import ImprovementPlanFacade
 
-router = APIRouter(prefix="/api", tags=["improvement-plans"])
+router = APIRouter(tags=["improvement-plans"])
+_facade = ImprovementPlanFacade()
 
 
 class ImprovementPlanSummary(BaseModel):
@@ -38,160 +32,42 @@ class ImplementPlanResponse(BaseModel):
     status: str
 
 
-def _parse_files(raw: object) -> list[str]:
-    if not isinstance(raw, list):
-        return []
-    files: list[str] = []
-    for path in raw:
-        cleaned = str(path).strip()
-        if cleaned and cleaned not in files:
-            files.append(cleaned)
-    return files
-
-
-def _files_from_plan(plan: ImprovementPlan) -> list[str]:
-    try:
-        files = json.loads(plan.files_json)
-        if not isinstance(files, list):
-            return []
-    except json.JSONDecodeError:
-        return []
-    return [str(path) for path in files]
-
-
-def _goal_from_note(note: InternalNote) -> str:
-    try:
-        offer = ProactiveOffer.from_json(note.payload_json)
-    except json.JSONDecodeError:
-        return note.content.strip()
-    goal = str(offer.payload.get("goal", "")).strip()
-    if goal:
-        return goal
-    return offer.summary.strip() or note.content.strip()
-
-
-def _files_from_note(note: InternalNote) -> list[str]:
-    try:
-        offer = ProactiveOffer.from_json(note.payload_json)
-    except json.JSONDecodeError:
-        return []
-    return _parse_files(offer.payload.get("files", []))
-
-
-def _suggestion_body(note: InternalNote) -> str:
-    try:
-        offer = ProactiveOffer.from_json(note.payload_json)
-    except json.JSONDecodeError:
-        return note.content.strip()
-
-    sections: list[str] = []
-    summary = offer.summary.strip()
-    goal = str(offer.payload.get("goal", "")).strip()
-    if summary:
-        sections.append(summary)
-    if goal and goal != summary:
-        sections.append(f"Goal: {goal}")
-    content = note.content.strip()
-    if content and content not in {summary, goal}:
-        sections.append(content)
-    files = _files_from_note(note)
-    if files:
-        sections.append("Files:\n" + "\n".join(f"- {path}" for path in files))
-    sections.append(
-        "Nano will ask if you are there when idle, then draft a readable plan from this topic."
-    )
-    return "\n\n".join(section for section in sections if section)
-
-
-def _to_summary(plan: ImprovementPlan) -> ImprovementPlanSummary:
-    if plan.id is None:
-        raise ValueError("Plan must have an id")
-    return ImprovementPlanSummary(
-        id=plan.id,
-        title=plan.title,
-        goal=plan.goal,
-        status=plan.status,
-        kind="drafted",
-        files=_files_from_plan(plan),
-        created_at=plan.created_at.isoformat(),
-        processed_at=plan.processed_at.isoformat() if plan.processed_at else None,
-    )
-
-
-def _suggestion_summary(note: InternalNote) -> ImprovementPlanSummary:
-    if note.id is None:
-        raise ValueError("Suggestion must have an id")
-    return ImprovementPlanSummary(
-        id=note.id,
-        title=note.title,
-        goal=_goal_from_note(note),
-        status="waiting",
-        kind="suggestion",
-        files=_files_from_note(note),
-        created_at=note.created_at.isoformat(),
-        processed_at=None,
-    )
-
-
-def _to_detail(plan: ImprovementPlan) -> ImprovementPlanDetail:
-    summary = _to_summary(plan)
-    return ImprovementPlanDetail(**summary.model_dump(), body=plan.body)
-
-
-def _suggestion_detail(note: InternalNote) -> ImprovementPlanDetail:
-    summary = _suggestion_summary(note)
-    return ImprovementPlanDetail(**summary.model_dump(), body=_suggestion_body(note))
-
-
-def _merged_plans(*, limit: int) -> list[ImprovementPlanSummary]:
-    drafted = [_to_summary(plan) for plan in improvement_plans.list_plans(limit=limit)]
-    suggestions: list[ImprovementPlanSummary] = []
-    if not improvement_plans.has_unprocessed_plan():
-        pending = internal_notes.list_pending_self_improvement_notes(limit=1)
-        if pending:
-            suggestions = [_suggestion_summary(pending[0])]
-    merged = drafted + suggestions
-    merged.sort(key=lambda item: item.created_at, reverse=True)
-    return merged[:limit]
-
-
 @router.get("/improvement-plans", response_model=list[ImprovementPlanSummary])
 def read_improvement_plans(
     limit: int = Query(default=20, ge=1, le=100),
 ) -> list[ImprovementPlanSummary]:
-    return _merged_plans(limit=limit)
+    return [
+        ImprovementPlanSummary.model_validate(asdict(item))
+        for item in _facade.list_plans(limit=limit)
+    ]
 
 
 @router.get("/improvement-plans/suggestions/{note_id}", response_model=ImprovementPlanDetail)
 def read_improvement_suggestion(note_id: int) -> ImprovementPlanDetail:
-    note = internal_notes.get_internal_note(note_id)
-    if note is None or note.kind != "self_improvement_suggestion":
+    detail = _facade.get_suggestion(note_id)
+    if detail is None:
         raise HTTPException(status_code=404, detail="Improvement suggestion not found.")
-    return _suggestion_detail(note)
+    return ImprovementPlanDetail.model_validate(asdict(detail))
 
 
 @router.get("/improvement-plans/{plan_id}", response_model=ImprovementPlanDetail)
 def read_improvement_plan(plan_id: int) -> ImprovementPlanDetail:
-    plan = improvement_plans.get_plan(plan_id)
-    if plan is None:
+    detail = _facade.get_plan(plan_id)
+    if detail is None:
         raise HTTPException(status_code=404, detail="Improvement plan not found.")
-    return _to_detail(plan)
+    return ImprovementPlanDetail.model_validate(asdict(detail))
 
 
 @router.post("/improvement-plans/suggestions/{note_id}/process", status_code=204)
 def process_improvement_suggestion(note_id: int) -> None:
-    if not internal_notes.delete_self_improvement_suggestion(note_id):
+    if not _facade.process_suggestion(note_id):
         raise HTTPException(status_code=404, detail="Improvement suggestion not found.")
 
 
 @router.post("/improvement-plans/{plan_id}/process", status_code=204)
 def process_improvement_plan(plan_id: int) -> None:
-    if not improvement_plans.delete_plan(plan_id):
+    if not _facade.process_plan(plan_id):
         raise HTTPException(status_code=404, detail="Improvement plan not found.")
-
-
-def _run_plan_implementation(plan_id: int) -> None:
-    ImprovementPlanImplementationService().run(plan_id)
 
 
 @router.post(
@@ -200,22 +76,7 @@ def _run_plan_implementation(plan_id: int) -> None:
     response_model=ImplementPlanResponse,
 )
 def implement_improvement_plan(plan_id: int) -> ImplementPlanResponse:
-    plan = improvement_plans.get_plan(plan_id)
-    preflight = check_implementation_preflight(plan)
-    if not preflight.ok:
-        raise HTTPException(status_code=preflight.status_code, detail=preflight.error)
-
-    if not improvement_plans.try_mark_implementing(plan_id):
-        raise HTTPException(
-            status_code=409,
-            detail="Plan is not available for implementation.",
-        )
-
-    thread = Thread(
-        target=_run_plan_implementation,
-        args=(plan_id,),
-        name=f"implement-plan-{plan_id}",
-        daemon=True,
-    )
-    thread.start()
-    return ImplementPlanResponse(ok=True, plan_id=plan_id, status="implementing")
+    result, error, status_code = _facade.implement_plan(plan_id)
+    if result is None:
+        raise HTTPException(status_code=status_code, detail=error)
+    return ImplementPlanResponse.model_validate(asdict(result))

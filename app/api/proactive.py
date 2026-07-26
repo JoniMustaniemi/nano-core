@@ -7,13 +7,13 @@ from app.runtime.status_copy import choose_standby_greeting
 router = APIRouter(tags=["proactive"])
 
 
-@router.get("/api/proactive")
+@router.get("/proactive")
 def proactive_status() -> dict[str, object]:
     """Return current proactive outreach state for the web UI."""
     return proactive_store.snapshot()
 
 
-@router.post("/api/proactive/dismiss")
+@router.post("/proactive/dismiss")
 def dismiss_proactive() -> dict[str, object]:
     """Clear a consumed presence dismissal and restore default standby copy."""
     proactive_store.clear_dismissal()

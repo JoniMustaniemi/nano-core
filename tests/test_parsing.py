@@ -1,4 +1,4 @@
-from app.assistant.rules.parsing import extract_json, looks_like_truncated_json
+from app.common.json_parsing import extract_json, looks_like_truncated_json
 
 
 def test_extract_json_parses_object_with_brace_inside_string() -> None:

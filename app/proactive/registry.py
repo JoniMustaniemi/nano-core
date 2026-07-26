@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.assistant.response_source import ResponseSource
+from app.common.types import ProactiveOffer
 from app.llm.protocol import LLMClient
-from app.proactive.types import ProactiveOffer
 
 
 class ProactiveDeliveryHandler(Protocol):
@@ -46,10 +46,7 @@ class ProactiveDeliveryRegistry:
 delivery_registry = ProactiveDeliveryRegistry()
 
 
-def _register_builtin_handlers() -> None:
+def register_builtin_delivery_handlers() -> None:
     from app.proactive.deliveries.self_improvement import register_delivery_handlers
 
     register_delivery_handlers(delivery_registry)
-
-
-_register_builtin_handlers()

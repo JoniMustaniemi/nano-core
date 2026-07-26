@@ -7,6 +7,13 @@ from app.assistant.response_polish import is_polish_prompt
 ALIGNED_RESPONSE = '{"aligned": true, "problems": []}'
 
 
+def agent_respond(message: str, *, conversation_id: str = "default") -> str:
+    from app.assistant.orchestrator import AgentOrchestrator
+
+    content, _speak = AgentOrchestrator().respond(message, conversation_id=conversation_id)
+    return content
+
+
 def is_alignment_check(messages) -> bool:
     """Return whether an LLM call is the guard alignment judge."""
     if not messages:

@@ -2,13 +2,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.tools.git_command import _normalize_output, resolve_executable, run_gh
-from app.tools.git_github import (
-    OpenPullRequest,
-    ensure_feature_branch,
-    ensure_unique_branch_slug,
-    get_open_pull_request,
-)
+from app.tools.git_command import OpenPullRequest, _normalize_output, resolve_executable, run_gh
+from app.tools.git_ops import ensure_feature_branch, ensure_unique_branch_slug
+from app.tools.github_ops import get_open_pull_request
 
 
 def test_ensure_feature_branch_checks_out_existing_branch(monkeypatch: pytest.MonkeyPatch) -> None:

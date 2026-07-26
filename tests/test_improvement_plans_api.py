@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 
+from app.common.types import ProactiveOffer
 from app.memory import improvement_plans, internal_notes
 from app.memory.internal_note_service import InternalNoteService
-from app.proactive.types import ProactiveOffer
 
 
 def _pass_implement_preflight(monkeypatch) -> None:
@@ -168,8 +168,12 @@ def test_improvement_plan_api_implement_returns_202(monkeypatch, api_client) -> 
     assert plan.id is not None
     _pass_implement_preflight(monkeypatch)
     monkeypatch.setattr(
-        "app.api.improvement_plans._run_plan_implementation",
-        lambda plan_id: None,
+        "app.tools.improvement_plan_facade.run_background",
+        lambda fn, *, label: fn(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_facade.ImprovementPlanImplementationService.run",
+        lambda self, plan_id: None,
     )
 
     response = api_client.post(f"/api/improvement-plans/{plan.id}/implement")

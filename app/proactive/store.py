@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import RLock
 
-from app.proactive.types import ProactiveOffer
+from app.common.types import ProactiveOffer
 
 
 @dataclass

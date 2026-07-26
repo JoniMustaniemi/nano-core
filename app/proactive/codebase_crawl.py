@@ -3,14 +3,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, cast
 
-from app.assistant.rules.parsing import extract_json
+from app.common.json_parsing import extract_json
+from app.common.types import ProactiveOffer
 from app.config import get_settings
 from app.memory import codebase_index
-from app.proactive.codebase_files import file_content_hash, list_all_app_files
-from app.proactive.types import ProactiveOffer
 from app.runtime.activity import activity
 from app.runtime.status_copy import SCANNED_SOURCE_FILE_TITLE
 from app.tools.files import read_text_file
+from app.workspace.files import file_content_hash, list_all_app_files
 
 
 class CodebaseCrawlService:

@@ -23,11 +23,6 @@ def list_all_app_files() -> list[str]:
     return paths
 
 
-def walk_app_files(*, max_files: int = 40) -> list[str]:
-    """Return up to max_files from list_all_app_files (legacy helper)."""
-    return list_all_app_files()[:max_files]
-
-
 def package_for_path(path: str) -> str:
     """Return the parent directory for a workspace-relative path."""
     parent = Path(path).parent.as_posix()

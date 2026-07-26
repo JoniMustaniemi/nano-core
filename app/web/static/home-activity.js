@@ -104,6 +104,9 @@ function applyPendingSnapshot(pending, proactive) {
 }
 
 function applyStatusSnapshot(snapshot) {
+  if (snapshot.copy) {
+    applyClientCopy(snapshot.copy);
+  }
   const nextState = activityStates.includes(snapshot.state) ? snapshot.state : "standby";
   const useServerCopy = nextState === "standby" || nextState === "error";
   currentActivitySnapshot = {
@@ -501,7 +504,7 @@ function applyActivityEvent(event) {
     return;
   }
 
-  if (event.kind === "log" && (requestInFlight || currentActivitySnapshot.state === "working")) {
+  if (event.kind === "log" && currentActivitySnapshot.state === "working") {
     if (selfImprovementRunSettled && !requestInFlight) {
       return;
     }
@@ -522,6 +525,15 @@ function applyActivityEvent(event) {
 
   if (event.kind !== "state") {
     return;
+  }
+
+  if (
+    event.source === "tools.pr_service" &&
+    (event.state === "standby" || event.state === "error")
+  ) {
+    syncTaskWaitTimer(null);
+    suppressWorkingResponse = false;
+    selfImprovementRunSettled = true;
   }
 
   if (
@@ -738,7 +750,7 @@ async function refreshStorage() {
 }
 
 function listen(lastEventId = 0) {
-  const source = new EventSource(`/events?since=${lastEventId}`);
+  const source = new EventSource(`/api/events?since=${lastEventId}`);
   source.addEventListener("activity", (event) => {
     const payload = JSON.parse(event.data);
     applyActivityEvent(payload);

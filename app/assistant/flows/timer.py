@@ -3,17 +3,17 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.assistant.agent_rules import (
-    duration_args_from_message,
-    is_rejection_message,
-    needs_timer_duration,
-    timer_confirmation,
-)
 from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_source import (
     ResponseSource,
     confirmation_source,
     follow_up_source,
+)
+from app.assistant.rules import (
+    duration_args_from_message,
+    is_rejection_message,
+    needs_timer_duration,
+    timer_confirmation,
 )
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner

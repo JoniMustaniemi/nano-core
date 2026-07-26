@@ -5,15 +5,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api.chat import router as chat_router
-from app.api.health import router as health_router
-from app.api.improvement_plans import router as improvement_plans_router
-from app.api.memory import router as memory_router
-from app.api.proactive import router as proactive_router
-from app.api.runtime import router as runtime_router
-from app.api.voice import router as voice_router
+from app.api.errors import register_exception_handlers
+from app.api.router import api_router
 from app.config import get_settings
 from app.memory.db import create_db_and_tables
+from app.proactive.registry import register_builtin_delivery_handlers
 from app.runtime.activity import activity
 from app.runtime.status_copy import BOOT_DETAIL, BOOT_SOURCE, BOOT_TITLE, choose_standby_greeting
 from app.scheduler.jobs import register_jobs, scheduler
@@ -22,8 +18,8 @@ from app.web.home import router as home_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-
     create_db_and_tables()
+    register_builtin_delivery_handlers()
     register_jobs()
     scheduler.start()
     activity.log(
@@ -42,6 +38,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+register_exception_handlers(app)
 
 app.mount(
     "/static",
@@ -49,10 +46,4 @@ app.mount(
     name="static",
 )
 app.include_router(home_router)
-app.include_router(health_router)
-app.include_router(memory_router)
-app.include_router(improvement_plans_router)
-app.include_router(runtime_router)
-app.include_router(proactive_router)
-app.include_router(voice_router)
-app.include_router(chat_router, prefix="/chat", tags=["chat"])
+app.include_router(api_router)

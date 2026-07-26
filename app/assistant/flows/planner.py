@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any, TypeGuard
 
-from app.assistant.agent_rules import parse_decision, tool_matches_request, tool_signature
 from app.assistant.agent_types import AnswerIntentDecision, Decision, FinalDecision, ToolResult
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
 from app.assistant.response_source import ResponseSource, answer_source, tool_result_source
+from app.assistant.rules import parse_decision, tool_matches_request, tool_signature
 from app.assistant.tool_runner import ToolRunner
 from app.llm.protocol import LLMClient
 from app.runtime.activity import activity

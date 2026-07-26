@@ -1,8 +1,7 @@
-from app.proactive.codebase_files import (
+from app.workspace.files import (
     file_content_hash,
     list_all_app_files,
     package_for_path,
-    walk_app_files,
 )
 
 
@@ -16,15 +15,6 @@ def test_list_all_app_files_includes_every_py_file(tmp_path, monkeypatch) -> Non
     paths = list_all_app_files()
 
     assert paths == ["app/api/chat.py", "app/tools/z_last.py"]
-
-
-def test_walk_app_files_caps_results(tmp_path, monkeypatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "app").mkdir()
-    for index in range(3):
-        (tmp_path / "app" / f"module_{index}.py").write_text("x", encoding="utf-8")
-
-    assert walk_app_files(max_files=2) == ["app/module_0.py", "app/module_1.py"]
 
 
 def test_package_for_path() -> None:

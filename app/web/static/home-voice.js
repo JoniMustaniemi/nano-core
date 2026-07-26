@@ -385,7 +385,7 @@ function maybeStartListeningAfterGesture() {
 }
 
 async function requestWakeAcknowledgement() {
-  const response = await fetch("/chat/wake");
+  const response = await fetch("/api/chat/wake");
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.detail || "Wake acknowledgment failed.");

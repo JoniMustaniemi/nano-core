@@ -6,7 +6,7 @@ from sqlmodel import Session, col, select
 
 import app.memory.db as db
 from app.memory.models import CodebaseFileRecord
-from app.proactive.codebase_files import file_content_hash, package_for_path
+from app.workspace.files import file_content_hash, package_for_path
 
 
 def sync_paths(paths: list[str]) -> None:

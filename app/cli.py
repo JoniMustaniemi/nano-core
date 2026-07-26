@@ -1,5 +1,3 @@
-import os
-
 import typer
 import uvicorn
 
@@ -58,10 +56,6 @@ def start_dev(
     reload: bool = True,
 ) -> None:
     """Run the local web app through Uvicorn."""
-    if reload:
-        os.environ["NANO_UVICORN_RELOAD"] = "1"
-    else:
-        os.environ.pop("NANO_UVICORN_RELOAD", None)
     uvicorn.run(
         "app.main:app",
         host=host,

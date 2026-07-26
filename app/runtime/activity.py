@@ -10,6 +10,7 @@ from app.runtime.status_copy import (
     STANDBY_DETAIL_DEFAULT,
     STANDBY_DETAIL_READY,
     STANDBY_TITLE,
+    choose_standby_greeting,
 )
 
 ActivityState = Literal["standby", "working", "error"]
@@ -132,6 +133,22 @@ class ActivityHub:
     def clear_task_timer(self) -> None:
         with self._lock:
             self._task_timer = None
+
+    def release_to_idle(self, source: str = "system") -> ActivityEvent:
+        """
+        Return to standby after errors or aborted work.
+
+        Args:
+            source: Activity source label.
+
+        Returns:
+            Recorded standby activity event.
+        """
+        return self.standby(
+            title=choose_standby_greeting(),
+            detail=STANDBY_DETAIL_DEFAULT,
+            source=source,
+        )
 
     def standby(
         self,
@@ -264,18 +281,7 @@ class ActivityHub:
         return self.log(title=spoken, detail=spoken, source=VOICE_ANNOUNCE_SOURCE)
 
     def snapshot(self) -> dict[str, object]:
-        from app.runtime.active_timers import serialize_active_timers
-
-        active_timers = serialize_active_timers()
         with self._lock:
-            from app.assistant.pending import pending_interactions
-            from app.config import get_settings
-            from app.proactive.store import proactive_store
-
-            settings = get_settings()
-            pending = pending_interactions.get(settings.proactive_conversation_id)
-            pending_kind = pending.kind if pending is not None else None
-
             task_timer = self._task_timer.to_dict() if self._task_timer is not None else None
             return {
                 "state": self._state,
@@ -284,10 +290,7 @@ class ActivityHub:
                 "working_source": self._working_source,
                 "updated_at": self._updated_at.isoformat(),
                 "task_timer": task_timer,
-                "active_timers": active_timers,
                 "events": [event.to_dict() for event in self._events],
-                "proactive": proactive_store.snapshot(),
-                "pending": {"kind": pending_kind},
             }
 
     def _record(
