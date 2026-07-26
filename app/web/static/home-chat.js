@@ -98,7 +98,7 @@ async function submitMessage(message, source, commandHint) {
     }
     answerText = data.content;
     shouldSpeak = data.speak !== false;
-    setAnswer(answerText, { deferClearUntilSpeech: shouldSpeak });
+    setAnswer(answerText, { deferClearUntilSpeech: shouldSpeak, allowDuringWorking: true });
     replyStatus.textContent = "";
     await refreshStorage();
   } catch (error) {

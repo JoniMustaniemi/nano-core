@@ -416,10 +416,13 @@ async function acknowledgeBusyWake() {
     if (!message) {
       return;
     }
-    setAnswer(message, { deferClearUntilSpeech: true });
+    setAnswer(message, { deferClearUntilSpeech: true, allowDuringWorking: true });
     replyStatus.textContent = "Still working on the current task.";
     setVoiceStatus("Wake phrase detected while working.");
     await playVoice(message, { pauseRecognition: true });
+    if (getDisplayState() === "working" || requestInFlight) {
+      renderState();
+    }
   } finally {
     busyWakeAnnouncing = false;
   }

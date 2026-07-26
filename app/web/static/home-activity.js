@@ -413,7 +413,9 @@ function speakVoiceAnnouncement(message) {
     return;
   }
   lastVoiceAnnouncement = cleaned;
-  setAnswer(cleaned, { animate: false, deferClearUntilSpeech: true });
+  if (getDisplayState() !== "working" && !requestInFlight) {
+    setAnswer(cleaned, { animate: false, deferClearUntilSpeech: true });
+  }
   void playVoice(cleaned, { pauseRecognition: true, resumeListening: false });
 }
 
