@@ -1,6 +1,7 @@
+from typing import Literal
+
 import typer
 import uvicorn
-from typing import Literal
 
 from app.assistant.service import AssistantService
 from app.config import get_settings
