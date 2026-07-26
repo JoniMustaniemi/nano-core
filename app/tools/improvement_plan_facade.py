@@ -224,9 +224,12 @@ class ImprovementPlanFacade:
             return "not_implementing"
         if is_worker_live(plan_id) and not cancel_and_wait(plan_id):
             return "worker_active"
-        if not improvement_plans.restore_pending(plan_id):
-            return "not_implementing"
-        return "ok"
+        if improvement_plans.restore_pending(plan_id):
+            return "ok"
+        refreshed = improvement_plans.get_plan(plan_id)
+        if refreshed is not None and refreshed.status == "pending":
+            return "ok"
+        return "not_implementing"
 
     def implement_plan(self, plan_id: int) -> tuple[ImplementPlanResult | None, str | None, int]:
         improvement_plans.restore_stale_implementing_plans()

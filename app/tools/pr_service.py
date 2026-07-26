@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
+from threading import Event
 from typing import Any
 
 from app.config import get_settings
 from app.runtime.activity import activity
+from app.tools.plan_implementation_runtime import is_cancelled
 from app.runtime.status_copy import (
     COLLECTED_CHANGE_CONTEXT_TITLE,
     COMMITTING_CHANGES_TITLE,
@@ -76,6 +78,16 @@ def _finalize_pr_activity(result: PrResult) -> None:
     )
 
 
+def _cancelled_pr_result() -> PrResult:
+    return PrResult(ok=False, step="cancelled", error="Pull request workflow was cancelled.")
+
+
+def _check_cancelled(cancel_event: Event | None) -> PrResult | None:
+    if is_cancelled(cancel_event=cancel_event):
+        return _cancelled_pr_result()
+    return None
+
+
 @dataclass(frozen=True, slots=True)
 class PrResult:
     ok: bool
@@ -112,17 +124,28 @@ class PullRequestService:
         """
         self.naming_service = naming_service or PrNamingService()
 
-    def run(self, *, client: Any, announce: bool = True) -> PrResult:
+    def run(
+        self,
+        *,
+        client: Any,
+        announce: bool = True,
+        cancel_event: Event | None = None,
+    ) -> PrResult:
         """
         Run the full pull request workflow.
 
         Args:
             client: LLM client used for naming.
             announce: When True, emit a spoken intent before starting the workflow.
+            cancel_event: Optional cancellation signal for plan implementation.
 
         Returns:
             Structured pull request result.
         """
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
+
         activity.working(
             title=PREPARING_PR_TITLE,
             detail=PREPARING_PR_PREFLIGHT_DETAIL,
@@ -181,6 +204,9 @@ class PullRequestService:
             detail=PREPARING_PR_LINT_DETAIL,
             source="tools.pr_service",
         )
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
         activity.start_task_timer(PR_LINT_TIMER_LABEL, PR_LINT_TIMER_SECONDS)
         lint = run_pr_lint()
         if not lint.ok:
@@ -232,6 +258,9 @@ class PullRequestService:
             detail="Running the full test suite. This can take a few minutes.",
             source="tools.pr_service",
         )
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
         settings = get_settings()
         activity.start_task_timer(
             PR_VERIFY_TIMER_LABEL,
@@ -260,6 +289,10 @@ class PullRequestService:
             detail=command_display(verify.command),
             source="tools.pr_service",
         )
+
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
 
         activity.working(
             title=NAMING_PR_TITLE,

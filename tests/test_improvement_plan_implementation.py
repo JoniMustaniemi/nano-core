@@ -719,6 +719,31 @@ def test_implementation_service_uses_configured_apply_max_attempts(
     assert "invalid json after 6 attempts" in (result.error or "").lower()
 
 
+def test_apply_plan_honours_cancellation_event(tmp_path, monkeypatch) -> None:
+    from threading import Event
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'cancel-apply.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    (tmp_path / "app" / "runtime" / "status_copy.py").write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    plan = improvement_plans.get_plan(plan_id)
+    assert plan is not None
+
+    cancel_event = Event()
+    cancel_event.set()
+
+    result = ImprovementPlanImplementationService()._apply_plan(
+        plan,
+        allowed_files=["app/runtime/status_copy.py"],
+        cancel_event=cancel_event,
+    )
+
+    assert result.ok is False
+    assert result.step == "cancelled"
+
+
 def test_prefer_full_file_apply_for_single_small_file() -> None:
     contents = {"app/runtime/status_copy.py": "OLD = 1\n"}
     assert _prefer_full_file_apply(contents) is True

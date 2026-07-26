@@ -356,6 +356,15 @@ def _should_restore_pending(plan_id: int, execution_lease: str | None) -> bool:
     return improvement_plans.lease_matches(plan_id, execution_lease)
 
 
+def _cancelled_result(plan_id: int | None) -> ImplementationResult:
+    return ImplementationResult(
+        ok=False,
+        step="cancelled",
+        plan_id=plan_id,
+        error=_IMPLEMENTATION_CANCELLED_ERROR,
+    )
+
+
 class ImprovementPlanImplementationService:
     """Apply a drafted improvement plan and open a pull request."""
 
@@ -429,7 +438,11 @@ class ImprovementPlanImplementationService:
                 plan,
                 allowed_files=allowed_files,
                 reporter=reporter,
+                execution_lease=execution_lease,
+                cancel_event=cancel_event,
             )
+            if apply_result.step == "cancelled":
+                return apply_result
             if _implementation_aborted(
                 plan_id,
                 execution_lease=execution_lease,
@@ -465,10 +478,20 @@ class ImprovementPlanImplementationService:
                     plan_id=plan_id,
                     error=_IMPLEMENTATION_CANCELLED_ERROR,
                 )
-            pr_result = self.pr_service.run(
-                client=get_code_llm_client(),
-                announce=True,
-            )
+            pr_kwargs: dict[str, Any] = {
+                "client": get_code_llm_client(),
+                "announce": True,
+            }
+            if cancel_event is not None:
+                pr_kwargs["cancel_event"] = cancel_event
+            pr_result = self.pr_service.run(**pr_kwargs)
+            if pr_result.step == "cancelled":
+                return ImplementationResult(
+                    ok=False,
+                    step="cancelled",
+                    plan_id=plan_id,
+                    error=_IMPLEMENTATION_CANCELLED_ERROR,
+                )
             if _implementation_aborted(
                 plan_id,
                 execution_lease=execution_lease,
@@ -529,8 +552,16 @@ class ImprovementPlanImplementationService:
         *,
         allowed_files: list[str],
         reporter: LongTaskProgressReporter | None = None,
+        execution_lease: str | None = None,
+        cancel_event: Event | None = None,
     ) -> ImplementationResult:
         plan_id = plan.id
+        if _implementation_aborted(
+            plan_id,
+            execution_lease=execution_lease,
+            cancel_event=cancel_event,
+        ):
+            return _cancelled_result(plan_id)
         settings = get_settings()
         file_contents: dict[str, str] = {}
         for path in allowed_files:
@@ -569,6 +600,12 @@ class ImprovementPlanImplementationService:
         for client in (get_code_llm_client(), get_llm_client()):
             if apply_error is not None:
                 break
+            if _implementation_aborted(
+                plan_id,
+                execution_lease=execution_lease,
+                cancel_event=cancel_event,
+            ):
+                return _cancelled_result(plan_id)
             conversation = list(messages)
             if full_file_only:
                 _sync_apply_system_message(
@@ -581,6 +618,12 @@ class ImprovementPlanImplementationService:
                 )
             json_failures = 0
             for _attempt in range(max_attempts):
+                if _implementation_aborted(
+                    plan_id,
+                    execution_lease=execution_lease,
+                    cancel_event=cancel_event,
+                ):
+                    return _cancelled_result(plan_id)
                 total_attempts += 1
                 if reporter is not None:
                     reporter.update(attempt=total_attempts)
