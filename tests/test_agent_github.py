@@ -2,10 +2,10 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from helpers.agent_fixtures import agent_respond
 from helpers.voice_announce import patch_announce_voice
 
-from app.assistant.agent import AgentService
-from app.assistant.agent_rules import is_pull_request_request
+from app.assistant.rules import is_pull_request_request
 from app.memory.repository import list_recent_chat_messages
 
 
@@ -59,7 +59,7 @@ def test_agent_routes_pull_request_request_directly(monkeypatch: pytest.MonkeyPa
         ),
     )
 
-    response = AgentService().respond("create a pull request")
+    response = agent_respond("create a pull request")
 
     assert "http" not in response
     assert "Review it on GitHub when you are ready." in response

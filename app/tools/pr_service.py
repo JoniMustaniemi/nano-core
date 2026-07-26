@@ -38,24 +38,28 @@ from app.runtime.status_copy import (
     lint_failure_voice_message,
     running_tool_title,
 )
-from app.tools.git_github import (
-    collect_change_context,
-    detect_default_base_branch,
-    ensure_feature_branch,
+from app.tools.git_command import (
     format_command_result,
-    get_current_branch,
-    get_open_pull_request,
-    gh_authenticated,
-    gh_available,
     gh_missing_message,
     git_missing_message,
-    has_publishable_changes,
-    is_git_repo,
-    qualify_head_branch,
     resolve_executable,
     run_gh,
     run_git,
+)
+from app.tools.git_ops import (
+    collect_change_context,
+    ensure_feature_branch,
+    get_current_branch,
+    has_publishable_changes,
+    is_git_repo,
     working_tree_dirty,
+)
+from app.tools.github_ops import (
+    detect_default_base_branch,
+    get_open_pull_request,
+    gh_authenticated,
+    gh_available,
+    qualify_head_branch,
 )
 from app.tools.pr_naming import PrNamingService
 from app.tools.pr_verify import command_display, run_pr_lint, run_pr_verification

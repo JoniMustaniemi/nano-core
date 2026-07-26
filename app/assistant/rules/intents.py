@@ -17,6 +17,12 @@ CAPABILITY_QUESTION_TRIGGERS: tuple[str, ...] = (
     "capabilities",
 )
 
+IDENTITY_OR_CAPABILITY_TRIGGERS: tuple[str, ...] = CAPABILITY_QUESTION_TRIGGERS + (
+    "who are you",
+    "what are you",
+    "introduce yourself",
+)
+
 IDENTITY_QUESTION_TRIGGERS: tuple[str, ...] = (
     "who are you",
     "introduce yourself",

@@ -869,6 +869,10 @@ function isBaseAnswerContent(content) {
 }
 
 function restoreBaseAnswer() {
+  if (getDisplayState() === "working" || requestInFlight) {
+    answerClearPending = true;
+    return;
+  }
   resetTransientActivityCopy();
   setAnswer(IDLE_RESPONSE, {
     animate: false,
@@ -1015,12 +1019,15 @@ function renderState() {
   applyControlsVisibility();
   renderActivityStatus();
   if (displayState === "working") {
-    if (!suppressWorkingResponse && !hasVisibleAnswerContent()) {
+    if (!suppressWorkingResponse) {
       startWorkingResponse();
     }
   } else {
     suppressWorkingResponse = false;
     stopWorkingResponse();
+    if (answerClearPending) {
+      resumeAnswerClearAfterSpeech();
+    }
   }
   updateEssenceState();
   updateInputLock();
@@ -1234,6 +1241,10 @@ function scheduleAnswerClear() {
     answerClearPending = false;
     return;
   }
+  if (getDisplayState() === "working" || requestInFlight) {
+    answerClearPending = true;
+    return;
+  }
   if (speakingActive) {
     answerClearPending = true;
     return;
@@ -1289,6 +1300,10 @@ function resumeAnswerClearAfterSpeech() {
     answerClearPending = false;
     return;
   }
+  if (getDisplayState() === "working" || requestInFlight) {
+    answerClearPending = true;
+    return;
+  }
   answerClearPending = false;
   scheduleAnswerClear();
 }
@@ -1298,6 +1313,14 @@ function setAnswer(text, options = {}) {
   const animate = options.animate !== false;
   const bypassSpeechGuard = options.bypassSpeechGuard === true;
   const isBaseState = options.isBaseState === true || isBaseAnswerContent(content);
+  const preserveWorkingDots =
+    !options.allowDuringWorking &&
+    isWorkingOnTask();
+
+  if (preserveWorkingDots) {
+    renderActivityStatus();
+    return;
+  }
 
   if (!content && speakingActive && !bypassSpeechGuard) {
     answerClearPending = true;

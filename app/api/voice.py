@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from app.api.deps import get_voice_service
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
 from app.voice.volume import get_voice_volume, set_voice_volume
 
-router = APIRouter(prefix="/api/voice", tags=["voice"])
+router = APIRouter(prefix="/voice", tags=["voice"])
 
 
 class VoiceRequest(BaseModel):
@@ -17,57 +18,31 @@ class VoiceVolumeRequest(BaseModel):
 
 
 @router.get("/status")
-def voice_status() -> dict[str, str | bool]:
-    """
-    Return voice service status for status.
-
-    Returns:
-        Dictionary containing the requested data.
-    """
-    return GladosVoiceService().status()
+def voice_status(voice: GladosVoiceService = Depends(get_voice_service)) -> dict[str, str | bool]:  # noqa: B008
+    """Return voice service status."""
+    return voice.status()
 
 
 @router.get("/volume")
 def voice_volume() -> dict[str, float]:
-    """
-    Return the current server-side voice playback volume.
-
-    Returns:
-        Current volume level between 0.0 and 1.0.
-    """
+    """Return the current server-side voice playback volume."""
     return {"volume": get_voice_volume()}
 
 
 @router.put("/volume")
 def update_voice_volume(request: VoiceVolumeRequest) -> dict[str, float]:
-    """
-    Update server-side voice playback volume.
-
-    Args:
-        request: Incoming volume update request.
-
-    Returns:
-        Updated volume level between 0.0 and 1.0.
-    """
+    """Update server-side voice playback volume."""
     return {"volume": set_voice_volume(request.volume)}
 
 
 @router.post("")
-def synthesize_voice(request: VoiceRequest) -> Response:
-    """
-    Synthesize voice.
-
-    Args:
-        request: Incoming API request object.
-
-    Returns:
-        Response result.
-
-    Raises:
-        HTTPException: If the operation cannot be completed.
-    """
+def synthesize_voice(
+    request: VoiceRequest,
+    voice: GladosVoiceService = Depends(get_voice_service),  # noqa: B008
+) -> Response:
+    """Synthesize voice audio for the given text."""
     try:
-        audio = GladosVoiceService().synthesize_wav_for_client(request.text)
+        audio = voice.synthesize_wav_for_client(request.text)
     except VoiceUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 

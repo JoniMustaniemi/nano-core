@@ -23,16 +23,32 @@ class ProactiveOffer:
 
     @classmethod
     def from_json(cls, raw: str) -> ProactiveOffer:
-        data = json.loads(raw)
+        try:
+            data = json.loads(raw)
+        except (TypeError, ValueError):
+            data = {}
+        if not isinstance(data, dict):
+            data = {}
+
+        parsed_created_at = datetime.now(UTC)
         created_at = data.get("created_at")
         if isinstance(created_at, str):
-            parsed_created_at = datetime.fromisoformat(created_at)
-        else:
-            parsed_created_at = datetime.now(UTC)
+            try:
+                parsed = datetime.fromisoformat(created_at)
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=UTC)
+                parsed_created_at = parsed
+            except ValueError:
+                pass
+
+        payload = data.get("payload", {})
+        if not isinstance(payload, dict):
+            payload = {}
+
         return cls(
             kind=str(data.get("kind", "")),
             title=str(data.get("title", "")),
             summary=str(data.get("summary", "")),
-            payload=dict(data.get("payload", {})),
+            payload=dict(payload),
             created_at=parsed_created_at,
         )

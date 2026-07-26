@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.assistant.agent_rules import (
-    is_confirmation_message,
-    is_rejection_message,
-    normalize_wipe_request,
-)
 from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_source import (
     ResponseSource,
     answer_source,
     confirmation_source,
     follow_up_source,
+)
+from app.assistant.rules import (
+    is_confirmation_message,
+    is_rejection_message,
+    normalize_wipe_request,
 )
 from app.memory import repository
 from app.proactive.store import proactive_store

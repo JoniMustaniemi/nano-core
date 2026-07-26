@@ -1,4 +1,4 @@
-import os
+from typing import Literal
 
 import typer
 import uvicorn
@@ -35,7 +35,7 @@ def health() -> None:
 @app.command()
 def chat(
     message: str,
-    mode: str = typer.Option("agent", "--mode", help="Use chat or agent mode."),
+    mode: Literal["chat", "agent"] = typer.Option("agent", "--mode", help="Use chat or agent mode."),
 ) -> None:
     """Send a message to the assistant."""
     response = AssistantService().respond(message, mode=mode)
@@ -58,10 +58,6 @@ def start_dev(
     reload: bool = True,
 ) -> None:
     """Run the local web app through Uvicorn."""
-    if reload:
-        os.environ["NANO_UVICORN_RELOAD"] = "1"
-    else:
-        os.environ.pop("NANO_UVICORN_RELOAD", None)
     uvicorn.run(
         "app.main:app",
         host=host,

@@ -2,12 +2,12 @@ from datetime import UTC, datetime, timedelta
 
 from app.assistant.flows.presence_gate import PresenceGateHandler
 from app.assistant.pending import pending_interactions
+from app.common.types import ProactiveOffer
 from app.config import get_settings
 from app.memory import improvement_plans
 from app.memory.db import create_db_and_tables
 from app.memory.internal_note_service import InternalNoteService
 from app.proactive.store import proactive_store
-from app.proactive.types import ProactiveOffer
 from app.runtime.status_copy import PRESENCE_TIMEOUT_TITLE
 
 

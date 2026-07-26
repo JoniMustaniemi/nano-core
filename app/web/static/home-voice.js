@@ -385,7 +385,7 @@ function maybeStartListeningAfterGesture() {
 }
 
 async function requestWakeAcknowledgement() {
-  const response = await fetch("/chat/wake");
+  const response = await fetch("/api/chat/wake");
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.detail || "Wake acknowledgment failed.");
@@ -416,10 +416,13 @@ async function acknowledgeBusyWake() {
     if (!message) {
       return;
     }
-    setAnswer(message, { deferClearUntilSpeech: true });
+    setAnswer(message, { deferClearUntilSpeech: true, allowDuringWorking: true });
     replyStatus.textContent = "Still working on the current task.";
     setVoiceStatus("Wake phrase detected while working.");
     await playVoice(message, { pauseRecognition: true });
+    if (getDisplayState() === "working" || requestInFlight) {
+      renderState();
+    }
   } finally {
     busyWakeAnnouncing = false;
   }

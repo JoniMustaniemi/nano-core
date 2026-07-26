@@ -12,7 +12,7 @@ HOME_JS_MODULES = (
     "home-voice.js",
     "home-activity.js",
     "home-chat.js",
-    "home.js",
+    "home-bootstrap.js",
 )
 
 
@@ -124,14 +124,8 @@ def test_homepage_shows_standby_ui(api_client) -> None:
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/essence_visualizer.js?v=idle-essence-3"' in response.text
-    assert 'src="/static/home-state.js?v=user-speech-1"' in response.text
-    assert 'src="/static/home-plans.js?v=view-modals-1"' in response.text
-    assert 'src="/static/home-view-session.js?v=view-close-controls-2"' in response.text
-    assert 'src="/static/home-ui.js?v=user-speech-3"' in response.text
-    assert 'src="/static/home-voice.js?v=implement-busy-wake-1"' in response.text
-    assert 'src="/static/home-activity.js?v=active-timers-7"' in response.text
-    assert 'src="/static/home-chat.js?v=user-speech-1"' in response.text
-    assert 'src="/static/home.js?v=view-modals-1"' in response.text
+    assert 'type="module" src="/static/home-entry.js?v=module-entry-1"' in response.text
+    assert 'src="/static/home-state.js' not in response.text
 
     assert "Enter to send" in response.text
 
@@ -198,6 +192,9 @@ def test_homepage_serves_static_assets() -> None:
     assert 'getElementById("plan-copy-button")' in js_text
     assert "startWorkingResponse" in js_text
     assert "stopWorkingResponse" in js_text
+    assert "if (!suppressWorkingResponse)" in js_text
+    assert "isWorkingOnTask()" in js_text
+    assert "answerClearPending = true" in js_text
     assert ".response-headline.working" in css_text
 
     assert 'Waiting for wake phrase: "hey nano".' in js_text
@@ -320,6 +317,7 @@ def test_homepage_serves_static_assets() -> None:
     assert "runtime.voice.announce" in js_text
     assert "releaseSelfImprovementWorkingMode" in js_text
     assert "selfImprovementRunSettled" in js_text
+    assert 'event.source === "tools.pr_service" &&\n    event.state === "working"' in js_text
 
     assert "runtime.task_timer" in js_text
     assert "syncTaskWaitTimer" in js_text

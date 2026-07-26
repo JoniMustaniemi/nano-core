@@ -5,54 +5,34 @@ from collections.abc import AsyncGenerator
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import StreamingResponse
 
-from app.runtime.activity import activity
+from app.runtime.snapshot import build_runtime_snapshot
 from app.runtime.status_copy import choose_standby_greeting
 
 router = APIRouter(tags=["runtime"])
 
 
-@router.get("/api/greeting")
+@router.get("/greeting")
 def greeting() -> dict[str, str]:
     """Return a short idle greeting for the home UI."""
     return {"greeting": choose_standby_greeting()}
 
 
-@router.get("/api/status")
+@router.get("/status")
 def status() -> dict[str, object]:
-    """
-    Return status information for the requested operation.
-
-    Returns:
-        Dictionary containing the requested data.
-    """
-    return activity.snapshot()
+    """Return the full runtime snapshot for the web UI."""
+    return build_runtime_snapshot()
 
 
 @router.get("/events")
 async def events(request: Request, since: int = Query(default=0, ge=0)) -> StreamingResponse:
-    """
-    Stream runtime activity events.
-
-    Args:
-        request: Incoming API request object.
-        since: Last seen runtime activity event identifier.
-
-    Returns:
-        StreamingResponse result.
-    """
+    """Stream runtime activity events."""
 
     async def stream() -> AsyncGenerator[str, None]:
-        """
-        Yield serialized runtime activity events.
-
-        Returns:
-            Parsed value when available; otherwise None.
-        """
         last_id = since
         while True:
             if await request.is_disconnected():
                 break
-            snapshot = activity.snapshot()
+            snapshot = build_runtime_snapshot()
             events = snapshot["events"]
             if isinstance(events, list):
                 for event in events:

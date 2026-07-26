@@ -6,7 +6,7 @@ from helpers.voice_announce import patch_announce_voice
 
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_source import tool_result_source
-from app.tools.git_github import OpenPullRequest
+from app.tools.git_command import OpenPullRequest
 from app.tools.pr_service import PrResult, PullRequestService
 
 

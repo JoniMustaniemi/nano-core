@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from app.assistant.agent_rules import (
+from app.assistant.pending import pending_interactions
+from app.assistant.rules import (
     extract_self_improve_goal,
     is_capability_question,
     is_health_check_request,
@@ -21,7 +22,6 @@ from app.assistant.agent_rules import (
     needs_wipe_confirmation,
     should_answer_without_tools,
 )
-from app.assistant.pending import pending_interactions
 
 
 @dataclass(frozen=True, slots=True)

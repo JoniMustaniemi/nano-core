@@ -99,22 +99,6 @@ def tool_announcement_for(name: str) -> str:
     return "Performing a local action."
 
 
-def tool_keywords_for(name: str) -> tuple[str, ...]:
-    """
-    Return keyword hints for a registered tool.
-
-    Args:
-        name: Registered tool name.
-
-    Returns:
-        Keyword tuple, possibly empty.
-    """
-    tool = get_tool(name)
-    if tool is None:
-        return ()
-    return tool.keywords
-
-
 def list_ui_tool_commands() -> list[ToolSpec]:
     """
     Return registered tools that expose web UI quick commands.

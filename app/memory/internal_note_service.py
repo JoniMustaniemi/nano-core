@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from app.common.types import ProactiveOffer
 from app.config import get_settings
 from app.intents.self_improve import is_vague_self_improve_goal, normalize_self_improve_goal
 from app.memory import improvement_plans, internal_notes
 from app.memory.models import InternalNote
-from app.proactive.types import ProactiveOffer
 from app.runtime.activity import activity
 from app.runtime.status_copy import (
     DISMISSED_FOLLOW_UP_TITLE,

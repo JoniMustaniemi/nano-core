@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from app.assistant.rules.parsing import extract_json
+from app.common.json_parsing import extract_json
 from app.memory import codebase_index
-from app.proactive.codebase_files import list_all_app_files
+from app.workspace.files import list_all_app_files
 
 _LLM_UNAVAILABLE_MARKERS = (
     "Local LLM is not available yet",

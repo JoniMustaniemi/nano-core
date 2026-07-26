@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from threading import Thread
 
 from app.assistant.pending import pending_interactions
 from app.config import get_settings
@@ -11,6 +10,7 @@ from app.memory.internal_note_service import internal_note_service
 from app.proactive.codebase_crawl import CodebaseCrawlService
 from app.proactive.store import proactive_store
 from app.runtime.activity import activity
+from app.runtime.background import run_background
 from app.runtime.user_activity import user_activity
 from app.tools.improvement_plan_service import ImprovementPlanService
 
@@ -70,13 +70,16 @@ def run_proactive_background_tick() -> None:
     if not proactive_store.try_start_background_draft():
         return
 
-    thread = Thread(
-        target=_run_background_plan_draft,
-        args=(note.id,),
-        name=f"background-plan-draft-{note.id}",
-        daemon=True,
+    note_id = note.id
+    captured_note_id = note_id
+
+    def _run_draft() -> None:
+        _run_background_plan_draft(captured_note_id)
+
+    run_background(
+        _run_draft,
+        label=f"background-plan-draft-{note_id}",
     )
-    thread.start()
 
 
 def _run_background_plan_draft(note_id: int) -> None:
@@ -114,19 +117,27 @@ def _run_background_plan_draft(note_id: int) -> None:
 
 
 def check_presence_timeouts() -> None:
+    from app.assistant.flows.presence_gate import PresenceGateHandler
+
     settings = get_settings()
     conversation_id = settings.proactive_conversation_id
     pending = pending_interactions.get(conversation_id)
     if pending is None or pending.kind != "presence_check":
         return
 
-    from app.assistant.flows.presence_gate import presence_gate
-
     started_raw = pending.payload.get("presence_started_at")
     if not isinstance(started_raw, str):
+        PresenceGateHandler().handle_timeout()
         return
 
-    started_at = datetime.fromisoformat(started_raw)
+    try:
+        started_at = datetime.fromisoformat(started_raw)
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=UTC)
+    except ValueError:
+        PresenceGateHandler().handle_timeout()
+        return
+
     elapsed = (datetime.now(UTC) - started_at).total_seconds()
     if elapsed >= settings.presence_check_timeout_seconds:
-        presence_gate.handle_timeout()
+        PresenceGateHandler().handle_timeout()

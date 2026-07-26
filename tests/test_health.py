@@ -29,7 +29,7 @@ def test_health_endpoint_reports_checks(api_client, monkeypatch) -> None:
         ],
     )
 
-    response = api_client.get("/health")
+    response = api_client.get("/api/health")
 
     assert response.status_code == 200
     payload = response.json()

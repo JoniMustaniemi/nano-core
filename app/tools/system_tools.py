@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.system.specs import format_system_analysis_json, format_system_analysis_report
+from app.system.specs import format_system_analysis_report
 from app.tools.base import ToolSpec
 from app.tools.registry import register_tool
 
@@ -39,8 +39,3 @@ register_tool(
         ui_description="Nano models, memory, and context limits.",
     )
 )
-
-
-def system_specs_json() -> str:
-    """Return machine-readable system specs for diagnostics."""
-    return format_system_analysis_json()

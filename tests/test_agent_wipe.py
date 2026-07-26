@@ -3,25 +3,25 @@ from datetime import UTC, datetime, timedelta
 from helpers.agent_fixtures import (
     RefusalWipeConfirmationClient,
     WipeConfirmationClient,
+    agent_respond,
     patch_agent,
 )
 from sqlmodel import Session, select
 
 import app.memory.db as db
-from app.assistant.agent import AgentService
+from app.common.types import ProactiveOffer
 from app.memory import improvement_plans, internal_notes, repository
 from app.memory.codebase_index import sync_paths
 from app.memory.internal_note_service import InternalNoteService
 from app.memory.models import CodebaseFileRecord
 from app.memory.repository import list_recent_chat_messages, wipe_database
-from app.proactive.types import ProactiveOffer
 
 
 def test_agent_requires_confirmation_before_wiping_database(monkeypatch, tmp_path) -> None:
     patch_agent(monkeypatch, client=WipeConfirmationClient(), tmp_path=tmp_path)
     repository.add_chat_message(conversation_id="default", role="user", content="keep me for now")
 
-    content = AgentService().respond("Wipe your database.")
+    content = agent_respond("Wipe your database.")
 
     assert "erase what I remember" in content
     assert "say yes" in content.lower()
@@ -32,7 +32,7 @@ def test_agent_wipe_confirmation_recovers_from_refusal_draft(monkeypatch, tmp_pa
     patch_agent(monkeypatch, client=RefusalWipeConfirmationClient(), tmp_path=tmp_path)
     repository.add_chat_message(conversation_id="default", role="user", content="keep me for now")
 
-    content = AgentService().respond("Wipe your database.")
+    content = agent_respond("Wipe your database.")
 
     assert "say yes" in content.lower()
     assert "afraid" not in content.lower()
@@ -44,7 +44,7 @@ def test_agent_requires_confirmation_for_local_data_removal(monkeypatch, tmp_pat
     patch_agent(monkeypatch, client=WipeConfirmationClient(), tmp_path=tmp_path)
     repository.add_chat_message(conversation_id="default", role="user", content="keep me for now")
 
-    content = AgentService().respond("Remove local data.")
+    content = agent_respond("Remove local data.")
 
     assert "say yes" in content.lower()
     assert list_recent_chat_messages()[0].content == "keep me for now"
@@ -64,8 +64,8 @@ def test_agent_wipes_database_after_confirmation(monkeypatch, tmp_path) -> None:
     InternalNoteService().record_from_offer(offer, next_attempt_at=datetime.now(UTC))
     sync_paths(["app/main.py"])
 
-    first = AgentService().respond("Wipe your database.")
-    second = AgentService().respond("yes")
+    first = agent_respond("Wipe your database.")
+    second = agent_respond("yes")
 
     assert "say yes" in first.lower()
     assert second == "Database wiped."
@@ -80,8 +80,8 @@ def test_agent_cancels_database_wipe_on_no(monkeypatch, tmp_path) -> None:
     patch_agent(monkeypatch, client=WipeConfirmationClient(), tmp_path=tmp_path)
     repository.add_chat_message(conversation_id="default", role="user", content="do not delete me")
 
-    AgentService().respond("Wipe your database.")
-    content = AgentService().respond("no")
+    agent_respond("Wipe your database.")
+    content = agent_respond("no")
 
     assert content == "Database wipe cancelled."
     assert list_recent_chat_messages()[0].content == "do not delete me"

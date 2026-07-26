@@ -97,3 +97,13 @@ def restore_pending(plan_id: int) -> bool:
         session.add(plan)
         session.commit()
         return True
+
+
+def files_from_plan(plan: ImprovementPlan) -> list[str]:
+    try:
+        files = json.loads(plan.files_json)
+        if not isinstance(files, list):
+            return []
+    except json.JSONDecodeError:
+        return []
+    return [str(path) for path in files if str(path).strip()]

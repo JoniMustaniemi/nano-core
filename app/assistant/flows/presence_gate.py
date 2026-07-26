@@ -4,12 +4,12 @@ from datetime import UTC, datetime
 
 from app.assistant.pending import pending_interactions
 from app.assistant.response_source import ResponseSource, answer_source
+from app.common.types import ProactiveOffer
 from app.config import get_settings
 from app.llm.factory import get_code_llm_client
 from app.memory.internal_note_service import internal_note_service
 from app.proactive.registry import delivery_registry
 from app.proactive.store import proactive_store
-from app.proactive.types import ProactiveOffer
 from app.runtime.activity import activity
 from app.runtime.status_copy import (
     PRESENCE_FOLLOW_UP_DETAIL,
@@ -159,6 +159,3 @@ class PresenceGateHandler:
 
     def _announce(self, message: str) -> None:
         activity.announce_voice(message)
-
-
-presence_gate = PresenceGateHandler()

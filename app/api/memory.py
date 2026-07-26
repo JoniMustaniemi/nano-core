@@ -4,11 +4,9 @@ from pydantic import BaseModel
 from app.memory import improvement_plans
 from app.memory.internal_notes import list_internal_notes
 from app.memory.models import ChatMessage, InternalNote
-from app.memory.repository import (
-    list_recent_chat_messages,
-)
+from app.memory.repository import list_recent_chat_messages
 
-router = APIRouter(prefix="/api", tags=["memory"])
+router = APIRouter(tags=["memory"])
 
 
 class ImprovementPlanStorageRecord(BaseModel):
@@ -25,14 +23,9 @@ class StorageSnapshot(BaseModel):
     improvement_plans: list[ImprovementPlanStorageRecord]
 
 
-@router.get("/storage", response_model=StorageSnapshot)
+@router.get("/storage")
 def read_storage_snapshot() -> StorageSnapshot:
-    """
-    Read storage snapshot.
-
-    Returns:
-        StorageSnapshot result.
-    """
+    """Return a snapshot of persisted chat, notes, and plans."""
     return StorageSnapshot(
         chat_messages=list_recent_chat_messages(),
         internal_notes=list_internal_notes(),

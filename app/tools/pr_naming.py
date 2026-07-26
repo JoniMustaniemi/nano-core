@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
 
-from app.assistant.rules.parsing import extract_json
-from app.tools.git_github import ensure_unique_branch_slug
+from app.common.json_parsing import extract_json
+from app.tools.git_ops import ensure_unique_branch_slug
 
 _SLUG_PATTERN = re.compile(r"^[a-z0-9_]{3,48}$")
 _TITLE_MAX_LEN = 72
@@ -76,7 +76,7 @@ class PrNamingService:
 
         Args:
             client: LLM client used to generate naming JSON.
-            context: Change context from git_github.collect_change_context.
+            context: Change context from git_ops.collect_change_context.
 
         Returns:
             Validated naming metadata.

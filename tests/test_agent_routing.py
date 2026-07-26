@@ -4,10 +4,10 @@ from helpers.agent_fixtures import (
     ContinuationFinalClient,
     ThirdPersonFinalClient,
     UnknownPersonSelfDescriptionClient,
+    agent_respond,
     patch_agent,
 )
 
-from app.assistant.agent import AgentService
 from app.memory import repository
 
 
@@ -25,7 +25,7 @@ def test_agent_rewrites_third_person_final_answer(monkeypatch, tmp_path) -> None
     client = ThirdPersonFinalClient()
     patch_agent(monkeypatch, client=client, tmp_path=tmp_path)
 
-    content = AgentService().respond("How are you?")
+    content = agent_respond("How are you?")
 
     assert content == "I am operating normally."
     assert client.calls == 2
@@ -50,7 +50,7 @@ def test_agent_rewrites_self_description_for_unknown_fact_question(
     client = UnknownPersonSelfDescriptionClient()
     patch_agent(monkeypatch, client=client, tmp_path=tmp_path)
 
-    content = AgentService().respond("Who is Jake Blamey?")
+    content = agent_respond("Who is Jake Blamey?")
 
     assert content == "No usable record surfaced for that name. A tragic shortage of evidence."
     assert client.calls == 2
@@ -75,7 +75,7 @@ def test_agent_rewrites_apology_disclaimer_for_missing_information(
     client = ApologyDisclaimerClient()
     patch_agent(monkeypatch, client=client, tmp_path=tmp_path)
 
-    content = AgentService().respond("Who is Jake Blamey?")
+    content = agent_respond("Who is Jake Blamey?")
 
     assert (
         content
@@ -100,7 +100,7 @@ def test_agent_rewrites_unsupported_continuation_promise(monkeypatch, tmp_path) 
     client = ContinuationFinalClient()
     patch_agent(monkeypatch, client=client, tmp_path=tmp_path)
 
-    content = AgentService().respond("Check the situation.")
+    content = agent_respond("Check the situation.")
 
     assert content == "Current result only: no ongoing work is running."
     assert client.calls == 2
@@ -121,7 +121,7 @@ def test_agent_answers_capability_questions_without_tool_use(monkeypatch, tmp_pa
     client = CapabilityQuestionClient()
     patch_agent(monkeypatch, client=client, tmp_path=tmp_path)
 
-    content = AgentService().respond("What can you do?")
+    content = agent_respond("What can you do?")
 
     assert "check_health" in content
     assert "list_internal_notes" in content

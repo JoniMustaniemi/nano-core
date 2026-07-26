@@ -89,13 +89,7 @@ class ToolRunner:
                     tool_error_title(tool_name),
                 )
                 failure_detail = error_message or "The tool reported a failure."
-                if tool_name in _SERVER_ANNOUNCE_SKIP:
-                    activity.error(
-                        title=failure_title,
-                        detail=failure_detail,
-                        source="assistant.agent",
-                    )
-                else:
+                if tool_name not in _SERVER_ANNOUNCE_SKIP:
                     self.report_error(
                         title=failure_title,
                         detail=failure_detail,

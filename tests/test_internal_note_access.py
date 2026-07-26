@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 
 from app.assistant.agent_router import AgentRouter
 from app.assistant.rules.intents import is_internal_note_list_request
+from app.common.types import ProactiveOffer
 from app.memory.internal_note_service import InternalNoteService
-from app.proactive.types import ProactiveOffer
 from app.tools import get_tool
 
 

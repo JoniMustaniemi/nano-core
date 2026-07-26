@@ -3,9 +3,9 @@ from datetime import UTC, datetime, timedelta
 
 from app.assistant.agent_router import AgentRouter
 from app.assistant.rules.intents import is_vague_self_improve_goal
+from app.common.types import ProactiveOffer
 from app.memory.db import create_db_and_tables
 from app.memory.internal_note_service import InternalNoteService
-from app.proactive.types import ProactiveOffer
 from app.tools import get_tool
 from app.tools.improvement_plan_service import ImprovementPlanResult
 

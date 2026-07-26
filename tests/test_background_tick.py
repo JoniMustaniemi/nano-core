@@ -1,13 +1,13 @@
 from datetime import UTC, datetime, timedelta
 
 from app.assistant.pending import pending_interactions
+from app.common.types import ProactiveOffer
 from app.config import get_settings
 from app.memory import improvement_plans, internal_notes
 from app.memory.db import create_db_and_tables
 from app.memory.internal_note_service import InternalNoteService
 from app.proactive.background_tick import _run_background_plan_draft, run_proactive_background_tick
 from app.proactive.store import proactive_store
-from app.proactive.types import ProactiveOffer
 from app.runtime.activity import activity
 from app.runtime.user_activity import user_activity
 from app.tools.improvement_plan_service import IMPROVEMENT_PLAN_COMPLETED_SILENT_SOURCE
@@ -69,16 +69,10 @@ def test_background_tick_starts_background_draft_when_idle(tmp_path, monkeypatch
         lambda: _DraftClient(),
     )
 
-    class _SyncThread:
-        def __init__(self, target=None, args=(), name=None, daemon=None) -> None:
-            self._target = target
-            self._args = args
-
-        def start(self) -> None:
-            if self._target is not None:
-                self._target(*self._args)
-
-    monkeypatch.setattr("app.proactive.background_tick.Thread", _SyncThread)
+    monkeypatch.setattr(
+        "app.proactive.background_tick.run_background",
+        lambda fn, *, label: fn(),
+    )
 
     run_proactive_background_tick()
 

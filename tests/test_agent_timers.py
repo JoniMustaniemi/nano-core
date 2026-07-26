@@ -3,10 +3,10 @@ from datetime import UTC, datetime, timedelta
 from helpers.agent_fixtures import (
     DuplicateTimerClient,
     ShouldNotBeCalledClient,
+    agent_respond,
     patch_agent,
 )
 
-from app.assistant.agent import AgentService
 from app.assistant.pending import pending_interactions
 from app.assistant.rules.timers import (
     is_stopwatch_start_request,
@@ -58,7 +58,7 @@ def test_agent_handles_add_timer_phrase_without_model(monkeypatch, tmp_path) -> 
         announce=lambda text: None,
     )
 
-    content = AgentService().respond("Add a timer for 30 seconds.")
+    content = agent_respond("Add a timer for 30 seconds.")
     timers = repository.list_timers()
 
     assert content == "The timer is set for 30 seconds."
@@ -75,7 +75,7 @@ def test_agent_starts_stopwatch_without_model(monkeypatch, tmp_path) -> None:
         announce=lambda text: None,
     )
 
-    content = AgentService().respond("Start a stopwatch.")
+    content = agent_respond("Start a stopwatch.")
     stopwatches = repository.list_stopwatches()
 
     assert content == STOPWATCH_STARTED_MESSAGE
@@ -94,7 +94,7 @@ def test_agent_stops_stopwatch_without_model(monkeypatch, tmp_path) -> None:
     )
     repository.add_stopwatch("Lap")
 
-    content = AgentService().respond("Stop stopwatch.")
+    content = agent_respond("Stop stopwatch.")
 
     assert content == "Stopped 1 stopwatch."
     assert repository.list_stopwatches() == []
@@ -119,7 +119,7 @@ def test_agent_handles_explicit_timer_requests_without_model(monkeypatch, tmp_pa
         announce=lambda text: None,
     )
 
-    content = AgentService().respond("Start a timer for 30 seconds.")
+    content = agent_respond("Start a timer for 30 seconds.")
     timers = repository.list_timers()
 
     assert content == "The timer is set for 30 seconds."
@@ -148,7 +148,7 @@ def test_agent_lists_active_timers_without_model(monkeypatch, tmp_path) -> None:
     )
     repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
 
-    content = AgentService().respond("Check active timers.")
+    content = agent_respond("Check active timers.")
 
     assert "Tea has" in content
     assert "remaining" in content
@@ -174,7 +174,7 @@ def test_agent_cancels_active_timers_without_model(monkeypatch, tmp_path) -> Non
     )
     repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
 
-    content = AgentService().respond("Cancel timers.")
+    content = agent_respond("Cancel timers.")
 
     assert content == "Cancelled 1 timer."
     assert repository.list_timers() == []
@@ -199,7 +199,7 @@ def test_agent_cancel_timer_never_starts_timer(monkeypatch, tmp_path) -> None:
         announce=lambda text: None,
     )
 
-    content = AgentService().respond("Cancel timer for two minutes.")
+    content = agent_respond("Cancel timer for two minutes.")
 
     assert content == "No active timers to cancel."
     assert repository.list_timers() == []
@@ -225,8 +225,8 @@ def test_agent_checks_timers_instead_of_completing_pending_timer(monkeypatch, tm
     )
     repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
 
-    first = AgentService().respond("Start a timer.")
-    second = AgentService().respond("Check active timers.")
+    first = agent_respond("Start a timer.")
+    second = agent_respond("Check active timers.")
     timers = repository.list_timers()
 
     assert first == TIMER_DURATION_PROMPT
@@ -255,8 +255,8 @@ def test_agent_cancels_pending_timer_duration_request(monkeypatch, tmp_path) -> 
         announce=lambda text: None,
     )
 
-    first = AgentService().respond("Start a timer.")
-    second = AgentService().respond("Cancel timers.")
+    first = agent_respond("Start a timer.")
+    second = agent_respond("Cancel timers.")
 
     assert first == TIMER_DURATION_PROMPT
     assert second == "No active timers to cancel."
@@ -277,7 +277,7 @@ def test_agent_asks_for_timer_duration_before_using_model(monkeypatch, tmp_path)
     """
     patch_agent(monkeypatch, client=ShouldNotBeCalledClient(), tmp_path=tmp_path)
 
-    content = AgentService().respond("Start a timer.")
+    content = agent_respond("Start a timer.")
 
     assert content == TIMER_DURATION_PROMPT
     assert repository.list_timers() == []
@@ -301,8 +301,8 @@ def test_agent_starts_timer_after_duration_follow_up(monkeypatch, tmp_path) -> N
         announce=lambda text: None,
     )
 
-    first = AgentService().respond("Start a timer.")
-    second = AgentService().respond("30 seconds")
+    first = agent_respond("Start a timer.")
+    second = agent_respond("30 seconds")
     timers = repository.list_timers()
 
     assert first == TIMER_DURATION_PROMPT
@@ -329,8 +329,8 @@ def test_agent_starts_timer_after_spoken_duration_follow_up(monkeypatch, tmp_pat
         announce=lambda text: None,
     )
 
-    first = AgentService().respond("Start a timer.")
-    second = AgentService().respond("five minutes")
+    first = agent_respond("Start a timer.")
+    second = agent_respond("five minutes")
     timers = repository.list_timers()
 
     assert first == TIMER_DURATION_PROMPT
@@ -347,8 +347,8 @@ def test_agent_cancels_pending_timer_with_never_mind(monkeypatch, tmp_path) -> N
         announce=lambda text: None,
     )
 
-    first = AgentService().respond("Start a timer.")
-    second = AgentService().respond("Never mind.")
+    first = agent_respond("Start a timer.")
+    second = agent_respond("Never mind.")
 
     assert first == TIMER_DURATION_PROMPT
     assert second == "Timer cancelled."
@@ -364,8 +364,8 @@ def test_agent_retries_after_invalid_timer_duration_follow_up(monkeypatch, tmp_p
         announce=lambda text: None,
     )
 
-    first = AgentService().respond("Start a timer.")
-    second = AgentService().respond("soon")
+    first = agent_respond("Start a timer.")
+    second = agent_respond("soon")
 
     assert first == TIMER_DURATION_PROMPT
     assert second == TIMER_DURATION_RETRY_PROMPT
@@ -381,8 +381,8 @@ def test_agent_starts_timer_after_bare_number_duration_follow_up(monkeypatch, tm
         announce=lambda text: None,
     )
 
-    first = AgentService().respond("Start a timer.")
-    second = AgentService().respond("10")
+    first = agent_respond("Start a timer.")
+    second = agent_respond("10")
     timers = repository.list_timers()
 
     assert first == TIMER_DURATION_PROMPT
@@ -398,7 +398,7 @@ def test_agent_handles_non_example_timer_duration_without_model(monkeypatch, tmp
         announce=lambda text: None,
     )
 
-    content = AgentService().respond("Start a timer for 45 seconds.")
+    content = agent_respond("Start a timer for 45 seconds.")
     timers = repository.list_timers()
 
     assert content == "The timer is set for 45 seconds."
@@ -413,7 +413,7 @@ def test_agent_understands_spoken_timer_duration_in_single_request(monkeypatch, 
         announce=lambda text: None,
     )
 
-    content = AgentService().respond("Start a timer for five minutes.")
+    content = agent_respond("Start a timer for five minutes.")
     timers = repository.list_timers()
 
     assert content == "The timer is set for 5 minutes."

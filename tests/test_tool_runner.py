@@ -115,7 +115,7 @@ def test_tool_runner_reports_structured_pull_request_failure(monkeypatch) -> Non
     result = runner.execute("create_pull_request", {})
 
     assert result.ok is False
-    assert errors
+    assert errors == []
     assert announced == []
 
 

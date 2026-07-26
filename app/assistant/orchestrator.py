@@ -1,19 +1,23 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from app.assistant.agent_router import AgentRouter, RouteDecision
-from app.assistant.agent_rules import is_self_improve_follow_up
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
 from app.assistant.flows.planner import AgentPlanner
-from app.assistant.flows.presence_gate import PresenceGateHandler, presence_gate
+from app.assistant.flows.presence_gate import PresenceGateHandler
 from app.assistant.flows.timer import TimerInteractionHandler
 from app.assistant.flows.wipe import WipeInteractionHandler
 from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_pipeline import finalize_response
 from app.assistant.response_source import ResponseSource
+from app.assistant.rules import (
+    is_capability_question,
+    is_identity_question,
+    is_self_improve_follow_up,
+)
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
 from app.config import get_settings
@@ -22,7 +26,10 @@ from app.llm.protocol import LLMClient
 from app.memory import improvement_plans, repository
 from app.runtime import activity
 from app.runtime.status_copy import (
+    RECEIVED_DETAIL,
     RECEIVED_TITLE,
+    THINKING_DETAIL,
+    THINKING_TITLE,
     format_self_improve_busy_reply,
     route_acknowledgment,
 )
@@ -75,24 +82,38 @@ class AgentOrchestrator:
             tool_executor=self.tool_executor,
         )
         self.wipe_handler = wipe_handler or WipeInteractionHandler()
-        self.presence_handler = presence_handler or presence_gate
+        self.presence_handler = presence_handler or PresenceGateHandler()
         self.planner = planner or AgentPlanner(
             tool_runner=self.tool_runner,
             chat_flow=self.chat_flow,
             answer_executor=self.answer_executor,
         )
 
-    def respond(self, message: str, conversation_id: str = "default") -> tuple[str, bool]:
+    def respond(
+        self,
+        message: str,
+        conversation_id: str = "default",
+        *,
+        mode: Literal["chat", "agent"] = "agent",
+    ) -> tuple[str, bool]:
         """
         Respond to a user message through the unified pipeline.
 
         Args:
             message: User message text.
             conversation_id: Conversation identifier.
+            mode: Chat-only or full agent routing.
 
         Returns:
             Composed assistant response and whether it should be spoken aloud.
         """
+        if mode == "chat":
+            try:
+                return self._respond_chat(message, conversation_id=conversation_id)
+            except Exception:
+                activity.release_to_idle(source="assistant.orchestrator")
+                raise
+
         settings = get_settings()
         user_activity.touch()
         repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
@@ -111,18 +132,68 @@ class AgentOrchestrator:
                 content=_PLAN_ONLY_REPLY,
             )
             return _PLAN_ONLY_REPLY, True
+        try:
+            history = repository.list_chat_messages(
+                conversation_id=conversation_id,
+                limit=settings.chat_history_limit,
+            )
+            client = get_llm_client()
+            source = self._resolve_source(
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+                history=history,
+            )
+            return self._finalize(client=client, source=source)
+        except Exception:
+            activity.release_to_idle(source="assistant.orchestrator")
+            raise
+
+    def _respond_chat(self, message: str, *, conversation_id: str) -> tuple[str, bool]:
+        settings = get_settings()
+        user_activity.touch()
+        activity.working(
+            title=RECEIVED_TITLE,
+            detail=RECEIVED_DETAIL,
+            source="assistant.chat",
+        )
+        repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
         history = repository.list_chat_messages(
             conversation_id=conversation_id,
             limit=settings.chat_history_limit,
         )
         client = get_llm_client()
-        source = self._resolve_source(
-            client=client,
-            message=message,
-            conversation_id=conversation_id,
-            history=history,
+        activity.working(
+            title=THINKING_TITLE,
+            detail=THINKING_DETAIL,
+            source="assistant.chat",
         )
-        return self._finalize(client=client, source=source)
+        if is_capability_question(message):
+            source = self.answer_executor.draft_capabilities(
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+            )
+        elif is_identity_question(message):
+            source = self.answer_executor.draft_identity(
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+                history=history,
+            )
+        else:
+            source = self.answer_executor.draft(
+                client=client,
+                message=message,
+                conversation_id=conversation_id,
+                history=history,
+            )
+        return finalize_response(
+            client,
+            source,
+            composer=self.composer,
+            standby_source="assistant.chat",
+        )
 
     def compose_and_persist(self, *, client: LLMClient, source: ResponseSource) -> tuple[str, bool]:
         """

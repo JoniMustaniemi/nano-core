@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.assistant.rules.intents import (
+    IDENTITY_OR_CAPABILITY_TRIGGERS,
     extract_self_improve_goal,
     is_capability_question,
     is_health_check_request,
@@ -50,6 +51,7 @@ __all__ = [
     "get_tool_rule",
     "duration_args_from_message",
     "extract_json",
+    "IDENTITY_OR_CAPABILITY_TRIGGERS",
     "is_confirmation_message",
     "is_capability_question",
     "is_identity_question",

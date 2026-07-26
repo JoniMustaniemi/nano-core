@@ -75,22 +75,6 @@ let currentActivitySnapshot = {
   task_timer: null,
   active_timers: [],
 };
-const activityStates = ["standby", "working", "error"];
-const STANDBY_HEADLINE = "I'm in standby.";
-const STANDBY_DETAIL_DEFAULT = "Awaiting your input.";
-const LISTENING_ACTIVITY_HEADLINE = "Waiting for your input.";
-const LISTENING_HEADLINE_DEFAULT = LISTENING_ACTIVITY_HEADLINE;
-const WAKE_ARMED_HEADLINE = 'Say "hey nano" when ready.';
-const WAKE_ARMED_DETAIL = "Microphone on.";
-const COMMAND_LISTEN_HEADLINE = LISTENING_ACTIVITY_HEADLINE;
-const VIEW_SESSION_HEADLINE = "Say close to dismiss.";
-const WAITING_FOR_ANSWER_HEADLINE = LISTENING_ACTIVITY_HEADLINE;
-const FOLLOW_UP_LISTEN_HEADLINE = WAITING_FOR_ANSWER_HEADLINE;
-const PRESENCE_LISTEN_HEADLINE = "Are you there?";
-const PRESENCE_LISTEN_DETAIL = "Reply yes or no.";
-const WORKING_DETAIL_DEFAULT = "Give me a moment.";
-const RECEIVED_TITLE = "On it.";
-const RECEIVED_DETAIL = "Give me a moment.";
 let lastActivityEventId = 0;
 let activityLogHiddenBeforeId = 0;
 let answerClearTimer = null;
@@ -114,8 +98,8 @@ let suppressWorkingResponse = false;
 const ANSWER_CLEAR_DELAY_MS = 20000;
 const USER_SPEECH_DISPLAY_MS = 5000;
 const USER_SPEECH_FADE_MS = 420;
-const DEFAULT_NO_ANSWER = "no";
-const IDLE_RESPONSE = "How can I help?";
+let DEFAULT_NO_ANSWER = "no";
+let IDLE_RESPONSE = "How can I help?";
 const GREETING_SPOKEN_KEY = "nano.greetingSpoken";
 const VOICE_VOLUME_STORAGE_KEY = "nano.voiceVolume";
 const DEFAULT_VOICE_VOLUME = 0.8;
@@ -135,3 +119,68 @@ let currentStandbyGreeting = "";
 
 let mainEssence = null;
 let toolCommands = [];
+const activityStates = ["standby", "working", "error"];
+let STANDBY_HEADLINE = "I'm in standby.";
+let STANDBY_DETAIL_DEFAULT = "Awaiting your input.";
+let LISTENING_ACTIVITY_HEADLINE = "Waiting for your input.";
+let LISTENING_HEADLINE_DEFAULT = LISTENING_ACTIVITY_HEADLINE;
+let WAKE_ARMED_HEADLINE = 'Say "hey nano" when ready.';
+let WAKE_ARMED_DETAIL = "Microphone on.";
+let COMMAND_LISTEN_HEADLINE = LISTENING_ACTIVITY_HEADLINE;
+let VIEW_SESSION_HEADLINE = "Say close to dismiss.";
+let WAITING_FOR_ANSWER_HEADLINE = LISTENING_ACTIVITY_HEADLINE;
+let FOLLOW_UP_LISTEN_HEADLINE = WAITING_FOR_ANSWER_HEADLINE;
+let PRESENCE_LISTEN_HEADLINE = "Are you there?";
+let PRESENCE_LISTEN_DETAIL = "Reply yes or no.";
+let WORKING_DETAIL_DEFAULT = "Give me a moment.";
+let RECEIVED_TITLE = "On it.";
+let RECEIVED_DETAIL = "Give me a moment.";
+
+function applyClientCopy(copy) {
+  if (!copy || typeof copy !== "object") {
+    return;
+  }
+  if (copy.standbyHeadline) {
+    STANDBY_HEADLINE = copy.standbyHeadline;
+  }
+  if (copy.standbyDetailDefault) {
+    STANDBY_DETAIL_DEFAULT = copy.standbyDetailDefault;
+  }
+  if (copy.listeningActivityHeadline) {
+    LISTENING_ACTIVITY_HEADLINE = copy.listeningActivityHeadline;
+    LISTENING_HEADLINE_DEFAULT = copy.listeningActivityHeadline;
+    COMMAND_LISTEN_HEADLINE = copy.listeningActivityHeadline;
+    WAITING_FOR_ANSWER_HEADLINE = copy.listeningActivityHeadline;
+    FOLLOW_UP_LISTEN_HEADLINE = copy.listeningActivityHeadline;
+  }
+  if (copy.wakeArmedHeadline) {
+    WAKE_ARMED_HEADLINE = copy.wakeArmedHeadline;
+  }
+  if (copy.wakeArmedDetail) {
+    WAKE_ARMED_DETAIL = copy.wakeArmedDetail;
+  }
+  if (copy.viewSessionHeadline) {
+    VIEW_SESSION_HEADLINE = copy.viewSessionHeadline;
+  }
+  if (copy.presenceListenHeadline) {
+    PRESENCE_LISTEN_HEADLINE = copy.presenceListenHeadline;
+  }
+  if (copy.presenceListenDetail) {
+    PRESENCE_LISTEN_DETAIL = copy.presenceListenDetail;
+  }
+  if (copy.workingDetailDefault) {
+    WORKING_DETAIL_DEFAULT = copy.workingDetailDefault;
+  }
+  if (copy.receivedTitle) {
+    RECEIVED_TITLE = copy.receivedTitle;
+  }
+  if (copy.receivedDetail) {
+    RECEIVED_DETAIL = copy.receivedDetail;
+  }
+  if (copy.idleResponse) {
+    IDLE_RESPONSE = copy.idleResponse;
+  }
+  if (copy.defaultNoAnswer) {
+    DEFAULT_NO_ANSWER = copy.defaultNoAnswer;
+  }
+}

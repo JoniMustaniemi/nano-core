@@ -82,7 +82,7 @@ async function submitMessage(message, source, commandHint) {
   let shouldSpeak = true;
   let requestFailed = false;
   try {
-    const response = await fetch("/chat", {
+    const response = await fetch("/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -98,7 +98,7 @@ async function submitMessage(message, source, commandHint) {
     }
     answerText = data.content;
     shouldSpeak = data.speak !== false;
-    setAnswer(answerText, { deferClearUntilSpeech: shouldSpeak });
+    setAnswer(answerText, { deferClearUntilSpeech: shouldSpeak, allowDuringWorking: true });
     replyStatus.textContent = "";
     await refreshStorage();
   } catch (error) {

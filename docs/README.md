@@ -11,7 +11,7 @@ User-facing capabilities and model overview: [README.md](../README.md).
 | Scheduling | APScheduler (background jobs) |
 | Local LLM | `llama-cpp-python` (optional `local-llm` extra) |
 | Voice | GLaDOS-TTS (`./vendor/GLaDOS-TTS`) |
-| Web UI | Vanilla JS, SSE (`/events`) |
+| Web UI | Vanilla JS (ES module entry), SSE (`/api/events`) |
 
 Entry points: `app.main` (web server), `app.cli` (CLI / `start-nano`).
 
@@ -24,7 +24,8 @@ Agent mode (`AgentOrchestrator`) is the main path for tool-capable chat:
 3. Execute: direct answer, tool call, pending interaction, or `AgentPlanner` JSON loop
 4. Compose via `ResponseComposer` → polish/guard pipeline → persist assistant reply
 
-Chat-only mode (`AssistantService`) skips routing/tools and uses `AnswerExecutor` directly.
+`AssistantService` delegates to `AgentOrchestrator` for both agent and chat modes.
+Chat mode (`mode=chat`) skips routing/tools and uses `AnswerExecutor` directly inside the orchestrator.
 
 ```mermaid
 flowchart TD
@@ -62,7 +63,9 @@ Defaults live in `app/config.py`.
 
 | Path | Responsibility |
 |------|----------------|
-| `app/api/` | REST routers: chat, health, memory, improvement plans, proactive, runtime, voice |
+| `app/api/` | REST routers under `/api/*` (chat, health, memory, tools, improvement plans, proactive, runtime, voice) |
+| `app/common/` | Shared JSON parsing and domain types (`ProactiveOffer`) |
+| `app/workspace/` | Workspace file-walking utilities |
 | `app/assistant/` | Orchestrator, router, planner, flows (timer, wipe, presence), response pipeline |
 | `app/tools/` | Registered tool handlers + PR/improvement services |
 | `app/memory/` | SQLModel tables, repositories, codebase index |
@@ -70,7 +73,7 @@ Defaults live in `app/config.py`.
 | `app/llm/` | Client, factory, protocol |
 | `app/scheduler/` | Timer, health, proactive, and presence-timeout jobs |
 | `app/voice/` | GLaDOS synthesis and volume |
-| `app/web/` | Home page, static assets |
+| `app/web/` | Home page, static assets (`home-entry.js` module loader) |
 
 ## Database
 
@@ -88,10 +91,12 @@ SQLite file from `database_url` (default `./data/nano_core.sqlite3`). Tables in 
 
 | Route | Notes |
 |-------|-------|
-| `POST /chat` | Agent or chat mode |
-| `GET /chat/wake` | Wake acknowledgement |
-| `GET /health` | Aggregated health checks |
-| `GET /api/status`, `GET /events` | Activity state + SSE stream |
+| `POST /api/chat` | Agent or chat mode |
+| `GET /api/chat/wake` | Wake acknowledgement |
+| `GET /api/health` | Aggregated health checks |
+| `GET /api/status` | Activity state + UI copy constants |
+| `GET /api/events` | SSE activity stream |
+| `GET /api/tool-commands` | Web UI quick commands |
 | `GET /api/improvement-plans` | List / detail / process plans |
 | `GET /api/storage` | Storage snapshot |
 | `GET /api/proactive` | Proactive offer state |
@@ -114,7 +119,7 @@ Settings live in `app/config.py`. Override any value in `.env` if needed — mos
 defaults work out of the box, including model paths under `models/`.
 
 Install extras from `pyproject.toml` as needed: `local-llm` for GGUF models,
-`voice` for speech, `dev` for tests and linting.
+`dev` for tests and linting.
 
 ## Architecture
 
