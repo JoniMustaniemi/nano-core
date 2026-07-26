@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from threading import Event
 from typing import Any
 
 from app.common.json_parsing import looks_like_truncated_json
@@ -23,7 +24,6 @@ from app.tools.git_command import (
     gh_missing_message,
     git_missing_message,
     resolve_executable,
-    run_git,
 )
 from app.tools.git_ops import is_git_repo, working_tree_dirty
 from app.tools.github_ops import (
@@ -32,6 +32,11 @@ from app.tools.github_ops import (
     gh_available,
 )
 from app.tools.improvement_plan_service import PLAN_TEMPERATURE, _validate_preferred_files
+from app.tools.plan_body_parser import (
+    parse_plan_body,
+    target_file_mismatch_warning,
+)
+from app.tools.plan_implementation_runtime import is_cancelled
 from app.tools.pr_service import PrResult, PullRequestService
 from app.tools.self_improve_planning import (
     complete_json_dict_with_raw,
@@ -211,7 +216,13 @@ def _parse_apply_payload(
     return parsed
 
 
-def _prefer_full_file_apply(file_contents: dict[str, str]) -> bool:
+def _prefer_full_file_apply(
+    file_contents: dict[str, str],
+    *,
+    proposed_changes: list[str] | None = None,
+) -> bool:
+    if proposed_changes and len(proposed_changes) >= 3:
+        return True
     if len(file_contents) != 1:
         return False
     content = next(iter(file_contents.values()))
@@ -255,14 +266,20 @@ def _build_apply_messages(
     allowed_files: list[str],
     prefer_full_file: bool = False,
 ) -> list[dict[str, str]]:
-    sections = [
-        f"Goal: {goal}",
-        "",
-        "Improvement plan:",
-        body,
-        "",
-        "Current file contents:",
-    ]
+    parsed = parse_plan_body(body)
+    sections = [f"Goal: {goal}"]
+    if parsed.summary:
+        sections.extend(["", "Summary:", parsed.summary])
+    sections.extend(["", "Target file(s):", ", ".join(allowed_files)])
+    mismatch = target_file_mismatch_warning(parsed, allowed_files=allowed_files)
+    if mismatch:
+        sections.extend(["", f"Note: {mismatch}"])
+    if parsed.proposed_changes:
+        sections.append("")
+        sections.append("You MUST implement exactly these steps:")
+        for index, change in enumerate(parsed.proposed_changes, start=1):
+            sections.append(f"{index}. {change}")
+    sections.extend(["", "Full improvement plan:", body, "", "Current file contents:"])
     for path, content in file_contents.items():
         sections.extend([f"### {path}", content, ""])
     required_paths = ", ".join(allowed_files)
@@ -316,9 +333,36 @@ def _sync_apply_system_message(
     )[0]
 
 
-def _restore_plan_files(paths: list[str]) -> None:
-    for path in paths:
-        run_git("restore", "--", path)
+_IMPLEMENTATION_CANCELLED_ERROR = "Implementation was cancelled."
+
+
+def _implementation_aborted(
+    plan_id: int,
+    *,
+    execution_lease: str | None,
+    cancel_event: Event | None,
+) -> bool:
+    if is_cancelled(cancel_event=cancel_event):
+        return True
+    if execution_lease is None:
+        return False
+    return not improvement_plans.lease_matches(plan_id, execution_lease)
+
+
+def _should_restore_pending(plan_id: int, execution_lease: str | None) -> bool:
+    if execution_lease is None:
+        plan = improvement_plans.get_plan(plan_id)
+        return plan is not None and plan.status == "implementing"
+    return improvement_plans.lease_matches(plan_id, execution_lease)
+
+
+def _cancelled_result(plan_id: int | None) -> ImplementationResult:
+    return ImplementationResult(
+        ok=False,
+        step="cancelled",
+        plan_id=plan_id,
+        error=_IMPLEMENTATION_CANCELLED_ERROR,
+    )
 
 
 class ImprovementPlanImplementationService:
@@ -331,11 +375,29 @@ class ImprovementPlanImplementationService:
     ) -> None:
         self.pr_service = pr_service or PullRequestService()
 
-    def run(self, plan_id: int) -> ImplementationResult:
+    def run(
+        self,
+        plan_id: int,
+        *,
+        execution_lease: str | None = None,
+        cancel_event: Event | None = None,
+    ) -> ImplementationResult:
         plan = improvement_plans.get_plan(plan_id)
         if plan is None:
             return ImplementationResult(
                 ok=False, step="load", plan_id=plan_id, error="Plan not found."
+            )
+
+        if _implementation_aborted(
+            plan_id,
+            execution_lease=execution_lease,
+            cancel_event=cancel_event,
+        ):
+            return ImplementationResult(
+                ok=False,
+                step="cancelled",
+                plan_id=plan_id,
+                error=_IMPLEMENTATION_CANCELLED_ERROR,
             )
 
         preflight = check_implementation_preflight(plan, allowed_statuses=("implementing",))
@@ -376,9 +438,25 @@ class ImprovementPlanImplementationService:
                 plan,
                 allowed_files=allowed_files,
                 reporter=reporter,
+                execution_lease=execution_lease,
+                cancel_event=cancel_event,
             )
+            if apply_result.step == "cancelled":
+                return apply_result
+            if _implementation_aborted(
+                plan_id,
+                execution_lease=execution_lease,
+                cancel_event=cancel_event,
+            ):
+                return ImplementationResult(
+                    ok=False,
+                    step="cancelled",
+                    plan_id=plan_id,
+                    error=_IMPLEMENTATION_CANCELLED_ERROR,
+                )
             if not apply_result.ok:
-                improvement_plans.restore_pending(plan_id)
+                if _should_restore_pending(plan_id, execution_lease):
+                    improvement_plans.restore_pending(plan_id)
                 failure_message = _format_apply_failure_message(apply_result.error)
                 activity.standby(
                     title=IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
@@ -389,13 +467,45 @@ class ImprovementPlanImplementationService:
                 return apply_result
 
             reporter.update(step="lint")
-            pr_result = self.pr_service.run(
-                client=get_code_llm_client(),
-                announce=True,
-            )
+            if _implementation_aborted(
+                plan_id,
+                execution_lease=execution_lease,
+                cancel_event=cancel_event,
+            ):
+                return ImplementationResult(
+                    ok=False,
+                    step="cancelled",
+                    plan_id=plan_id,
+                    error=_IMPLEMENTATION_CANCELLED_ERROR,
+                )
+            pr_kwargs: dict[str, Any] = {
+                "client": get_code_llm_client(),
+                "announce": True,
+            }
+            if cancel_event is not None:
+                pr_kwargs["cancel_event"] = cancel_event
+            pr_result = self.pr_service.run(**pr_kwargs)
+            if pr_result.step == "cancelled":
+                return ImplementationResult(
+                    ok=False,
+                    step="cancelled",
+                    plan_id=plan_id,
+                    error=_IMPLEMENTATION_CANCELLED_ERROR,
+                )
+            if _implementation_aborted(
+                plan_id,
+                execution_lease=execution_lease,
+                cancel_event=cancel_event,
+            ):
+                return ImplementationResult(
+                    ok=False,
+                    step="cancelled",
+                    plan_id=plan_id,
+                    error=_IMPLEMENTATION_CANCELLED_ERROR,
+                )
             if not pr_result.ok:
-                _restore_plan_files(allowed_files)
-                improvement_plans.restore_pending(plan_id)
+                if _should_restore_pending(plan_id, execution_lease):
+                    improvement_plans.restore_pending(plan_id)
                 failure_message = _format_implementation_pr_failure(pr_result)
                 activity.standby(
                     title=IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
@@ -407,8 +517,20 @@ class ImprovementPlanImplementationService:
                     ok=False,
                     step=pr_result.step,
                     plan_id=plan_id,
-                    error=pr_result.error or "Pull request workflow failed.",
+                    error=failure_message,
                 )
+
+        if _implementation_aborted(
+            plan_id,
+            execution_lease=execution_lease,
+            cancel_event=cancel_event,
+        ):
+            return ImplementationResult(
+                ok=False,
+                step="cancelled",
+                plan_id=plan_id,
+                error=_IMPLEMENTATION_CANCELLED_ERROR,
+            )
 
         improvement_plans.delete_plan(plan_id)
         activity.standby(
@@ -430,8 +552,23 @@ class ImprovementPlanImplementationService:
         *,
         allowed_files: list[str],
         reporter: LongTaskProgressReporter | None = None,
+        execution_lease: str | None = None,
+        cancel_event: Event | None = None,
     ) -> ImplementationResult:
         plan_id = plan.id
+        if plan_id is None:
+            return ImplementationResult(
+                ok=False,
+                step="load",
+                plan_id=None,
+                error="Plan not found.",
+            )
+        if _implementation_aborted(
+            plan_id,
+            execution_lease=execution_lease,
+            cancel_event=cancel_event,
+        ):
+            return _cancelled_result(plan_id)
         settings = get_settings()
         file_contents: dict[str, str] = {}
         for path in allowed_files:
@@ -445,14 +582,19 @@ class ImprovementPlanImplementationService:
                     error=str(exc),
                 )
 
+        parsed = parse_plan_body(plan.body)
+        prefer_full_file = _prefer_full_file_apply(
+            file_contents,
+            proposed_changes=parsed.proposed_changes,
+        )
         messages = _build_apply_messages(
             goal=plan.goal,
             body=plan.body,
             file_contents=file_contents,
             allowed_files=allowed_files,
-            prefer_full_file=_prefer_full_file_apply(file_contents),
+            prefer_full_file=prefer_full_file,
         )
-        full_file_only = _prefer_full_file_apply(file_contents)
+        full_file_only = prefer_full_file
         max_tokens = settings.self_improve_plan_max_tokens
         max_attempts = settings.self_improve_apply_max_attempts
         payload: dict[str, Any] | None = None
@@ -465,6 +607,12 @@ class ImprovementPlanImplementationService:
         for client in (get_code_llm_client(), get_llm_client()):
             if apply_error is not None:
                 break
+            if _implementation_aborted(
+                plan_id,
+                execution_lease=execution_lease,
+                cancel_event=cancel_event,
+            ):
+                return _cancelled_result(plan_id)
             conversation = list(messages)
             if full_file_only:
                 _sync_apply_system_message(
@@ -477,6 +625,12 @@ class ImprovementPlanImplementationService:
                 )
             json_failures = 0
             for _attempt in range(max_attempts):
+                if _implementation_aborted(
+                    plan_id,
+                    execution_lease=execution_lease,
+                    cancel_event=cancel_event,
+                ):
+                    return _cancelled_result(plan_id)
                 total_attempts += 1
                 if reporter is not None:
                     reporter.update(attempt=total_attempts)
@@ -623,9 +777,12 @@ def _format_implementation_pr_failure(result: PrResult) -> str:
     step = str(result.step or "").strip()
     error = str(result.error or "").strip()
     if step == "lint":
-        return "Lint checks failed, so I declined to commit anything or open a pull request."
+        return (
+            "Changes were applied, but lint checks failed. "
+            "Fix the issues and use Create pull request."
+        )
     if step == "verify":
-        return "Your tests failed, so I declined to commit anything or open a pull request."
+        return "Changes were applied, but tests failed. Fix the issues and use Create pull request."
     if step == "preflight" and "nothing" in error.lower():
         return "There is nothing to publish, so I did not open a pull request."
     if step == "preflight" and "already open" in error.lower():

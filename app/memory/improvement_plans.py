@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session, col, select
 
 import app.memory.db as db
 from app.memory.models import ImprovementPlan
+from app.tools.plan_implementation_runtime import issue_implementing_lease
 
 _UNPROCESSED_STATUSES = ("pending", "implementing")
+_DEFAULT_STALE_IMPLEMENTING_SECONDS = 15 * 60
 
 
 def has_unprocessed_plan() -> bool:
@@ -83,9 +86,20 @@ def try_mark_implementing(plan_id: int) -> bool:
         if plan is None or plan.status != "pending":
             return False
         plan.status = "implementing"
+        plan.implementing_started_at = datetime.now(UTC)
+        plan.implementing_lease = issue_implementing_lease()
         session.add(plan)
         session.commit()
         return True
+
+
+def lease_matches(plan_id: int, lease: str) -> bool:
+    plan = get_plan(plan_id)
+    return (
+        plan is not None
+        and plan.status == "implementing"
+        and plan.implementing_lease == lease
+    )
 
 
 def restore_pending(plan_id: int) -> bool:
@@ -94,9 +108,40 @@ def restore_pending(plan_id: int) -> bool:
         if plan is None or plan.status != "implementing":
             return False
         plan.status = "pending"
+        plan.implementing_started_at = None
+        plan.implementing_lease = None
         session.add(plan)
         session.commit()
         return True
+
+
+def restore_stale_implementing_plans(
+    *,
+    max_age_seconds: int = _DEFAULT_STALE_IMPLEMENTING_SECONDS,
+) -> int:
+    """Reset plans stuck in implementing longer than max_age_seconds."""
+    from app.tools.plan_implementation_runtime import is_worker_live
+
+    cutoff = datetime.now(UTC) - timedelta(seconds=max_age_seconds)
+    candidate_ids: list[int] = []
+    with Session(db.engine) as session:
+        statement = select(ImprovementPlan).where(ImprovementPlan.status == "implementing")
+        for plan in session.exec(statement):
+            if plan.id is None:
+                continue
+            started_at = plan.implementing_started_at
+            if started_at is not None and started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=UTC)
+            if started_at is None or started_at <= cutoff:
+                candidate_ids.append(plan.id)
+
+    restored = 0
+    for plan_id in candidate_ids:
+        if is_worker_live(plan_id):
+            continue
+        if restore_pending(plan_id):
+            restored += 1
+    return restored
 
 
 def files_from_plan(plan: ImprovementPlan) -> list[str]:

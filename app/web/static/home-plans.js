@@ -91,6 +91,17 @@ function updatePlanImplementButton(plan) {
   planImplementButton.disabled = !implementable;
 }
 
+function updatePlanResetButton(plan) {
+  if (!planResetButton) {
+    return;
+  }
+  const resettable = Boolean(
+    plan && plan.kind === "drafted" && plan.status === "implementing",
+  );
+  planResetButton.hidden = !resettable;
+  planResetButton.disabled = !resettable;
+}
+
 function openPlanReader(plan) {
   activePlanId = plan.id;
   activePlanKind = plan.kind || "drafted";
@@ -98,6 +109,7 @@ function openPlanReader(plan) {
   planReaderBody.textContent = plan.body || "";
   updatePlanProcessButton(plan);
   updatePlanImplementButton(plan);
+  updatePlanResetButton(plan);
   clearPlanReaderStatus();
   plansList.hidden = true;
   planReader.hidden = false;
@@ -239,6 +251,47 @@ async function processActivePlan() {
   await loadPlans();
 }
 
+async function resetActivePlan() {
+  if (
+    activePlanId === null ||
+    activePlanKind !== "drafted" ||
+    !planResetButton ||
+    planResetButton.disabled
+  ) {
+    return;
+  }
+
+  clearPlanReaderStatus();
+  planResetButton.disabled = true;
+
+  try {
+    const response = await fetch(`/api/improvement-plans/${activePlanId}/reset`, {
+      method: "POST",
+    });
+
+    if (response.status === 204) {
+      await openPlanById(activePlanId, activePlanKind);
+      await loadPlans();
+      return;
+    }
+
+    let message = "Could not reset implementation.";
+    try {
+      const payload = await response.json();
+      if (payload?.detail) {
+        message = String(payload.detail);
+      }
+    } catch (_error) {
+      // Keep default message when the response is not JSON.
+    }
+    showPlanReaderStatus(message);
+    await openPlanById(activePlanId, activePlanKind);
+  } catch (_error) {
+    showPlanReaderStatus("Could not reset implementation.");
+    planResetButton.disabled = false;
+  }
+}
+
 async function implementActivePlan() {
   if (
     activePlanId === null ||
@@ -248,41 +301,80 @@ async function implementActivePlan() {
   ) {
     return;
   }
+
+  clearPlanReaderStatus();
+  try {
+    const preflightResponse = await fetch(
+      `/api/improvement-plans/${activePlanId}/preflight`,
+    );
+    if (!preflightResponse.ok) {
+      let message = "Could not check whether implementation can start.";
+      try {
+        const payload = await preflightResponse.json();
+        if (payload?.detail) {
+          message = String(payload.detail);
+        }
+      } catch (_error) {
+        // Keep default message when the response is not JSON.
+      }
+      showPlanReaderStatus(message);
+      return;
+    }
+
+    const preflight = await preflightResponse.json();
+    if (!preflight?.ok) {
+      showPlanReaderStatus(
+        preflight?.error || "Implementation cannot start right now.",
+      );
+      return;
+    }
+  } catch (_error) {
+    showPlanReaderStatus("Could not check whether implementation can start.");
+    return;
+  }
+
   if (
     !window.confirm("This will edit code and open a pull request. Continue?")
   ) {
     return;
   }
 
-  clearPlanReaderStatus();
   planImplementButton.disabled = true;
   if (planProcessButton) {
     planProcessButton.disabled = true;
   }
 
-  const response = await fetch(`/api/improvement-plans/${activePlanId}/implement`, {
-    method: "POST",
-  });
-
-  if (response.status === 202) {
-    closePlanReader();
-    await loadPlans();
-    return;
-  }
-
-  let message = "Could not start implementation.";
   try {
-    const payload = await response.json();
-    if (payload?.detail) {
-      message = String(payload.detail);
+    const response = await fetch(`/api/improvement-plans/${activePlanId}/implement`, {
+      method: "POST",
+    });
+
+    if (response.status === 202) {
+      closePlanReader();
+      await loadPlans();
+      return;
+    }
+
+    let message = "Could not start implementation.";
+    try {
+      const payload = await response.json();
+      if (payload?.detail) {
+        message = String(payload.detail);
+      }
+    } catch (_error) {
+      // Keep default message when the response is not JSON.
+    }
+    showPlanReaderStatus(message);
+    updatePlanImplementButton({ kind: "drafted", status: "pending" });
+    if (planProcessButton) {
+      planProcessButton.disabled = false;
     }
   } catch (_error) {
-    // Keep default message when the response is not JSON.
-  }
-  showPlanReaderStatus(message);
-  updatePlanImplementButton({ kind: "drafted", status: "pending" });
-  if (planProcessButton) {
-    planProcessButton.disabled = false;
+    showPlanReaderStatus("Could not start implementation.");
+    updatePlanImplementButton({ kind: "drafted", status: "pending" });
+    if (planProcessButton) {
+      planProcessButton.disabled = false;
+    }
   }
 }
 
@@ -319,6 +411,12 @@ planProcessButton.addEventListener("click", () => {
 if (planImplementButton) {
   planImplementButton.addEventListener("click", () => {
     void implementActivePlan();
+  });
+}
+
+if (planResetButton) {
+  planResetButton.addEventListener("click", () => {
+    void resetActivePlan();
   });
 }
 

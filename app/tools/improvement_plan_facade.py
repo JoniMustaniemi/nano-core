@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import threading
 from dataclasses import dataclass
+from typing import Literal
 
 from app.common.types import ProactiveOffer
 from app.memory import improvement_plans, internal_notes
@@ -13,6 +15,12 @@ from app.runtime.status_copy import IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE
 from app.tools.improvement_plan_implementation import (
     ImprovementPlanImplementationService,
     check_implementation_preflight,
+)
+from app.tools.plan_implementation_runtime import (
+    cancel_and_wait,
+    is_worker_live,
+    register_worker,
+    unregister_worker,
 )
 
 
@@ -46,6 +54,15 @@ class ImplementPlanResult:
     ok: bool
     plan_id: int
     status: str
+
+
+@dataclass(frozen=True, slots=True)
+class PreflightPlanResult:
+    ok: bool
+    error: str | None = None
+
+
+ResetPlanResult = Literal["ok", "not_found", "not_implementing", "worker_active"]
 
 
 def parse_files(raw: object) -> list[str]:
@@ -193,7 +210,29 @@ class ImprovementPlanFacade:
     def process_plan(self, plan_id: int) -> bool:
         return improvement_plans.delete_plan(plan_id)
 
+    def preflight_plan(self, plan_id: int) -> PreflightPlanResult:
+        improvement_plans.restore_stale_implementing_plans()
+        plan = improvement_plans.get_plan(plan_id)
+        result = check_implementation_preflight(plan)
+        return PreflightPlanResult(ok=result.ok, error=result.error)
+
+    def reset_plan(self, plan_id: int) -> ResetPlanResult:
+        plan = improvement_plans.get_plan(plan_id)
+        if plan is None:
+            return "not_found"
+        if plan.status != "implementing":
+            return "not_implementing"
+        if is_worker_live(plan_id) and not cancel_and_wait(plan_id):
+            return "worker_active"
+        if improvement_plans.restore_pending(plan_id):
+            return "ok"
+        refreshed = improvement_plans.get_plan(plan_id)
+        if refreshed is not None and refreshed.status == "pending":
+            return "ok"
+        return "not_implementing"
+
     def implement_plan(self, plan_id: int) -> tuple[ImplementPlanResult | None, str | None, int]:
+        improvement_plans.restore_stale_implementing_plans()
         plan = improvement_plans.get_plan(plan_id)
         preflight = check_implementation_preflight(plan)
         if not preflight.ok:
@@ -202,7 +241,9 @@ class ImprovementPlanFacade:
         if not improvement_plans.try_mark_implementing(plan_id):
             return None, "Plan is not available for implementation.", 409
 
+        plan = improvement_plans.get_plan(plan_id)
         captured_plan_id = plan_id
+        captured_lease = plan.implementing_lease if plan is not None else None
 
         def _record_implementation_failure(detail: str) -> None:
             activity.standby(
@@ -212,24 +253,43 @@ class ImprovementPlanFacade:
             )
 
         def _run_implementation() -> None:
+            cancel_event = register_worker(captured_plan_id, threading.current_thread())
+            result = None
             try:
-                result = ImprovementPlanImplementationService().run(captured_plan_id)
+                if captured_lease is None:
+                    return
+                result = ImprovementPlanImplementationService().run(
+                    captured_plan_id,
+                    execution_lease=captured_lease,
+                    cancel_event=cancel_event,
+                )
             except Exception as exc:
-                improvement_plans.restore_pending(captured_plan_id)
+                if captured_lease is not None and improvement_plans.lease_matches(
+                    captured_plan_id, captured_lease
+                ):
+                    improvement_plans.restore_pending(captured_plan_id)
                 _record_implementation_failure(str(exc))
                 return
+            finally:
+                unregister_worker(captured_plan_id)
 
             if result is None:
-                improvement_plans.restore_pending(captured_plan_id)
+                if captured_lease is not None and improvement_plans.lease_matches(
+                    captured_plan_id, captured_lease
+                ):
+                    improvement_plans.restore_pending(captured_plan_id)
                 _record_implementation_failure("Implementation returned no result.")
                 return
 
             if result.ok:
                 return
 
-            plan = improvement_plans.get_plan(captured_plan_id)
-            if plan is not None and plan.status == "implementing":
-                improvement_plans.restore_pending(captured_plan_id)
+            if captured_lease is not None and improvement_plans.lease_matches(
+                captured_plan_id, captured_lease
+            ):
+                plan = improvement_plans.get_plan(captured_plan_id)
+                if plan is not None and plan.status == "implementing":
+                    improvement_plans.restore_pending(captured_plan_id)
             if result.step in {"load", "preflight"}:
                 _record_implementation_failure(result.error or "Implementation failed.")
 

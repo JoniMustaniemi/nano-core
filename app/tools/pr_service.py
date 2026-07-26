@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
+from threading import Event
 from typing import Any
 
 from app.config import get_settings
@@ -25,6 +26,7 @@ from app.runtime.status_copy import (
     PR_OPENING_TIMER_LABEL,
     PR_OPENING_TIMER_SECONDS,
     PR_VERIFY_TIMER_LABEL,
+    PR_WORKFLOW_CANCELLED_TITLE,
     PR_WORKFLOW_FAILED_TITLE,
     PREPARING_PR_LINT_DETAIL,
     PREPARING_PR_PREFLIGHT_DETAIL,
@@ -61,6 +63,7 @@ from app.tools.github_ops import (
     gh_available,
     qualify_head_branch,
 )
+from app.tools.plan_implementation_runtime import is_cancelled
 from app.tools.pr_naming import PrNamingService
 from app.tools.pr_verify import command_display, run_pr_lint, run_pr_verification
 
@@ -69,11 +72,34 @@ def _finalize_pr_activity(result: PrResult) -> None:
     activity.clear_task_timer()
     if result.ok:
         return
+    if result.step == "cancelled":
+        activity.standby(
+            title=PR_WORKFLOW_CANCELLED_TITLE,
+            detail=result.error or "Pull request workflow was cancelled.",
+            source="tools.pr_service",
+        )
+        return
     activity.standby(
         title=PR_WORKFLOW_FAILED_TITLE,
         detail=result.error or "I could not complete the pull request.",
         source="tools.pr_service",
     )
+
+
+def _cancelled_pr_result() -> PrResult:
+    return PrResult(ok=False, step="cancelled", error="Pull request workflow was cancelled.")
+
+
+def _finalize_cancelled_pr() -> PrResult:
+    result = _cancelled_pr_result()
+    _finalize_pr_activity(result)
+    return result
+
+
+def _check_cancelled(cancel_event: Event | None) -> PrResult | None:
+    if is_cancelled(cancel_event=cancel_event):
+        return _finalize_cancelled_pr()
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,17 +138,28 @@ class PullRequestService:
         """
         self.naming_service = naming_service or PrNamingService()
 
-    def run(self, *, client: Any, announce: bool = True) -> PrResult:
+    def run(
+        self,
+        *,
+        client: Any,
+        announce: bool = True,
+        cancel_event: Event | None = None,
+    ) -> PrResult:
         """
         Run the full pull request workflow.
 
         Args:
             client: LLM client used for naming.
             announce: When True, emit a spoken intent before starting the workflow.
+            cancel_event: Optional cancellation signal for plan implementation.
 
         Returns:
             Structured pull request result.
         """
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
+
         activity.working(
             title=PREPARING_PR_TITLE,
             detail=PREPARING_PR_PREFLIGHT_DETAIL,
@@ -181,6 +218,9 @@ class PullRequestService:
             detail=PREPARING_PR_LINT_DETAIL,
             source="tools.pr_service",
         )
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
         activity.start_task_timer(PR_LINT_TIMER_LABEL, PR_LINT_TIMER_SECONDS)
         lint = run_pr_lint()
         if not lint.ok:
@@ -232,6 +272,9 @@ class PullRequestService:
             detail="Running the full test suite. This can take a few minutes.",
             source="tools.pr_service",
         )
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
         settings = get_settings()
         activity.start_task_timer(
             PR_VERIFY_TIMER_LABEL,
@@ -261,6 +304,10 @@ class PullRequestService:
             source="tools.pr_service",
         )
 
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
+
         activity.working(
             title=NAMING_PR_TITLE,
             detail=NAMING_PR_DETAIL,
@@ -277,9 +324,16 @@ class PullRequestService:
             )
             return self._fail("naming", str(exc))
 
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
+
         current_branch = get_current_branch()
         base_branch = detect_default_base_branch()
         if current_branch == base_branch or current_branch != naming.branch:
+            cancelled = _check_cancelled(cancel_event)
+            if cancelled is not None:
+                return cancelled
             activity.working(
                 title=CREATING_FEATURE_BRANCH_TITLE,
                 detail=naming.branch,
@@ -288,6 +342,9 @@ class PullRequestService:
             branch_result = ensure_feature_branch(naming.branch)
             if branch_result.returncode != 0:
                 return self._fail("branch", format_command_result(branch_result))
+            cancelled = _check_cancelled(cancel_event)
+            if cancelled is not None:
+                return cancelled
             current_branch = get_current_branch()
 
         if current_branch != naming.branch:
@@ -297,6 +354,9 @@ class PullRequestService:
             )
 
         if working_tree_dirty():
+            cancelled = _check_cancelled(cancel_event)
+            if cancelled is not None:
+                return cancelled
             activity.working(
                 title=COMMITTING_CHANGES_TITLE,
                 detail=naming.commit_message,
@@ -305,11 +365,20 @@ class PullRequestService:
             add_result = run_git("add", "-A")
             if add_result.returncode != 0:
                 return self._fail("commit", format_command_result(add_result))
+            cancelled = _check_cancelled(cancel_event)
+            if cancelled is not None:
+                return cancelled
 
             commit_result = run_git("commit", "-m", naming.commit_message)
             if commit_result.returncode != 0:
                 return self._fail("commit", format_command_result(commit_result))
+            cancelled = _check_cancelled(cancel_event)
+            if cancelled is not None:
+                return cancelled
 
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
         activity.working(
             title=PUSHING_BRANCH_TITLE,
             detail=naming.branch,
@@ -318,6 +387,9 @@ class PullRequestService:
         push_result = run_git("push", "-u", "origin", "HEAD")
         if push_result.returncode != 0:
             return self._fail("push", format_command_result(push_result))
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
 
         current_branch = get_current_branch()
         if current_branch == base_branch:
@@ -326,6 +398,9 @@ class PullRequestService:
                 f"Cannot open a pull request while still on the base branch {base_branch}.",
             )
 
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
         activity.working(
             title=OPENING_PR_TITLE,
             detail=f"{current_branch} -> {base_branch}",
@@ -342,7 +417,13 @@ class PullRequestService:
             "--base",
             base_branch,
         )
+        cancelled = _check_cancelled(cancel_event)
+        if cancelled is not None:
+            return cancelled
         if pr_result.returncode != 0:
+            cancelled = _check_cancelled(cancel_event)
+            if cancelled is not None:
+                return cancelled
             pr_result = run_gh(
                 "pr",
                 "create",
@@ -355,6 +436,9 @@ class PullRequestService:
                 "--head",
                 qualify_head_branch(current_branch),
             )
+            cancelled = _check_cancelled(cancel_event)
+            if cancelled is not None:
+                return cancelled
         if pr_result.returncode != 0:
             stdout = pr_result.stdout.strip()
             stderr = pr_result.stderr.strip()

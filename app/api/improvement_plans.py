@@ -32,6 +32,11 @@ class ImplementPlanResponse(BaseModel):
     status: str
 
 
+class PreflightPlanResponse(BaseModel):
+    ok: bool
+    error: str | None = None
+
+
 @router.get("/improvement-plans", response_model=list[ImprovementPlanSummary])
 def read_improvement_plans(
     limit: int = Query(default=20, ge=1, le=100),
@@ -68,6 +73,35 @@ def process_improvement_suggestion(note_id: int) -> None:
 def process_improvement_plan(plan_id: int) -> None:
     if not _facade.process_plan(plan_id):
         raise HTTPException(status_code=404, detail="Improvement plan not found.")
+
+
+@router.get(
+    "/improvement-plans/{plan_id}/preflight",
+    response_model=PreflightPlanResponse,
+)
+def preflight_improvement_plan(plan_id: int) -> PreflightPlanResponse:
+    plan = _facade.get_plan(plan_id)
+    if plan is None:
+        raise HTTPException(status_code=404, detail="Improvement plan not found.")
+    result = _facade.preflight_plan(plan_id)
+    return PreflightPlanResponse.model_validate(asdict(result))
+
+
+@router.post("/improvement-plans/{plan_id}/reset", status_code=204)
+def reset_improvement_plan(plan_id: int) -> None:
+    result = _facade.reset_plan(plan_id)
+    if result == "not_found":
+        raise HTTPException(status_code=404, detail="Improvement plan not found.")
+    if result == "worker_active":
+        raise HTTPException(
+            status_code=409,
+            detail="Implementation is still running. Try again shortly.",
+        )
+    if result != "ok":
+        raise HTTPException(
+            status_code=409,
+            detail="Plan is not in implementing status.",
+        )
 
 
 @router.post(

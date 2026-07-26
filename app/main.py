@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
 from app.config import get_settings
+from app.memory import improvement_plans
 from app.memory.db import create_db_and_tables
 from app.proactive.registry import register_builtin_delivery_handlers
 from app.runtime.activity import activity
@@ -19,6 +20,7 @@ from app.web.home import router as home_router
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     create_db_and_tables()
+    improvement_plans.restore_stale_implementing_plans()
     register_builtin_delivery_handlers()
     register_jobs()
     scheduler.start()

@@ -1,4 +1,5 @@
 import json
+from threading import Event
 from types import SimpleNamespace
 
 import pytest
@@ -481,3 +482,124 @@ def test_summarize_pr_result_open_pr_blocks_without_url() -> None:
 
     assert "http" not in summary
     assert "already waiting for your review" in summary
+
+
+def _patch_pr_preflight(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.tools.pr_service.is_git_repo", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.gh_available", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.gh_authenticated", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.get_open_pull_request", lambda: None)
+    monkeypatch.setattr("app.tools.pr_service.has_publishable_changes", lambda: True)
+    monkeypatch.setattr(
+        "app.tools.pr_service.collect_change_context",
+        lambda: {"changed_files": ["a.py"], "dirty": True},
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_pr_lint",
+        lambda: SimpleNamespace(
+            ok=True,
+            command=["python", "-m", "ruff", "check", "app", "tests"],
+            exit_code=0,
+            output="",
+            error=None,
+        ),
+    )
+    monkeypatch.setattr(
+        "app.tools.pr_service.run_pr_verification",
+        lambda: SimpleNamespace(
+            ok=True,
+            command=["python", "-m", "pytest", "-q"],
+            exit_code=0,
+            output="",
+            error=None,
+        ),
+    )
+    monkeypatch.setattr("app.tools.pr_service.activity.working", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.log", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.error", lambda **kwargs: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.start_task_timer", lambda *args: None)
+
+
+def test_pr_service_cancelled_before_lint_finalizes_activity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _patch_pr_preflight(monkeypatch)
+    clear_timer_calls = 0
+    standby_calls: list[dict[str, object]] = []
+
+    def fake_clear_task_timer() -> None:
+        nonlocal clear_timer_calls
+        clear_timer_calls += 1
+
+    monkeypatch.setattr("app.tools.pr_service.activity.clear_task_timer", fake_clear_task_timer)
+    monkeypatch.setattr(
+        "app.tools.pr_service.activity.standby",
+        lambda **kwargs: standby_calls.append(kwargs),
+    )
+    cancel_event = Event()
+    cancel_event.set()
+
+    result = PullRequestService().run(client=SimpleNamespace(), cancel_event=cancel_event)
+
+    assert result.ok is False
+    assert result.step == "cancelled"
+    assert clear_timer_calls == 1
+    assert standby_calls == [
+        {
+            "title": "I cancelled the pull request workflow.",
+            "detail": "Pull request workflow was cancelled.",
+            "source": "tools.pr_service",
+        }
+    ]
+
+
+def test_pr_service_cancelled_after_naming_skips_git_ops(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    git_calls: list[tuple[str, ...]] = []
+    gh_calls: list[tuple[str, ...]] = []
+    cancel_event = Event()
+
+    def fake_run_git(*args: str):
+        git_calls.append(args)
+        return SimpleNamespace(returncode=0, stdout="main\n", stderr="")
+
+    def fake_run_gh(*args: str):
+        gh_calls.append(args)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    _patch_pr_preflight(monkeypatch)
+    monkeypatch.setattr("app.tools.pr_service.run_git", fake_run_git)
+    monkeypatch.setattr("app.tools.pr_service.run_gh", fake_run_gh)
+    monkeypatch.setattr("app.tools.pr_service.working_tree_dirty", lambda: True)
+    monkeypatch.setattr("app.tools.pr_service.get_current_branch", lambda: "main")
+    monkeypatch.setattr("app.tools.pr_service.detect_default_base_branch", lambda: "main")
+    monkeypatch.setattr(
+        "app.tools.pr_service.ensure_feature_branch",
+        lambda name: SimpleNamespace(returncode=0, stdout="", stderr=""),
+    )
+    monkeypatch.setattr("app.tools.pr_service.activity.clear_task_timer", lambda: None)
+    monkeypatch.setattr("app.tools.pr_service.activity.standby", lambda **kwargs: None)
+
+    naming = SimpleNamespace(
+        slug="add_github_pr",
+        title="add_github_pr",
+        commit_message="add_github_pr",
+        body="Adds GitHub PR support.",
+        branch="feature/add_github_pr",
+    )
+
+    def fake_generate(**kwargs):
+        cancel_event.set()
+        return naming
+
+    service = PullRequestService(
+        naming_service=SimpleNamespace(generate=fake_generate),
+    )
+
+    result = service.run(client=SimpleNamespace(), cancel_event=cancel_event)
+
+    assert result.ok is False
+    assert result.step == "cancelled"
+    assert not git_calls
+    assert not gh_calls

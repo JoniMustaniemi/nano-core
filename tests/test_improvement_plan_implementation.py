@@ -275,7 +275,8 @@ def test_implementation_service_announces_lint_failure_message(
     ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
 
     assert any(
-        "declined to commit anything or open a pull request" in msg.lower() for msg in announcements
+        "changes were applied" in msg.lower() and "create pull request" in msg.lower()
+        for msg in announcements
     )
 
 
@@ -478,7 +479,7 @@ def test_implementation_success_activity_detail_has_no_url(
     assert "http" not in detail.lower()
 
 
-def test_implementation_service_restores_files_on_pr_failure(
+def test_implementation_service_keeps_files_on_pr_failure(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,
 ) -> None:
@@ -510,7 +511,7 @@ def test_implementation_service_restores_files_on_pr_failure(
     result = ImprovementPlanImplementationService(pr_service=_PrService()).run(plan_id)
 
     assert result.ok is False
-    assert target.read_text(encoding="utf-8") == "OLD = 1\n"
+    assert target.read_text(encoding="utf-8") == "NEW = 2\n"
     plan = improvement_plans.get_plan(plan_id)
     assert plan is not None
     assert plan.status == "pending"
@@ -718,6 +719,31 @@ def test_implementation_service_uses_configured_apply_max_attempts(
     assert "invalid json after 6 attempts" in (result.error or "").lower()
 
 
+def test_apply_plan_honours_cancellation_event(tmp_path, monkeypatch) -> None:
+    from threading import Event
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'cancel-apply.sqlite3'}")
+    (tmp_path / "app" / "runtime").mkdir(parents=True)
+    (tmp_path / "app" / "runtime" / "status_copy.py").write_text("OLD = 1\n", encoding="utf-8")
+
+    plan_id = _create_plan()
+    plan = improvement_plans.get_plan(plan_id)
+    assert plan is not None
+
+    cancel_event = Event()
+    cancel_event.set()
+
+    result = ImprovementPlanImplementationService()._apply_plan(
+        plan,
+        allowed_files=["app/runtime/status_copy.py"],
+        cancel_event=cancel_event,
+    )
+
+    assert result.ok is False
+    assert result.step == "cancelled"
+
+
 def test_prefer_full_file_apply_for_single_small_file() -> None:
     contents = {"app/runtime/status_copy.py": "OLD = 1\n"}
     assert _prefer_full_file_apply(contents) is True
@@ -729,6 +755,35 @@ def test_prefer_full_file_apply_false_for_multiple_files() -> None:
         "app/runtime/activity.py": "ACTIVITY = 1\n",
     }
     assert _prefer_full_file_apply(contents) is False
+
+
+def test_prefer_full_file_apply_for_multi_step_plan() -> None:
+    contents = {"app/runtime/status_copy.py": "OLD = 1\n"}
+    proposed_changes = ["step one", "step two", "step three"]
+    assert _prefer_full_file_apply(contents, proposed_changes=proposed_changes) is True
+
+
+def test_build_apply_messages_includes_parsed_proposed_changes() -> None:
+    body = (
+        "Summary\n"
+        "Make timer errors clearer.\n\n"
+        "Target file\n"
+        "app/runtime/status_copy.py\n\n"
+        "Proposed change\n"
+        "- Update TIMER_ERROR constant\n"
+        "- Add helper for formatting"
+    )
+    messages = _build_apply_messages(
+        goal="clearer timer errors",
+        body=body,
+        file_contents={"app/runtime/status_copy.py": "OLD = 1\n"},
+        allowed_files=["app/runtime/status_copy.py"],
+        prefer_full_file=False,
+    )
+    user_prompt = messages[1]["content"]
+    assert "You MUST implement exactly these steps:" in user_prompt
+    assert "Update TIMER_ERROR constant" in user_prompt
+    assert "Add helper for formatting" in user_prompt
 
 
 def test_build_apply_messages_prefers_full_file_for_small_target() -> None:
