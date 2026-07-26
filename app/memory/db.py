@@ -41,6 +41,7 @@ def create_db_and_tables() -> None:
     SQLModel.metadata.create_all(engine)
     _migrate_timer_table()
     _migrate_improvement_plan_table()
+    _migrate_improvement_plan_lease_column()
 
 
 def _migrate_timer_table() -> None:
@@ -109,4 +110,26 @@ def _migrate_improvement_plan_table() -> None:
             return
         conn.execute(
             text("ALTER TABLE improvementplan ADD COLUMN implementing_started_at DATETIME")
+        )
+
+
+def _migrate_improvement_plan_lease_column() -> None:
+    """
+    Add implementing_lease to legacy improvement plan tables.
+
+    Returns:
+        None.
+    """
+    if _sqlite_path(settings.database_url) is None:
+        return
+
+    with engine.begin() as conn:
+        rows = conn.execute(text("PRAGMA table_info(improvementplan)")).fetchall()
+        if not rows:
+            return
+        column_names = {row[1] for row in rows}
+        if "implementing_lease" in column_names:
+            return
+        conn.execute(
+            text("ALTER TABLE improvementplan ADD COLUMN implementing_lease VARCHAR")
         )

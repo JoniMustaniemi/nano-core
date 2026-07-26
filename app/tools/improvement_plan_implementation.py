@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from threading import Event
 from typing import Any
 
 from app.common.json_parsing import looks_like_truncated_json
@@ -35,6 +36,7 @@ from app.tools.plan_body_parser import (
     parse_plan_body,
     target_file_mismatch_warning,
 )
+from app.tools.plan_implementation_runtime import is_cancelled
 from app.tools.pr_service import PrResult, PullRequestService
 from app.tools.self_improve_planning import (
     complete_json_dict_with_raw,
@@ -331,6 +333,29 @@ def _sync_apply_system_message(
     )[0]
 
 
+_IMPLEMENTATION_CANCELLED_ERROR = "Implementation was cancelled."
+
+
+def _implementation_aborted(
+    plan_id: int,
+    *,
+    execution_lease: str | None,
+    cancel_event: Event | None,
+) -> bool:
+    if is_cancelled(cancel_event=cancel_event):
+        return True
+    if execution_lease is None:
+        return False
+    return not improvement_plans.lease_matches(plan_id, execution_lease)
+
+
+def _should_restore_pending(plan_id: int, execution_lease: str | None) -> bool:
+    if execution_lease is None:
+        plan = improvement_plans.get_plan(plan_id)
+        return plan is not None and plan.status == "implementing"
+    return improvement_plans.lease_matches(plan_id, execution_lease)
+
+
 class ImprovementPlanImplementationService:
     """Apply a drafted improvement plan and open a pull request."""
 
@@ -341,11 +366,29 @@ class ImprovementPlanImplementationService:
     ) -> None:
         self.pr_service = pr_service or PullRequestService()
 
-    def run(self, plan_id: int) -> ImplementationResult:
+    def run(
+        self,
+        plan_id: int,
+        *,
+        execution_lease: str | None = None,
+        cancel_event: Event | None = None,
+    ) -> ImplementationResult:
         plan = improvement_plans.get_plan(plan_id)
         if plan is None:
             return ImplementationResult(
                 ok=False, step="load", plan_id=plan_id, error="Plan not found."
+            )
+
+        if _implementation_aborted(
+            plan_id,
+            execution_lease=execution_lease,
+            cancel_event=cancel_event,
+        ):
+            return ImplementationResult(
+                ok=False,
+                step="cancelled",
+                plan_id=plan_id,
+                error=_IMPLEMENTATION_CANCELLED_ERROR,
             )
 
         preflight = check_implementation_preflight(plan, allowed_statuses=("implementing",))
@@ -387,8 +430,20 @@ class ImprovementPlanImplementationService:
                 allowed_files=allowed_files,
                 reporter=reporter,
             )
+            if _implementation_aborted(
+                plan_id,
+                execution_lease=execution_lease,
+                cancel_event=cancel_event,
+            ):
+                return ImplementationResult(
+                    ok=False,
+                    step="cancelled",
+                    plan_id=plan_id,
+                    error=_IMPLEMENTATION_CANCELLED_ERROR,
+                )
             if not apply_result.ok:
-                improvement_plans.restore_pending(plan_id)
+                if _should_restore_pending(plan_id, execution_lease):
+                    improvement_plans.restore_pending(plan_id)
                 failure_message = _format_apply_failure_message(apply_result.error)
                 activity.standby(
                     title=IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
@@ -399,12 +454,35 @@ class ImprovementPlanImplementationService:
                 return apply_result
 
             reporter.update(step="lint")
+            if _implementation_aborted(
+                plan_id,
+                execution_lease=execution_lease,
+                cancel_event=cancel_event,
+            ):
+                return ImplementationResult(
+                    ok=False,
+                    step="cancelled",
+                    plan_id=plan_id,
+                    error=_IMPLEMENTATION_CANCELLED_ERROR,
+                )
             pr_result = self.pr_service.run(
                 client=get_code_llm_client(),
                 announce=True,
             )
+            if _implementation_aborted(
+                plan_id,
+                execution_lease=execution_lease,
+                cancel_event=cancel_event,
+            ):
+                return ImplementationResult(
+                    ok=False,
+                    step="cancelled",
+                    plan_id=plan_id,
+                    error=_IMPLEMENTATION_CANCELLED_ERROR,
+                )
             if not pr_result.ok:
-                improvement_plans.restore_pending(plan_id)
+                if _should_restore_pending(plan_id, execution_lease):
+                    improvement_plans.restore_pending(plan_id)
                 failure_message = _format_implementation_pr_failure(pr_result)
                 activity.standby(
                     title=IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
@@ -418,6 +496,18 @@ class ImprovementPlanImplementationService:
                     plan_id=plan_id,
                     error=failure_message,
                 )
+
+        if _implementation_aborted(
+            plan_id,
+            execution_lease=execution_lease,
+            cancel_event=cancel_event,
+        ):
+            return ImplementationResult(
+                ok=False,
+                step="cancelled",
+                plan_id=plan_id,
+                error=_IMPLEMENTATION_CANCELLED_ERROR,
+            )
 
         improvement_plans.delete_plan(plan_id)
         activity.standby(

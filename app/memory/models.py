@@ -44,6 +44,7 @@ class ImprovementPlan(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
     processed_at: datetime | None = Field(default=None)
     implementing_started_at: datetime | None = Field(default=None)
+    implementing_lease: str | None = Field(default=None, index=True)
 
 
 class CodebaseFileRecord(SQLModel, table=True):

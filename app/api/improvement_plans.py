@@ -89,7 +89,15 @@ def preflight_improvement_plan(plan_id: int) -> PreflightPlanResponse:
 
 @router.post("/improvement-plans/{plan_id}/reset", status_code=204)
 def reset_improvement_plan(plan_id: int) -> None:
-    if not _facade.reset_plan(plan_id):
+    result = _facade.reset_plan(plan_id)
+    if result == "not_found":
+        raise HTTPException(status_code=404, detail="Improvement plan not found.")
+    if result == "worker_active":
+        raise HTTPException(
+            status_code=409,
+            detail="Implementation is still running. Try again shortly.",
+        )
+    if result != "ok":
         raise HTTPException(
             status_code=409,
             detail="Plan is not in implementing status.",

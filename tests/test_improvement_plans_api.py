@@ -174,7 +174,9 @@ def test_improvement_plan_api_implement_returns_202(monkeypatch, api_client) -> 
     )
     monkeypatch.setattr(
         "app.tools.improvement_plan_facade.ImprovementPlanImplementationService.run",
-        lambda self, plan_id: ImplementationResult(ok=True, step="complete", plan_id=plan_id),
+        lambda self, plan_id, **kwargs: ImplementationResult(
+            ok=True, step="complete", plan_id=plan_id
+        ),
     )
 
     response = api_client.post(f"/api/improvement-plans/{plan.id}/implement")
@@ -247,7 +249,7 @@ def test_implement_plan_background_restores_pending_on_failure(monkeypatch) -> N
     )
     monkeypatch.setattr(
         "app.tools.improvement_plan_facade.ImprovementPlanImplementationService.run",
-        lambda self, plan_id: ImplementationResult(
+        lambda self, plan_id, **kwargs: ImplementationResult(
             ok=False,
             step="preflight",
             plan_id=plan_id,
@@ -306,6 +308,26 @@ def test_improvement_plan_api_reset_returns_plan_to_pending(api_client) -> None:
     assert saved is not None
     assert saved.status == "pending"
     assert saved.implementing_started_at is None
+    assert saved.implementing_lease is None
+
+
+def test_improvement_plan_api_reset_returns_404_for_missing_plan(api_client) -> None:
+    response = api_client.post("/api/improvement-plans/999/reset")
+    assert response.status_code == 404
+
+
+def test_improvement_plan_api_reset_returns_409_for_pending_plan(api_client) -> None:
+    plan = improvement_plans.create_plan(
+        title="Clearer timer errors",
+        goal="clearer timer errors",
+        body="Summary\nImprove timer copy.",
+        files=["app/runtime/status_copy.py"],
+    )
+    assert plan.id is not None
+
+    response = api_client.post(f"/api/improvement-plans/{plan.id}/reset")
+
+    assert response.status_code == 409
 
 
 def test_restore_stale_implementing_plans_resets_old_runs(tmp_path, monkeypatch) -> None:
