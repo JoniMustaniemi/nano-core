@@ -556,6 +556,13 @@ class ImprovementPlanImplementationService:
         cancel_event: Event | None = None,
     ) -> ImplementationResult:
         plan_id = plan.id
+        if plan_id is None:
+            return ImplementationResult(
+                ok=False,
+                step="load",
+                plan_id=None,
+                error="Plan not found.",
+            )
         if _implementation_aborted(
             plan_id,
             execution_lease=execution_lease,
