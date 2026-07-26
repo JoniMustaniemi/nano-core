@@ -531,6 +531,13 @@ function applyActivityEvent(event) {
 
   if (
     event.source === "tools.pr_service" &&
+    event.state === "working"
+  ) {
+    selfImprovementRunSettled = false;
+  }
+
+  if (
+    event.source === "tools.pr_service" &&
     (event.state === "standby" || event.state === "error")
   ) {
     syncTaskWaitTimer(null);

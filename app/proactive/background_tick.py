@@ -127,9 +127,17 @@ def check_presence_timeouts() -> None:
 
     started_raw = pending.payload.get("presence_started_at")
     if not isinstance(started_raw, str):
+        PresenceGateHandler().handle_timeout()
         return
 
-    started_at = datetime.fromisoformat(started_raw)
+    try:
+        started_at = datetime.fromisoformat(started_raw)
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=UTC)
+    except ValueError:
+        PresenceGateHandler().handle_timeout()
+        return
+
     elapsed = (datetime.now(UTC) - started_at).total_seconds()
     if elapsed >= settings.presence_check_timeout_seconds:
         PresenceGateHandler().handle_timeout()

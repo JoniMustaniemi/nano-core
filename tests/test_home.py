@@ -192,6 +192,9 @@ def test_homepage_serves_static_assets() -> None:
     assert 'getElementById("plan-copy-button")' in js_text
     assert "startWorkingResponse" in js_text
     assert "stopWorkingResponse" in js_text
+    assert "if (!suppressWorkingResponse)" in js_text
+    assert "isWorkingOnTask()" in js_text
+    assert "answerClearPending = true" in js_text
     assert ".response-headline.working" in css_text
 
     assert 'Waiting for wake phrase: "hey nano".' in js_text
@@ -314,6 +317,7 @@ def test_homepage_serves_static_assets() -> None:
     assert "runtime.voice.announce" in js_text
     assert "releaseSelfImprovementWorkingMode" in js_text
     assert "selfImprovementRunSettled" in js_text
+    assert 'event.source === "tools.pr_service" &&\n    event.state === "working"' in js_text
 
     assert "runtime.task_timer" in js_text
     assert "syncTaskWaitTimer" in js_text

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from app.assistant.orchestrator import AgentOrchestrator
 from app.llm.schemas import ChatResponse
 from app.runtime.activity import activity
@@ -11,12 +13,12 @@ class AssistantService:
     def __init__(self, *, orchestrator: AgentOrchestrator | None = None) -> None:
         self.orchestrator = orchestrator or AgentOrchestrator()
 
-    def respond(self, message: str, mode: str = "agent") -> ChatResponse:
+    def respond(self, message: str, mode: Literal["chat", "agent"] = "agent") -> ChatResponse:
         conversation_id = "chat-default" if mode == "chat" else "default"
         content, speak = self.orchestrator.respond(
             message,
             conversation_id=conversation_id,
-            mode="chat" if mode == "chat" else "agent",
+            mode=mode,
         )
         return ChatResponse(content=content, speak=speak)
 

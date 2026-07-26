@@ -6,7 +6,7 @@ from typing import Any
 
 
 def run_background(fn: Callable[[], Any], *, label: str) -> Thread:
-    """Run a callable on a daemon background thread."""
-    thread = Thread(target=fn, name=label, daemon=True)
+    """Run a callable on a tracked non-daemon background thread."""
+    thread = Thread(target=fn, name=label, daemon=False)
     thread.start()
     return thread

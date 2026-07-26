@@ -870,6 +870,7 @@ function isBaseAnswerContent(content) {
 
 function restoreBaseAnswer() {
   if (getDisplayState() === "working" || requestInFlight) {
+    answerClearPending = true;
     return;
   }
   resetTransientActivityCopy();
@@ -1018,12 +1019,15 @@ function renderState() {
   applyControlsVisibility();
   renderActivityStatus();
   if (displayState === "working") {
-    if (!suppressWorkingResponse || requestInFlight) {
+    if (!suppressWorkingResponse) {
       startWorkingResponse();
     }
   } else {
     suppressWorkingResponse = false;
     stopWorkingResponse();
+    if (answerClearPending) {
+      resumeAnswerClearAfterSpeech();
+    }
   }
   updateEssenceState();
   updateInputLock();
@@ -1311,7 +1315,7 @@ function setAnswer(text, options = {}) {
   const isBaseState = options.isBaseState === true || isBaseAnswerContent(content);
   const preserveWorkingDots =
     !options.allowDuringWorking &&
-    (getDisplayState() === "working" || requestInFlight);
+    isWorkingOnTask();
 
   if (preserveWorkingDots) {
     renderActivityStatus();

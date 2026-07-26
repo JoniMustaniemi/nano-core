@@ -7,7 +7,9 @@ from app.common.types import ProactiveOffer
 from app.memory import improvement_plans, internal_notes
 from app.memory.improvement_plans import files_from_plan
 from app.memory.models import ImprovementPlan, InternalNote
+from app.runtime.activity import activity
 from app.runtime.background import run_background
+from app.runtime.status_copy import IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE
 from app.tools.improvement_plan_implementation import (
     ImprovementPlanImplementationService,
     check_implementation_preflight,
@@ -202,8 +204,34 @@ class ImprovementPlanFacade:
 
         captured_plan_id = plan_id
 
+        def _record_implementation_failure(detail: str) -> None:
+            activity.standby(
+                title=IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE,
+                detail=detail,
+                source="tools.improvement_plan_facade",
+            )
+
         def _run_implementation() -> None:
-            ImprovementPlanImplementationService().run(captured_plan_id)
+            try:
+                result = ImprovementPlanImplementationService().run(captured_plan_id)
+            except Exception as exc:
+                improvement_plans.restore_pending(captured_plan_id)
+                _record_implementation_failure(str(exc))
+                return
+
+            if result is None:
+                improvement_plans.restore_pending(captured_plan_id)
+                _record_implementation_failure("Implementation returned no result.")
+                return
+
+            if result.ok:
+                return
+
+            plan = improvement_plans.get_plan(captured_plan_id)
+            if plan is not None and plan.status == "implementing":
+                improvement_plans.restore_pending(captured_plan_id)
+            if result.step in {"load", "preflight"}:
+                _record_implementation_failure(result.error or "Implementation failed.")
 
         run_background(
             _run_implementation,

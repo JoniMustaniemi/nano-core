@@ -210,8 +210,10 @@ def test_chat_exception_releases_activity_to_idle(api_client, monkeypatch) -> No
     )
     status = api_client.get("/api/status")
 
-    assert response.status_code == 200
-    assert "went wrong" in response.json()["content"].lower()
+    assert response.status_code == 500
+    payload = response.json()
+    assert "went wrong" in payload["content"].lower()
+    assert payload["speak"] is False
     assert status.json()["state"] == "standby"
 
 

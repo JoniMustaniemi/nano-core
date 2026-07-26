@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from app.common.types import ProactiveOffer
 from app.memory import improvement_plans, internal_notes
 from app.memory.internal_note_service import InternalNoteService
+from app.tools.improvement_plan_implementation import ImplementationResult
 
 
 def _pass_implement_preflight(monkeypatch) -> None:
@@ -173,7 +174,7 @@ def test_improvement_plan_api_implement_returns_202(monkeypatch, api_client) -> 
     )
     monkeypatch.setattr(
         "app.tools.improvement_plan_facade.ImprovementPlanImplementationService.run",
-        lambda self, plan_id: None,
+        lambda self, plan_id: ImplementationResult(ok=True, step="complete", plan_id=plan_id),
     )
 
     response = api_client.post(f"/api/improvement-plans/{plan.id}/implement")
@@ -223,6 +224,42 @@ def test_improvement_plan_api_implement_returns_400_for_dirty_tree(monkeypatch, 
     response = api_client.post(f"/api/improvement-plans/{plan.id}/implement")
     assert response.status_code == 400
     assert "uncommitted changes" in response.json()["detail"].lower()
+    saved = improvement_plans.get_plan(plan.id)
+    assert saved is not None
+    assert saved.status == "pending"
+
+
+def test_implement_plan_background_restores_pending_on_failure(monkeypatch) -> None:
+    from app.tools.improvement_plan_facade import ImprovementPlanFacade
+
+    plan = improvement_plans.create_plan(
+        title="Clearer timer errors",
+        goal="clearer timer errors",
+        body="Summary\nImprove timer copy.",
+        files=["app/runtime/status_copy.py"],
+    )
+    assert plan.id is not None
+    _pass_implement_preflight(monkeypatch)
+
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_facade.run_background",
+        lambda fn, *, label: fn(),
+    )
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_facade.ImprovementPlanImplementationService.run",
+        lambda self, plan_id: ImplementationResult(
+            ok=False,
+            step="preflight",
+            plan_id=plan_id,
+            error="Preflight failed.",
+        ),
+    )
+
+    result, error, status_code = ImprovementPlanFacade().implement_plan(plan.id)
+
+    assert result is not None
+    assert error is None
+    assert status_code == 202
     saved = improvement_plans.get_plan(plan.id)
     assert saved is not None
     assert saved.status == "pending"
