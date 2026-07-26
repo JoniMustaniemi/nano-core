@@ -1,5 +1,6 @@
 import typer
 import uvicorn
+from typing import Literal
 
 from app.assistant.service import AssistantService
 from app.config import get_settings
@@ -33,7 +34,7 @@ def health() -> None:
 @app.command()
 def chat(
     message: str,
-    mode: str = typer.Option("agent", "--mode", help="Use chat or agent mode."),
+    mode: Literal["chat", "agent"] = typer.Option("agent", "--mode", help="Use chat or agent mode."),
 ) -> None:
     """Send a message to the assistant."""
     response = AssistantService().respond(message, mode=mode)
