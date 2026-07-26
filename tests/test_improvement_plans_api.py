@@ -263,3 +263,80 @@ def test_implement_plan_background_restores_pending_on_failure(monkeypatch) -> N
     saved = improvement_plans.get_plan(plan.id)
     assert saved is not None
     assert saved.status == "pending"
+
+
+def test_improvement_plan_api_preflight_returns_error_for_dirty_tree(
+    monkeypatch, api_client
+) -> None:
+    plan = improvement_plans.create_plan(
+        title="Clearer timer errors",
+        goal="clearer timer errors",
+        body="Summary\nImprove timer copy.",
+        files=["app/runtime/status_copy.py"],
+    )
+    assert plan.id is not None
+    _pass_implement_preflight(monkeypatch)
+    monkeypatch.setattr(
+        "app.tools.improvement_plan_implementation.working_tree_dirty",
+        lambda: True,
+    )
+
+    response = api_client.get(f"/api/improvement-plans/{plan.id}/preflight")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is False
+    assert "uncommitted changes" in payload["error"].lower()
+
+
+def test_improvement_plan_api_reset_returns_plan_to_pending(api_client) -> None:
+    plan = improvement_plans.create_plan(
+        title="Clearer timer errors",
+        goal="clearer timer errors",
+        body="Summary\nImprove timer copy.",
+        files=["app/runtime/status_copy.py"],
+    )
+    assert plan.id is not None
+    assert improvement_plans.try_mark_implementing(plan.id) is True
+
+    response = api_client.post(f"/api/improvement-plans/{plan.id}/reset")
+
+    assert response.status_code == 204
+    saved = improvement_plans.get_plan(plan.id)
+    assert saved is not None
+    assert saved.status == "pending"
+    assert saved.implementing_started_at is None
+
+
+def test_restore_stale_implementing_plans_resets_old_runs(tmp_path, monkeypatch) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'stale.sqlite3'}")
+    from app.memory.db import create_db_and_tables
+
+    create_db_and_tables()
+    plan = improvement_plans.create_plan(
+        title="Clearer timer errors",
+        goal="clearer timer errors",
+        body="Summary\nImprove timer copy.",
+        files=["app/runtime/status_copy.py"],
+    )
+    assert plan.id is not None
+    assert improvement_plans.try_mark_implementing(plan.id) is True
+
+    saved = improvement_plans.get_plan(plan.id)
+    assert saved is not None
+    saved.implementing_started_at = datetime.now(UTC) - timedelta(minutes=20)
+    from sqlmodel import Session
+
+    import app.memory.db as db
+
+    with Session(db.engine) as session:
+        session.add(saved)
+        session.commit()
+
+    restored = improvement_plans.restore_stale_implementing_plans(max_age_seconds=900)
+    assert restored == 1
+    refreshed = improvement_plans.get_plan(plan.id)
+    assert refreshed is not None
+    assert refreshed.status == "pending"

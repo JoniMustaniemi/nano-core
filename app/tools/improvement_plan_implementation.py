@@ -23,7 +23,6 @@ from app.tools.git_command import (
     gh_missing_message,
     git_missing_message,
     resolve_executable,
-    run_git,
 )
 from app.tools.git_ops import is_git_repo, working_tree_dirty
 from app.tools.github_ops import (
@@ -32,6 +31,10 @@ from app.tools.github_ops import (
     gh_available,
 )
 from app.tools.improvement_plan_service import PLAN_TEMPERATURE, _validate_preferred_files
+from app.tools.plan_body_parser import (
+    parse_plan_body,
+    target_file_mismatch_warning,
+)
 from app.tools.pr_service import PrResult, PullRequestService
 from app.tools.self_improve_planning import (
     complete_json_dict_with_raw,
@@ -211,7 +214,13 @@ def _parse_apply_payload(
     return parsed
 
 
-def _prefer_full_file_apply(file_contents: dict[str, str]) -> bool:
+def _prefer_full_file_apply(
+    file_contents: dict[str, str],
+    *,
+    proposed_changes: list[str] | None = None,
+) -> bool:
+    if proposed_changes and len(proposed_changes) >= 3:
+        return True
     if len(file_contents) != 1:
         return False
     content = next(iter(file_contents.values()))
@@ -255,14 +264,20 @@ def _build_apply_messages(
     allowed_files: list[str],
     prefer_full_file: bool = False,
 ) -> list[dict[str, str]]:
-    sections = [
-        f"Goal: {goal}",
-        "",
-        "Improvement plan:",
-        body,
-        "",
-        "Current file contents:",
-    ]
+    parsed = parse_plan_body(body)
+    sections = [f"Goal: {goal}"]
+    if parsed.summary:
+        sections.extend(["", "Summary:", parsed.summary])
+    sections.extend(["", "Target file(s):", ", ".join(allowed_files)])
+    mismatch = target_file_mismatch_warning(parsed, allowed_files=allowed_files)
+    if mismatch:
+        sections.extend(["", f"Note: {mismatch}"])
+    if parsed.proposed_changes:
+        sections.append("")
+        sections.append("You MUST implement exactly these steps:")
+        for index, change in enumerate(parsed.proposed_changes, start=1):
+            sections.append(f"{index}. {change}")
+    sections.extend(["", "Full improvement plan:", body, "", "Current file contents:"])
     for path, content in file_contents.items():
         sections.extend([f"### {path}", content, ""])
     required_paths = ", ".join(allowed_files)
@@ -314,11 +329,6 @@ def _sync_apply_system_message(
         allowed_files=allowed_files,
         prefer_full_file=full_file_only,
     )[0]
-
-
-def _restore_plan_files(paths: list[str]) -> None:
-    for path in paths:
-        run_git("restore", "--", path)
 
 
 class ImprovementPlanImplementationService:
@@ -394,7 +404,6 @@ class ImprovementPlanImplementationService:
                 announce=True,
             )
             if not pr_result.ok:
-                _restore_plan_files(allowed_files)
                 improvement_plans.restore_pending(plan_id)
                 failure_message = _format_implementation_pr_failure(pr_result)
                 activity.standby(
@@ -407,7 +416,7 @@ class ImprovementPlanImplementationService:
                     ok=False,
                     step=pr_result.step,
                     plan_id=plan_id,
-                    error=pr_result.error or "Pull request workflow failed.",
+                    error=failure_message,
                 )
 
         improvement_plans.delete_plan(plan_id)
@@ -445,14 +454,19 @@ class ImprovementPlanImplementationService:
                     error=str(exc),
                 )
 
+        parsed = parse_plan_body(plan.body)
+        prefer_full_file = _prefer_full_file_apply(
+            file_contents,
+            proposed_changes=parsed.proposed_changes,
+        )
         messages = _build_apply_messages(
             goal=plan.goal,
             body=plan.body,
             file_contents=file_contents,
             allowed_files=allowed_files,
-            prefer_full_file=_prefer_full_file_apply(file_contents),
+            prefer_full_file=prefer_full_file,
         )
-        full_file_only = _prefer_full_file_apply(file_contents)
+        full_file_only = prefer_full_file
         max_tokens = settings.self_improve_plan_max_tokens
         max_attempts = settings.self_improve_apply_max_attempts
         payload: dict[str, Any] | None = None
@@ -623,9 +637,12 @@ def _format_implementation_pr_failure(result: PrResult) -> str:
     step = str(result.step or "").strip()
     error = str(result.error or "").strip()
     if step == "lint":
-        return "Lint checks failed, so I declined to commit anything or open a pull request."
+        return (
+            "Changes were applied, but lint checks failed. "
+            "Fix the issues and use Create pull request."
+        )
     if step == "verify":
-        return "Your tests failed, so I declined to commit anything or open a pull request."
+        return "Changes were applied, but tests failed. Fix the issues and use Create pull request."
     if step == "preflight" and "nothing" in error.lower():
         return "There is nothing to publish, so I did not open a pull request."
     if step == "preflight" and "already open" in error.lower():

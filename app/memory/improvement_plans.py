@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session, col, select
 
@@ -8,6 +9,7 @@ import app.memory.db as db
 from app.memory.models import ImprovementPlan
 
 _UNPROCESSED_STATUSES = ("pending", "implementing")
+_DEFAULT_STALE_IMPLEMENTING_SECONDS = 15 * 60
 
 
 def has_unprocessed_plan() -> bool:
@@ -83,6 +85,7 @@ def try_mark_implementing(plan_id: int) -> bool:
         if plan is None or plan.status != "pending":
             return False
         plan.status = "implementing"
+        plan.implementing_started_at = datetime.now(UTC)
         session.add(plan)
         session.commit()
         return True
@@ -94,9 +97,33 @@ def restore_pending(plan_id: int) -> bool:
         if plan is None or plan.status != "implementing":
             return False
         plan.status = "pending"
+        plan.implementing_started_at = None
         session.add(plan)
         session.commit()
         return True
+
+
+def restore_stale_implementing_plans(
+    *,
+    max_age_seconds: int = _DEFAULT_STALE_IMPLEMENTING_SECONDS,
+) -> int:
+    """Reset plans stuck in implementing longer than max_age_seconds."""
+    cutoff = datetime.now(UTC) - timedelta(seconds=max_age_seconds)
+    restored = 0
+    with Session(db.engine) as session:
+        statement = select(ImprovementPlan).where(ImprovementPlan.status == "implementing")
+        for plan in session.exec(statement):
+            started_at = plan.implementing_started_at
+            if started_at is not None and started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=UTC)
+            if started_at is None or started_at <= cutoff:
+                plan.status = "pending"
+                plan.implementing_started_at = None
+                session.add(plan)
+                restored += 1
+        if restored:
+            session.commit()
+    return restored
 
 
 def files_from_plan(plan: ImprovementPlan) -> list[str]:

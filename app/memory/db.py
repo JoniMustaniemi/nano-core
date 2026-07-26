@@ -40,6 +40,7 @@ def create_db_and_tables() -> None:
     """
     SQLModel.metadata.create_all(engine)
     _migrate_timer_table()
+    _migrate_improvement_plan_table()
 
 
 def _migrate_timer_table() -> None:
@@ -87,3 +88,25 @@ def _migrate_timer_table() -> None:
         conn.execute(text("ALTER TABLE timer_new RENAME TO timer"))
         conn.execute(text("CREATE INDEX ix_timer_kind ON timer (kind)"))
         conn.execute(text("CREATE INDEX ix_timer_due_at ON timer (due_at)"))
+
+
+def _migrate_improvement_plan_table() -> None:
+    """
+    Add implementing_started_at to legacy improvement plan tables.
+
+    Returns:
+        None.
+    """
+    if _sqlite_path(settings.database_url) is None:
+        return
+
+    with engine.begin() as conn:
+        rows = conn.execute(text("PRAGMA table_info(improvementplan)")).fetchall()
+        if not rows:
+            return
+        column_names = {row[1] for row in rows}
+        if "implementing_started_at" in column_names:
+            return
+        conn.execute(
+            text("ALTER TABLE improvementplan ADD COLUMN implementing_started_at DATETIME")
+        )

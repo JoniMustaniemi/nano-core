@@ -21,7 +21,7 @@
   --page-pad-x: clamp(16px, 4vw, 28px);
   --page-pad-top: clamp(12px, 2.5vh, 24px);
   --top-zone-offset: 20dvh;
-  --essence-size-scale: 1.05;
+  --essence-size-scale: 1.775;
 }
 
 * {

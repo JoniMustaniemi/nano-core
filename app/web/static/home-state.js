@@ -38,6 +38,7 @@ const planReaderTitle = document.getElementById("plan-reader-title");
 const planReaderBody = document.getElementById("plan-reader-body");
 const planProcessButton = document.getElementById("plan-process-button");
 const planImplementButton = document.getElementById("plan-implement-button");
+const planResetButton = document.getElementById("plan-reset-button");
 const planReaderStatus = document.getElementById("plan-reader-status");
 const planCopyButton = document.getElementById("plan-copy-button");
 const essenceCanvas = document.getElementById("essence-canvas");

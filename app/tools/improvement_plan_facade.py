@@ -48,6 +48,12 @@ class ImplementPlanResult:
     status: str
 
 
+@dataclass(frozen=True, slots=True)
+class PreflightPlanResult:
+    ok: bool
+    error: str | None = None
+
+
 def parse_files(raw: object) -> list[str]:
     if not isinstance(raw, list):
         return []
@@ -193,7 +199,17 @@ class ImprovementPlanFacade:
     def process_plan(self, plan_id: int) -> bool:
         return improvement_plans.delete_plan(plan_id)
 
+    def preflight_plan(self, plan_id: int) -> PreflightPlanResult:
+        improvement_plans.restore_stale_implementing_plans()
+        plan = improvement_plans.get_plan(plan_id)
+        result = check_implementation_preflight(plan)
+        return PreflightPlanResult(ok=result.ok, error=result.error)
+
+    def reset_plan(self, plan_id: int) -> bool:
+        return improvement_plans.restore_pending(plan_id)
+
     def implement_plan(self, plan_id: int) -> tuple[ImplementPlanResult | None, str | None, int]:
+        improvement_plans.restore_stale_implementing_plans()
         plan = improvement_plans.get_plan(plan_id)
         preflight = check_implementation_preflight(plan)
         if not preflight.ok:
