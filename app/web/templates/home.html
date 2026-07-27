@@ -17,7 +17,7 @@
 
 <script defer src="/static/three.min.js?v=0.160.1"></script>
 <script defer src="/static/essence_visualizer.js?v=idle-essence-3"></script>
-<script type="module" src="/static/home-entry.js?v=module-entry-1"></script>
+<script type="module" src="/static/home-entry.js?v=module-entry-5"></script>
 
 </head>
 
@@ -288,6 +288,138 @@ spellcheck="false"
 placeholder="No storage snapshot loaded yet."
 
 ></textarea>
+
+</div>
+
+<div id="nano-panel-calendar" class="view-panel nano-panel nano-panel-calendar" hidden>
+
+<div id="calendar-error" class="calendar-error" hidden></div>
+
+<div class="calendar-toolbar">
+
+<div class="calendar-toolbar-row calendar-toolbar-row--primary">
+
+<div class="calendar-picker" id="calendar-picker">
+
+<button id="calendar-picker-toggle" class="calendar-picker-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Calendar">
+
+<span id="calendar-picker-label" class="calendar-picker-label"></span>
+
+</button>
+
+<div id="calendar-picker-menu" class="calendar-picker-menu" role="listbox" hidden></div>
+
+</div>
+
+<div class="calendar-lang-toggle" role="group" aria-label="Calendar language">
+
+<button id="calendar-lang-en" class="calendar-lang-btn active" type="button" aria-pressed="true">EN</button>
+
+<button id="calendar-lang-fi" class="calendar-lang-btn" type="button" aria-pressed="false">FI</button>
+
+</div>
+
+</div>
+
+<div class="calendar-toolbar-row calendar-toolbar-row--nav">
+
+<div class="calendar-nav">
+
+<button id="calendar-prev" class="calendar-nav-btn" type="button" aria-label="Previous">‹</button>
+
+<button id="calendar-today" class="calendar-today-btn" type="button">Today</button>
+
+<h3 id="calendar-period-label" class="calendar-period-label"></h3>
+
+<button id="calendar-next" class="calendar-nav-btn" type="button" aria-label="Next">›</button>
+
+</div>
+
+</div>
+
+<div class="calendar-toolbar-row calendar-toolbar-row--views">
+
+<div class="calendar-view-toggle" role="tablist" aria-label="Calendar view">
+
+<button id="calendar-view-month" class="calendar-view-btn active" type="button" role="tab" aria-selected="true">Month</button>
+
+<button id="calendar-view-week" class="calendar-view-btn" type="button" role="tab" aria-selected="false">Week</button>
+
+<button id="calendar-view-day" class="calendar-view-btn" type="button" role="tab" aria-selected="false">Day</button>
+
+</div>
+
+</div>
+
+</div>
+
+<div id="calendar-content" class="calendar-content">
+
+<div id="calendar-loading" class="calendar-loading" hidden aria-live="polite" aria-busy="true">
+
+<div class="calendar-loading-core">
+
+<div class="calendar-loading-rings" aria-hidden="true">
+
+<span class="calendar-loading-ring"></span>
+
+<span class="calendar-loading-ring calendar-loading-ring--delay"></span>
+
+</div>
+
+<p id="calendar-loading-label" class="calendar-loading-label">SYNCING CALENDAR</p>
+
+<p id="calendar-loading-detail" class="calendar-loading-detail">fetching events...</p>
+
+</div>
+
+</div>
+
+<div id="calendar-grid" class="calendar-grid" role="grid" aria-label="Calendar"></div>
+
+<div id="calendar-day-modal" class="calendar-day-modal" hidden>
+
+<div class="calendar-day-modal-backdrop" data-calendar-day-close></div>
+
+<div class="calendar-day-modal-panel" role="dialog" aria-modal="true" aria-labelledby="calendar-day-title" tabindex="-1">
+
+<div class="calendar-day-modal-layout">
+
+<div class="calendar-day-modal-main">
+
+<header class="calendar-day-modal-header">
+
+<h4 id="calendar-day-title" class="calendar-day-title"></h4>
+
+</header>
+
+<ul id="calendar-day-events" class="calendar-day-events"></ul>
+
+</div>
+
+<aside class="calendar-day-modal-rail">
+
+<button id="calendar-day-close" class="calendar-day-close ghost chrome-close-btn" type="button" aria-label="Close">
+
+<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+
+<path d="M6 6l12 12M18 6L6 18"></path>
+
+</svg>
+
+</button>
+
+<div class="calendar-day-modal-rail-extras"></div>
+
+</aside>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
 
 </div>
 

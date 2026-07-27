@@ -1,6 +1,7 @@
 const HOME_SCRIPT_ORDER = [
   "home-state.js",
   "home-plans.js",
+  "home-calendar.js",
   "home-ui.js",
   "home-view-session.js",
   "home-voice.js",
@@ -12,7 +13,7 @@ const HOME_SCRIPT_ORDER = [
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = src;
+    script.src = `${src.split("?")[0]}?v=module-entry-5`;
     script.async = false;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error(`Failed to load ${src}`));
@@ -21,5 +22,5 @@ function loadClassicScript(src) {
 }
 
 for (const file of HOME_SCRIPT_ORDER) {
-  await loadClassicScript(`/static/${file}?v=module-entry-1`);
+  await loadClassicScript(`/static/${file}?v=module-entry-5`);
 }

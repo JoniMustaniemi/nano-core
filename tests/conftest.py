@@ -38,6 +38,20 @@ def disable_background_jobs(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.main.scheduler.shutdown", lambda wait=False: None)
 
 
+@pytest.fixture(autouse=True)
+def isolate_google_calendar_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
+    """Point Google Calendar auth files at empty temp paths so tests stay offline."""
+    from app.config import get_settings
+
+    credentials_dir = tmp_path_factory.mktemp("google-credentials")
+    monkeypatch.setenv("GOOGLE_TOKEN_PATH", str(credentials_dir / "token.json"))
+    monkeypatch.setenv("GOOGLE_CREDENTIALS_PATH", str(credentials_dir / "credentials.json"))
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 def api_client():
     from fastapi.testclient import TestClient

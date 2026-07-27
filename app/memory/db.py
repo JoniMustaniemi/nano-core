@@ -130,6 +130,4 @@ def _migrate_improvement_plan_lease_column() -> None:
         column_names = {row[1] for row in rows}
         if "implementing_lease" in column_names:
             return
-        conn.execute(
-            text("ALTER TABLE improvementplan ADD COLUMN implementing_lease VARCHAR")
-        )
+        conn.execute(text("ALTER TABLE improvementplan ADD COLUMN implementing_lease VARCHAR"))

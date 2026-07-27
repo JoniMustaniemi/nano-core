@@ -1,8 +1,19 @@
 from fastapi import APIRouter
 
-from app.api import chat, health, improvement_plans, memory, proactive, runtime, tools, voice
+from app.api import (
+    calendar,
+    chat,
+    health,
+    improvement_plans,
+    memory,
+    proactive,
+    runtime,
+    tools,
+    voice,
+)
 
 api_router = APIRouter(prefix="/api")
+api_router.include_router(calendar.router)
 api_router.include_router(chat.router)
 api_router.include_router(health.router)
 api_router.include_router(memory.router)

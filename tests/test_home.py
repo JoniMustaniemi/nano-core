@@ -7,6 +7,7 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "app" / "web" / "static"
 HOME_JS_MODULES = (
     "home-state.js",
     "home-plans.js",
+    "home-calendar.js",
     "home-view-session.js",
     "home-ui.js",
     "home-voice.js",
@@ -124,7 +125,7 @@ def test_homepage_shows_standby_ui(api_client) -> None:
 
     assert 'src="/static/three.min.js?v=0.160.1"' in response.text
     assert 'src="/static/essence_visualizer.js?v=idle-essence-3"' in response.text
-    assert 'type="module" src="/static/home-entry.js?v=module-entry-1"' in response.text
+    assert 'type="module" src="/static/home-entry.js?v=module-entry-5"' in response.text
     assert 'src="/static/home-state.js' not in response.text
 
     assert "Enter to send" in response.text
@@ -161,6 +162,7 @@ def test_homepage_serves_static_assets() -> None:
     essence_js_text = (STATIC_DIR / "essence_visualizer.js").read_text(encoding="utf-8")
 
     assert ".view-modal" in css_text
+    assert ".view-panel[hidden]" in css_text
 
     assert ".bottom-bar" in css_text
 
@@ -179,6 +181,7 @@ def test_homepage_serves_static_assets() -> None:
     assert "controls-hidden" in css_text
 
     assert "body.view-modal-open" in css_text
+    assert "view-calendar-active" in css_text
 
     assert "@keyframes blink" in css_text
 
@@ -285,7 +288,8 @@ def test_homepage_serves_static_assets() -> None:
     assert "showCommandsEmptyState" in js_text
     assert "revealControlsForUiCommand" in js_text
     assert "uiCommandStatusMessage" in js_text
-    assert 'clientAction === "open_plans"' in js_text
+    assert "VIEW_CLIENT_ACTIONS" in js_text
+    assert "resolveViewClientAction" in js_text
     assert "chrome-close-btn" in css_text
 
     assert "completeUiCommand" in js_text
@@ -356,7 +360,16 @@ def test_homepage_serves_static_assets() -> None:
     assert "How can I help?" in js_text
     assert "GREETING_SPOKEN_KEY" in js_text
     assert "speakOnce" in js_text
+    assert "findLatestBootEvent" in js_text
+    assert "bootGreetingStorageKey" in js_text
+    assert "retryPendingBootGreetingSpeech" in js_text
     assert 'fetch("/api/greeting")' in js_text
+    bootstrap_block = js_text.split("async function bootstrap()")[1].split(
+        "async function refreshStorage()"
+    )[0]
+    assert bootstrap_block.index("connectMicrophoneOnStartup") < bootstrap_block.index(
+        "refreshStandbyGreeting({ speakOnce: true"
+    )
     assert "hasScheduledAnswerContent" in js_text
     assert 'Say "hey nano" when ready.' in js_text
     assert "LISTENING_ACTIVITY_HEADLINE" in js_text
@@ -435,6 +448,15 @@ def test_homepage_serves_static_assets() -> None:
 
     assert "openViewSession" in js_text
     assert "closeViewSession" in js_text
+    assert "VIEW_CLIENT_ACTIONS" in js_text
+    assert "resolveViewClientAction" in js_text
+    assert "applyViewSessionChrome" in js_text
+    assert "loadCalendarView" in js_text
+    assert "setCalendarLocale" in js_text
+    assert "calendar-loading" in css_text
+    assert "CALENDAR_LOADING_COPY_KEYS" in js_text
+    assert "CALENDAR_LANG_STORAGE_KEY" in js_text
+    assert "dataset.commandId = command.id" in js_text
     assert "handleViewSessionTranscript" in js_text
     assert "matchViewCloseKeyword" in js_text
     assert "isViewSessionActive" in js_text
@@ -482,7 +504,11 @@ def test_tool_commands_endpoint_lists_quick_actions(api_client) -> None:
     assert any(item["id"] == "open_brains" for item in payload)
     assert any(item["id"] == "open_storage" for item in payload)
     assert any(item["id"] == "open_commands" for item in payload)
+    assert any(item["id"] == "open_calendar" for item in payload)
+    assert not any(item["id"] == "list_google_calendars" for item in payload)
+    assert not any(item["id"] == "list_upcoming_calendar_events" for item in payload)
     assert any(item.get("client_action") == "open_plans" for item in payload)
+    assert any(item.get("client_action") == "open_calendar" for item in payload)
 
     assert any(item["message"] == "Tell me about your internal notes." for item in payload)
 

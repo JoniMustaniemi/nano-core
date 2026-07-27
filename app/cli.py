@@ -2,9 +2,16 @@ from typing import Literal
 
 import typer
 import uvicorn
+from googleapiclient.errors import HttpError
 
 from app.assistant.service import AssistantService
 from app.config import get_settings
+from app.integrations.google_calendar import (
+    GoogleCalendarAuthenticationError,
+    format_available_calendars,
+    list_available_calendars,
+    run_authorization_flow,
+)
 
 app = typer.Typer(help="Nano Core local assistant CLI.")
 
@@ -30,6 +37,33 @@ def health() -> None:
     """Print basic app health information."""
     settings = get_settings()
     typer.echo(f"{settings.app_name} is configured for {settings.app_env}.")
+
+
+@app.command("auth-google-calendar")
+def auth_google_calendar() -> None:
+    """Run one-time Google Calendar OAuth and save token.json."""
+    try:
+        token_file = run_authorization_flow()
+    except FileNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"Created {token_file.resolve()}")
+
+
+@app.command("google-calendars")
+def google_calendars() -> None:
+    """List available Google calendars and their IDs."""
+    try:
+        calendars = list_available_calendars()
+    except GoogleCalendarAuthenticationError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    except HttpError as exc:
+        typer.echo(f"Google Calendar API request failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(format_available_calendars(calendars))
 
 
 @app.command()

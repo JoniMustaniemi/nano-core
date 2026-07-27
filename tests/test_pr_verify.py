@@ -46,7 +46,7 @@ def test_resolve_verify_command_uses_config_override(
 
     command = pr_verify.resolve_verify_command()
 
-    assert command == ["python", "-m", "pytest", "-q", "tests/test_health.py"]
+    assert command == [sys.executable, "-m", "pytest", "-q", "tests/test_health.py"]
 
 
 def test_resolve_verify_command_returns_none_without_match(

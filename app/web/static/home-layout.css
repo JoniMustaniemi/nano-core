@@ -65,7 +65,11 @@ body.controls-hidden .essence-zone {
 }
 
 body.controls-hidden .footer-cluster,
-body.controls-hidden .keyboard-panel {
+body.controls-hidden .keyboard-panel,
+body.view-calendar-active .footer-cluster,
+body.view-calendar-active .keyboard-panel,
+body.view-calendar-active .commands-reveal-zone,
+body.view-calendar-active .controls-reveal-zone {
   display: none !important;
 }
 

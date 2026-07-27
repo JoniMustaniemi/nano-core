@@ -59,7 +59,7 @@ def resolve_verify_command() -> list[str] | None:
     settings = get_settings()
     configured = str(settings.github_pr_verify_command or "").strip()
     if configured:
-        return _split_command(configured)
+        return _normalize_command_interpreter(_split_command(configured))
 
     root = effective_workspace_root()
     pyproject = root / "pyproject.toml"
@@ -278,6 +278,14 @@ def command_display(command: list[str]) -> str:
 
 def _split_command(command: str) -> list[str]:
     return shlex.split(command, posix=False)
+
+
+def _normalize_command_interpreter(command: list[str]) -> list[str]:
+    if not command:
+        return command
+    if command[0].lower() in {"python", "python3"}:
+        return [sys.executable, *command[1:]]
+    return command
 
 
 def _pytest_basetemp_arg() -> str:
