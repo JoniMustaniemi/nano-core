@@ -73,8 +73,13 @@ window.addEventListener("keydown", (event) => {
     setControlsHidden(false);
   }
 });
-window.addEventListener("pointerdown", maybeStartListeningAfterGesture, { passive: true });
-window.addEventListener("keydown", maybeStartListeningAfterGesture);
+async function handleStartupGesture() {
+  await retryPendingBootGreetingSpeech();
+  maybeStartListeningAfterGesture();
+}
+
+window.addEventListener("pointerdown", handleStartupGesture, { passive: true });
+window.addEventListener("keydown", handleStartupGesture);
 window.addEventListener("beforeunload", () => {
   if (microphoneStream) {
     for (const track of microphoneStream.getTracks()) {

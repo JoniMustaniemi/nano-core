@@ -1,6 +1,8 @@
+from googleapiclient.errors import HttpError
 from typer.testing import CliRunner
 
 from app.cli import app, start
+from app.integrations.google_calendar import GoogleCalendarAuthenticationError
 
 
 def test_dev_command_launches_uvicorn(monkeypatch) -> None:
@@ -106,3 +108,76 @@ def test_start_cmd_command_launches_uvicorn_with_defaults(monkeypatch) -> None:
             {"host": "127.0.0.1", "port": 8000, "reload": True, "reload_dirs": ["app"]},
         )
     ]
+
+
+def test_auth_google_calendar_command_writes_token(monkeypatch) -> None:
+    token_path = "token.json"
+
+    monkeypatch.setattr(
+        "app.cli.run_authorization_flow",
+        lambda: __import__("pathlib").Path(token_path),
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["auth-google-calendar"])
+
+    assert result.exit_code == 0
+    assert token_path in result.output
+
+
+def test_auth_google_calendar_command_missing_credentials(monkeypatch) -> None:
+    def raise_missing() -> None:
+        raise FileNotFoundError("Missing file: credentials.json")
+
+    monkeypatch.setattr("app.cli.run_authorization_flow", raise_missing)
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["auth-google-calendar"])
+
+    assert result.exit_code == 1
+    assert "Missing file: credentials.json" in result.output
+
+
+def test_google_calendars_command_prints_calendars(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.cli.list_available_calendars",
+        lambda: [{"id": "primary", "summary": "Personal", "primary": "true"}],
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["google-calendars"])
+
+    assert result.exit_code == 0
+    assert "Available calendars:" in result.output
+    assert "Personal (primary) — id: primary" in result.output
+
+
+def test_google_calendars_command_exits_on_auth_error(monkeypatch) -> None:
+    def raise_auth_error() -> list[dict[str, str]]:
+        raise GoogleCalendarAuthenticationError("token.json is missing.")
+
+    monkeypatch.setattr("app.cli.list_available_calendars", raise_auth_error)
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["google-calendars"])
+
+    assert result.exit_code == 1
+    assert "token.json is missing." in result.output
+
+
+def test_google_calendars_command_exits_on_http_error(monkeypatch) -> None:
+    from unittest.mock import MagicMock
+
+    response = MagicMock(status=403)
+    error = HttpError(response, b"forbidden")
+
+    def raise_http_error() -> list[dict[str, str]]:
+        raise error
+
+    monkeypatch.setattr("app.cli.list_available_calendars", raise_http_error)
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["google-calendars"])
+
+    assert result.exit_code == 1
+    assert "Google Calendar API request failed:" in result.output

@@ -11,6 +11,7 @@ User-facing capabilities and model overview: [README.md](../README.md).
 | Scheduling | APScheduler (background jobs) |
 | Local LLM | `llama-cpp-python` (optional `local-llm` extra) |
 | Voice | GLaDOS-TTS (`./vendor/GLaDOS-TTS`) |
+| Calendar | Google Calendar API (read-only OAuth) |
 | Web UI | Vanilla JS (ES module entry), SSE (`/api/events`) |
 
 Entry points: `app.main` (web server), `app.cli` (CLI / `start-nano`).
@@ -63,8 +64,9 @@ Defaults live in `app/config.py`.
 
 | Path | Responsibility |
 |------|----------------|
-| `app/api/` | REST routers under `/api/*` (chat, health, memory, tools, improvement plans, proactive, runtime, voice) |
+| `app/api/` | REST routers under `/api/*` (chat, calendar, health, memory, tools, improvement plans, proactive, runtime, voice) |
 | `app/common/` | Shared JSON parsing and domain types (`ProactiveOffer`) |
+| `app/integrations/` | Google Calendar OAuth and event fetching |
 | `app/workspace/` | Workspace file-walking utilities |
 | `app/assistant/` | Orchestrator, router, planner, flows (timer, wipe, presence), response pipeline |
 | `app/tools/` | Registered tool handlers + PR/improvement services |
@@ -100,6 +102,9 @@ SQLite file from `database_url` (default `./data/nano_core.sqlite3`). Tables in 
 | `GET /api/improvement-plans` | List / detail / process plans |
 | `GET /api/storage` | Storage snapshot |
 | `GET /api/proactive` | Proactive offer state |
+| `GET /api/calendar/calendars` | Available Google calendars |
+| `GET /api/calendar/default` | Default configured calendar ID |
+| `GET /api/calendar/events` | Events in a date range for one calendar |
 | `POST /api/voice` | TTS request |
 
 ## Background jobs
@@ -117,6 +122,10 @@ Registered in `app/scheduler/jobs.py`:
 
 Settings live in `app/config.py`. Override any value in `.env` if needed — most
 defaults work out of the box, including model paths under `models/`.
+
+Google Calendar settings: `GOOGLE_CREDENTIALS_PATH`, `GOOGLE_TOKEN_PATH`,
+`GOOGLE_CALENDAR_TIMEZONE`, `GOOGLE_CALENDAR_IDS`. CLI: `auth-google-calendar`,
+`google-calendars`.
 
 Install extras from `pyproject.toml` as needed: `local-llm` for GGUF models,
 `dev` for tests and linting.

@@ -1,6 +1,7 @@
 const HOME_SCRIPT_ORDER = [
   "home-state.js",
   "home-plans.js",
+  "home-calendar.js",
   "home-ui.js",
   "home-view-session.js",
   "home-voice.js",
@@ -21,5 +22,5 @@ function loadClassicScript(src) {
 }
 
 for (const file of HOME_SCRIPT_ORDER) {
-  await loadClassicScript(`/static/${file}?v=module-entry-1`);
+  await loadClassicScript(`/static/${file}?v=module-entry-5`);
 }

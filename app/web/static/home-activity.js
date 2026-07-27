@@ -34,6 +34,87 @@ function resetStandbySnapshot() {
   void refreshStandbyGreeting();
 }
 
+function findLatestBootEvent(snapshot) {
+  const events = Array.isArray(snapshot?.events) ? snapshot.events : [];
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (event?.source === "system.boot") {
+      return event;
+    }
+  }
+  return null;
+}
+
+function bootGreetingStorageKey(bootEvent) {
+  if (!bootEvent || typeof bootEvent !== "object") {
+    return "";
+  }
+  const eventId = Number(bootEvent.id || 0);
+  if (eventId > 0) {
+    return String(eventId);
+  }
+  const createdAt = String(bootEvent.created_at || "").trim();
+  return createdAt;
+}
+
+let pendingBootGreetingSpeech = null;
+let bootGreetingSpeechPromise = null;
+
+async function speakBootGreetingIfNeeded(greeting, bootKey) {
+  if (!voiceAvailable || !greeting || !bootKey) {
+    return false;
+  }
+  try {
+    if (window.sessionStorage.getItem(GREETING_SPOKEN_KEY) === bootKey) {
+      return true;
+    }
+  } catch (_error) {
+    // Ignore storage read failures and continue with playback.
+  }
+
+  const promise = (async () => {
+    try {
+      try {
+        window.sessionStorage.setItem(GREETING_SPOKEN_KEY, bootKey);
+      } catch (_error) {
+        // Ignore storage write failures and continue with playback.
+      }
+      await playVoice(greeting, { pauseRecognition: true });
+      pendingBootGreetingSpeech = null;
+      return true;
+    } catch (_error) {
+      try {
+        window.sessionStorage.removeItem(GREETING_SPOKEN_KEY);
+      } catch (_storageError) {
+        // Ignore storage cleanup failures.
+      }
+      pendingBootGreetingSpeech = { greeting, bootKey };
+      setAnswer(greeting, { animate: false });
+      return false;
+    }
+  })();
+
+  bootGreetingSpeechPromise = promise;
+  try {
+    return await promise;
+  } finally {
+    if (bootGreetingSpeechPromise === promise) {
+      bootGreetingSpeechPromise = null;
+    }
+  }
+}
+
+function retryPendingBootGreetingSpeech() {
+  if (bootGreetingSpeechPromise) {
+    return bootGreetingSpeechPromise;
+  }
+  if (!pendingBootGreetingSpeech) {
+    return Promise.resolve();
+  }
+  const { greeting, bootKey } = pendingBootGreetingSpeech;
+  return speakBootGreetingIfNeeded(greeting, bootKey);
+}
+
 async function refreshStandbyGreeting(options = {}) {
   try {
     const response = await fetch("/api/greeting");
@@ -59,19 +140,13 @@ async function refreshStandbyGreeting(options = {}) {
     }
     renderState();
     const speakOnce = options.speakOnce === true;
-    const shouldSpeak =
-      speakOnce &&
-      voiceAvailable &&
-      !window.sessionStorage.getItem(GREETING_SPOKEN_KEY);
+    const bootKey = bootGreetingStorageKey(options.bootEvent);
+    const shouldSpeak = speakOnce && voiceAvailable && Boolean(bootKey);
     if (shouldSpeak) {
-      try {
-        window.sessionStorage.setItem(GREETING_SPOKEN_KEY, "1");
-        await playVoice(greeting, { pauseRecognition: true });
-      } catch (_error) {
-        window.sessionStorage.removeItem(GREETING_SPOKEN_KEY);
-        setAnswer(greeting, { animate: false });
+      const spoke = await speakBootGreetingIfNeeded(greeting, bootKey);
+      if (spoke) {
+        return;
       }
-      return;
     }
     setAnswer(greeting, { animate: false });
   } catch (_error) {
@@ -734,9 +809,10 @@ async function bootstrap() {
     }
     applyVoiceVolume();
     await loadAndRenderToolCommands();
-    void refreshStandbyGreeting({ speakOnce: true });
-    await loadPlans();
     await connectMicrophoneOnStartup();
+    const bootEvent = findLatestBootEvent(snapshot);
+    void refreshStandbyGreeting({ speakOnce: true, bootEvent });
+    await loadPlans();
     const lastEventId = Array.isArray(snapshot.events)
       ? snapshot.events.reduce((maxId, event) => {
           const eventId = Number(event?.id || 0);

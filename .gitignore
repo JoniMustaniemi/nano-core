@@ -14,3 +14,5 @@ dist/
 build/
 *.egg-info/
 models/*.gguf
+credentials.json
+token.json

@@ -65,6 +65,14 @@ EXTRA_UI_COMMANDS: tuple[ToolCommand, ...] = (
         client_action="open_commands",
     ),
     ToolCommand(
+        id="open_calendar",
+        label="Open calendar",
+        message="Show my calendar.",
+        category="Calendar",
+        description="Open the calendar view.",
+        client_action="open_calendar",
+    ),
+    ToolCommand(
         id="toggle_controls",
         label="Hide/show controls",
         message="Hide controls.",

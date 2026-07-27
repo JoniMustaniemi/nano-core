@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     self_improve_plan_max_tokens: int = Field(default=8192, ge=512)
     self_improve_apply_max_attempts: int = Field(default=4, ge=1)
     proactive_conversation_id: str = "agent-default"
+    google_credentials_path: str = "./credentials.json"
+    google_token_path: str = "./token.json"
+    google_calendar_timezone: str = "Europe/Helsinki"
+    google_calendar_ids: str = "primary"
 
 
 @lru_cache

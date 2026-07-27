@@ -67,6 +67,26 @@ function isWorkingOnTask() {
 
 const LAST_COMMAND_CATEGORIES = ["System", "Git", "GitHub"];
 
+const VIEW_CLIENT_ACTIONS = {
+  open_brains: "brains",
+  open_plans: "plans",
+  open_storage: "storage",
+  open_commands: "commands",
+  open_calendar: "calendar",
+};
+
+function resolveViewClientAction(command) {
+  const action = String(command?.client_action || "").trim();
+  if (action && Object.hasOwn(VIEW_CLIENT_ACTIONS, action)) {
+    return VIEW_CLIENT_ACTIONS[action];
+  }
+  const commandId = String(command?.id || "").trim();
+  if (commandId && Object.hasOwn(VIEW_CLIENT_ACTIONS, commandId)) {
+    return VIEW_CLIENT_ACTIONS[commandId];
+  }
+  return null;
+}
+
 function commandCategorySortKey(category) {
   const normalized = category.toLowerCase();
   const lastIndex = LAST_COMMAND_CATEGORIES.findIndex(
@@ -127,6 +147,8 @@ function renderToolCommands(commands) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "command-button";
+      button.dataset.commandId = command.id || "";
+      button.dataset.clientAction = command.client_action || "";
       button.dataset.commandMessage = command.message;
 
       const label = document.createElement("span");
@@ -232,6 +254,9 @@ function expandCommandDropdowns() {
 }
 
 function closeCommandDropdowns() {
+  if (!commandsList) {
+    return;
+  }
   for (const dropdown of commandsList.querySelectorAll(".commands-dropdown")) {
     dropdown.removeAttribute("open");
   }
@@ -249,7 +274,7 @@ async function runToolCommand(command) {
   if (isBusy()) {
     return;
   }
-  const clientAction = command.client_action;
+  const clientAction = String(command?.client_action || "").trim();
   if (clientAction === "toggle_controls") {
     toggleControlsHidden();
     if (isViewSessionActive()) {
@@ -257,20 +282,9 @@ async function runToolCommand(command) {
     }
     return;
   }
-  if (clientAction === "open_plans") {
-    void openViewSession("plans", { source: "ui" });
-    return;
-  }
-  if (clientAction === "open_brains") {
-    void openViewSession("brains", { source: "ui" });
-    return;
-  }
-  if (clientAction === "open_storage") {
-    void openViewSession("storage", { source: "ui" });
-    return;
-  }
-  if (clientAction === "open_commands") {
-    void openViewSession("commands", { source: "ui" });
+  const view = resolveViewClientAction(command);
+  if (view) {
+    await openViewSession(view, { source: "ui" });
     return;
   }
   const message = command.message;
@@ -351,6 +365,11 @@ const COMMANDS_SECTION_PATTERNS = [
   /\bopen\s+(the\s+)?command\s+list\b/,
 ];
 
+const CALENDAR_SECTION_PATTERNS = [
+  /\b(show|open|view|display|pull up|bring up)\b.*\bcalendar\s+view\b/,
+  /\b(show|open|view|display)\b.*\b(full[- ]screen\s+)?calendar\b/,
+];
+
 const CONTROLS_HIDE_PATTERNS = [
   /^hide(\s+the)?\s+controls?(\s+(panel|menu|bar))?$/,
   /^hide(\s+the)?\s+ui\s+controls?$/,
@@ -381,7 +400,7 @@ const CLOSE_PATTERNS = [
   /^close it$/,
   /^exit panel$/,
   /^close(\s+the)?\s+(panel|sheet|drawer|view|modal)$/,
-  /^close(\s+the)?\s+(plans|brains|storage|commands)(\s+(tab|panel|drawer|section))?$/,
+  /^close(\s+the)?\s+(plans|brains|storage|commands|calendar)(\s+(tab|panel|drawer|section))?$/,
   /^dismiss(\s+the)?\s+(panel|sheet|drawer|view|modal)$/,
   /^hide(\s+the)?\s+(panel|view|this|modal)$/,
   /\b(you can|can you|could you|please)\s+close\b/,
@@ -389,7 +408,7 @@ const CLOSE_PATTERNS = [
   /\b(thanks|thank you)\b.*\b(close|dismiss)\b/,
   /\b(close|dismiss|hide)\b.*\b(menu|panel|view|modal|this|it|screen|window)\b/,
   /\b(menu|panel|view|modal|this|it|screen)\b.*\b(close|dismiss|hide)\b/,
-  /\b(close|dismiss|hide)\b.*\b(plans|brains|storage|commands)\b/,
+  /\b(close|dismiss|hide)\b.*\b(plans|brains|storage|commands|calendar)\b/,
 ];
 
 function isCloseCommandNegated(normalized) {
@@ -437,6 +456,9 @@ function matchUiCommand(message) {
   }
   if (matchesSectionPatterns(normalized, COMMANDS_SECTION_PATTERNS)) {
     return { type: "section", target: "commands" };
+  }
+  if (matchesSectionPatterns(normalized, CALENDAR_SECTION_PATTERNS)) {
+    return { type: "section", target: "calendar" };
   }
   return null;
 }
@@ -532,6 +554,7 @@ function uiCommandStatusMessage(command) {
       plans: "Opening Plans.",
       storage: "Opening stored data.",
       commands: "Opening commands.",
+      calendar: "Opening Calendar.",
     };
     return labels[command.target] || "Opening.";
   }

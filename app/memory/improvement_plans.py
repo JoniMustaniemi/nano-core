@@ -95,11 +95,7 @@ def try_mark_implementing(plan_id: int) -> bool:
 
 def lease_matches(plan_id: int, lease: str) -> bool:
     plan = get_plan(plan_id)
-    return (
-        plan is not None
-        and plan.status == "implementing"
-        and plan.implementing_lease == lease
-    )
+    return plan is not None and plan.status == "implementing" and plan.implementing_lease == lease
 
 
 def restore_pending(plan_id: int) -> bool:
