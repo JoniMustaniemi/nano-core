@@ -50,6 +50,8 @@ def isolate_google_calendar_credentials(
     monkeypatch.setenv("GOOGLE_TOKEN_PATH", str(credentials_dir / "token.json"))
     monkeypatch.setenv("GOOGLE_CREDENTIALS_PATH", str(credentials_dir / "credentials.json"))
     get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.fixture

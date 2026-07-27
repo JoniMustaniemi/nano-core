@@ -1,4 +1,3 @@
-const CALENDAR_TIMEZONE = "Europe/Helsinki";
 const CALENDAR_LOCALE_TAGS = {
   en: "en-GB",
   fi: "fi-FI",
@@ -69,6 +68,7 @@ let calendarDateFormatter = null;
 let calendarDayFormatter = null;
 let calendarTimeFormatter = null;
 let calendarWeekdayFormatter = null;
+let calendarControlsBound = false;
 
 function calendarCopy() {
   return CALENDAR_COPY[calendarLocale] || CALENDAR_COPY.en;
@@ -100,24 +100,20 @@ function storeCalendarLocale(locale) {
 function rebuildCalendarFormatters() {
   const localeTag = calendarLocaleTag();
   calendarDateFormatter = new Intl.DateTimeFormat(localeTag, {
-    timeZone: CALENDAR_TIMEZONE,
     year: "numeric",
     month: "long",
   });
   calendarDayFormatter = new Intl.DateTimeFormat(localeTag, {
-    timeZone: CALENDAR_TIMEZONE,
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
   calendarTimeFormatter = new Intl.DateTimeFormat(localeTag, {
-    timeZone: CALENDAR_TIMEZONE,
     hour: "2-digit",
     minute: "2-digit",
   });
   calendarWeekdayFormatter = new Intl.DateTimeFormat(localeTag, {
-    timeZone: CALENDAR_TIMEZONE,
     weekday: "short",
   });
 }
@@ -298,8 +294,7 @@ function visibleRange() {
   }
   const monthStart = startOfMonth(calendarAnchorDate);
   const gridStart = startOfWeek(monthStart);
-  const monthEnd = endOfMonth(calendarAnchorDate);
-  const gridEnd = addDays(startOfWeek(monthEnd), 7);
+  const gridEnd = addDays(gridStart, 42);
   return { start: gridStart, end: gridEnd };
 }
 
@@ -348,13 +343,11 @@ function updatePeriodLabel() {
     const startLabel = weekStart.toLocaleDateString(localeTag, {
       day: "numeric",
       month: "short",
-      timeZone: CALENDAR_TIMEZONE,
     });
     const endLabel = weekEnd.toLocaleDateString(localeTag, {
       day: "numeric",
       month: "short",
       year: "numeric",
-      timeZone: CALENDAR_TIMEZONE,
     });
     calendarPeriodLabel.textContent = `${startLabel} – ${endLabel}`;
   } else {
@@ -600,7 +593,7 @@ function renderMonthGrid() {
     dayNumber.textContent = String(dayDate.getDate());
     cell.appendChild(dayNumber);
 
-    const dayEvents = eventsForDay(dayKey);
+    const dayEvents = sortDayEvents(eventsForDay(dayKey));
     const chips = document.createElement("div");
     chips.className = "calendar-day-chips";
     const visibleEvents = dayEvents.slice(0, 2);
@@ -617,7 +610,7 @@ function renderMonthGrid() {
       chips.appendChild(more);
     }
     cell.appendChild(chips);
-    cell.addEventListener("click", () => openCalendarDayPanel(dayKey));
+    cell.addEventListener("click", (event) => openCalendarDayPanel(dayKey, event.currentTarget));
     calendarGrid.appendChild(cell);
   }
 }
@@ -648,12 +641,12 @@ function renderWeekGrid() {
     header.className = "calendar-week-header";
     header.dataset.date = dayKey;
     header.innerHTML = `<span class="calendar-weekday-name">${labels[index]}</span><span class="calendar-weekday-date">${dayDate.getDate()}</span>`;
-    header.addEventListener("click", () => openCalendarDayPanel(dayKey));
+    header.addEventListener("click", (event) => openCalendarDayPanel(dayKey, event.currentTarget));
     column.appendChild(header);
 
     const list = document.createElement("div");
     list.className = "calendar-week-events";
-    const dayEvents = eventsForDay(dayKey);
+    const dayEvents = sortDayEvents(eventsForDay(dayKey));
     if (dayEvents.length === 0) {
       const empty = document.createElement("p");
       empty.className = "calendar-week-empty";
@@ -667,8 +660,16 @@ function renderWeekGrid() {
         const timeLabel = event.all_day
           ? calendarCopy().allDay
           : calendarTimeFormatter.format(parseEventDate(event.start));
-        item.innerHTML = `<span class="calendar-week-event-time">${timeLabel}</span><span class="calendar-week-event-title">${event.summary}</span>`;
-        item.addEventListener("click", () => openCalendarEventPanel(event, dayKey));
+        const timeSpan = document.createElement("span");
+        timeSpan.className = "calendar-week-event-time";
+        timeSpan.textContent = timeLabel;
+        const titleSpan = document.createElement("span");
+        titleSpan.className = "calendar-week-event-title";
+        titleSpan.textContent = event.summary;
+        item.append(timeSpan, titleSpan);
+        item.addEventListener("click", (clickEvent) =>
+          openCalendarEventPanel(event, dayKey, clickEvent.currentTarget)
+        );
         list.appendChild(item);
       }
     }
@@ -701,7 +702,6 @@ function renderDayGrid() {
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: CALENDAR_TIMEZONE,
   });
   header.innerHTML = `<span class="calendar-day-view-weekday">${weekday}</span><span class="calendar-day-view-date">${dateLabel}</span>`;
   column.appendChild(header);
@@ -722,8 +722,16 @@ function renderDayGrid() {
       const timeLabel = event.all_day
         ? calendarCopy().allDay
         : calendarTimeFormatter.format(parseEventDate(event.start));
-      item.innerHTML = `<span class="calendar-day-view-event-time">${timeLabel}</span><span class="calendar-day-view-event-title">${event.summary}</span>`;
-      item.addEventListener("click", () => openCalendarEventPanel(event, dayKey));
+      const timeSpan = document.createElement("span");
+      timeSpan.className = "calendar-day-view-event-time";
+      timeSpan.textContent = timeLabel;
+      const titleSpan = document.createElement("span");
+      titleSpan.className = "calendar-day-view-event-title";
+      titleSpan.textContent = event.summary;
+      item.append(timeSpan, titleSpan);
+      item.addEventListener("click", (clickEvent) =>
+        openCalendarEventPanel(event, dayKey, clickEvent.currentTarget)
+      );
       list.appendChild(item);
     }
   }
@@ -758,14 +766,25 @@ function formatEventTime(event) {
   return `${startLabel} – ${calendarTimeFormatter.format(end)}`;
 }
 
+function isSafeHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (_error) {
+    return false;
+  }
+}
+
 function createGoogleCalendarEventLink(htmlLink, { hero = false } = {}) {
   const link = document.createElement("a");
   link.className = hero
     ? "calendar-day-event-link calendar-day-event-link--hero"
     : "calendar-day-event-link";
-  link.href = htmlLink;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
+  if (isSafeHttpUrl(htmlLink)) {
+    link.href = htmlLink;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+  }
   link.setAttribute("aria-label", calendarCopy().openInGoogleCalendar);
   link.title = calendarCopy().openInGoogleCalendar;
   link.innerHTML =
@@ -779,11 +798,56 @@ function clearCalendarDayModalRailExtras() {
   }
 }
 
+let calendarDayModalTrigger = null;
+let calendarDayModalKeydownHandler = null;
+
+function getCalendarDayModalFocusableElements() {
+  if (!calendarDayModalPanel) {
+    return [];
+  }
+  return Array.from(
+    calendarDayModalPanel.querySelectorAll(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((element) => element instanceof HTMLElement && !element.hidden);
+}
+
+function handleCalendarDayModalKeydown(event) {
+  if (!isCalendarDayModalOpen()) {
+    return;
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeCalendarDayPanel();
+    return;
+  }
+  if (event.key !== "Tab" || !calendarDayModalPanel) {
+    return;
+  }
+  const focusable = getCalendarDayModalFocusableElements();
+  if (!focusable.length) {
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 function showCalendarDayModal() {
   if (!calendarDayModal) {
     return;
   }
   calendarDayModal.hidden = false;
+  if (!calendarDayModalKeydownHandler) {
+    calendarDayModalKeydownHandler = handleCalendarDayModalKeydown;
+    document.addEventListener("keydown", calendarDayModalKeydownHandler);
+  }
   if (calendarDayModalPanel) {
     calendarDayModalPanel.focus();
   } else if (calendarDayClose) {
@@ -823,10 +887,11 @@ function setCalendarDayModalVariant(variant) {
   calendarDayModalPanel.classList.toggle("calendar-day-modal-panel--event", variant === "event");
 }
 
-function openCalendarEventPanel(event, dateKey) {
+function openCalendarEventPanel(event, dateKey, trigger) {
   if (!calendarDayModal || !calendarDayTitle || !calendarDayEvents || !event) {
     return;
   }
+  calendarDayModalTrigger = trigger || calendarDayModalTrigger;
   const dayDate = parseEventDate(dateKey);
   if (!dayDate) {
     return;
@@ -862,10 +927,11 @@ function openCalendarEventPanel(event, dateKey) {
   showCalendarDayModal();
 }
 
-function openCalendarDayPanel(dateKey) {
+function openCalendarDayPanel(dateKey, trigger) {
   if (!calendarDayModal || !calendarDayTitle || !calendarDayEvents) {
     return;
   }
+  calendarDayModalTrigger = trigger || calendarDayModalTrigger;
   const dayDate = parseEventDate(dateKey);
   if (!dayDate) {
     return;
@@ -894,14 +960,23 @@ function openCalendarDayPanel(dateKey) {
 }
 
 function closeCalendarDayPanel() {
+  const trigger = calendarDayModalTrigger;
   if (calendarDayModal) {
     calendarDayModal.hidden = true;
     delete calendarDayModal.dataset.activeDate;
     delete calendarDayModal.dataset.eventId;
     delete calendarDayModal.dataset.view;
   }
+  calendarDayModalTrigger = null;
+  if (calendarDayModalKeydownHandler) {
+    document.removeEventListener("keydown", calendarDayModalKeydownHandler);
+    calendarDayModalKeydownHandler = null;
+  }
   setCalendarDayModalVariant("day");
   clearCalendarDayModalRailExtras();
+  if (trigger && typeof trigger.focus === "function") {
+    trigger.focus();
+  }
 }
 
 function isCalendarDayModalOpen() {
@@ -1070,13 +1145,4 @@ function bindCalendarControls() {
       }
     });
   }
-  if (calendarDayModalPanel) {
-    calendarDayModalPanel.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        closeCalendarDayPanel();
-      }
-    });
-  }
 }
-
-let calendarControlsBound = false;

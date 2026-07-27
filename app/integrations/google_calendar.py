@@ -74,6 +74,7 @@ def run_authorization_flow() -> Path:
         success_message="Authorization completed. You may close this window.",
     )
 
+    token_file.parent.mkdir(parents=True, exist_ok=True)
     token_file.write_text(
         credentials.to_json(),
         encoding="utf-8",
@@ -234,8 +235,31 @@ def get_event_start(event: dict[str, Any]) -> str:
     return start.get("dateTime") or start.get("date") or "Unknown start time"
 
 
-def _event_sort_key(event: dict[str, Any]) -> str:
-    return get_event_start(event)
+def _parse_event_start_for_sort(event: dict[str, Any]) -> datetime:
+    start = event.get("start", {})
+    date_time = start.get("dateTime")
+    if isinstance(date_time, str):
+        try:
+            parsed = datetime.fromisoformat(date_time.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=UTC)
+            return parsed.astimezone(UTC)
+        except ValueError:
+            pass
+
+    date_value = start.get("date")
+    if isinstance(date_value, str):
+        try:
+            parsed = datetime.fromisoformat(date_value)
+            return parsed.replace(tzinfo=UTC)
+        except ValueError:
+            pass
+
+    return datetime.max.replace(tzinfo=UTC)
+
+
+def _event_sort_key(event: dict[str, Any]) -> datetime:
+    return _parse_event_start_for_sort(event)
 
 
 def _fetch_events_for_calendar(
@@ -320,6 +344,10 @@ def list_events_in_range(
         GoogleCalendarAuthenticationError: When authorization is missing or invalid.
         GoogleCalendarNotFoundError: When the calendar ID is unavailable.
     """
+    if time_min.tzinfo is None or time_min.tzinfo.utcoffset(time_min) is None:
+        raise ValueError("time_min must include timezone information.")
+    if time_max.tzinfo is None or time_max.tzinfo.utcoffset(time_max) is None:
+        raise ValueError("time_max must include timezone information.")
     if time_max <= time_min:
         raise ValueError("time_max must be after time_min.")
 

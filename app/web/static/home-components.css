@@ -874,7 +874,7 @@ body.inputs-locked #keyboard-toggle:disabled {
   border-radius: 10px;
   background: rgba(120, 20, 20, 0.28);
   color: rgba(255, 190, 190, 0.95);
-  font: 500 0.82rem/1.4 "Cascadia Mono", "Consolas", monospace;
+  font: 500 0.82rem/1.4 "Cascadia Mono", Consolas, monospace;
 }
 
 .calendar-toolbar {

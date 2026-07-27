@@ -73,8 +73,8 @@ window.addEventListener("keydown", (event) => {
     setControlsHidden(false);
   }
 });
-function handleStartupGesture() {
-  retryPendingBootGreetingSpeech();
+async function handleStartupGesture() {
+  await retryPendingBootGreetingSpeech();
   maybeStartListeningAfterGesture();
 }
 

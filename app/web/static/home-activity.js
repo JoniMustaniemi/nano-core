@@ -58,33 +58,61 @@ function bootGreetingStorageKey(bootEvent) {
 }
 
 let pendingBootGreetingSpeech = null;
+let bootGreetingSpeechPromise = null;
 
 async function speakBootGreetingIfNeeded(greeting, bootKey) {
   if (!voiceAvailable || !greeting || !bootKey) {
     return false;
   }
-  if (window.sessionStorage.getItem(GREETING_SPOKEN_KEY) === bootKey) {
-    return true;
-  }
   try {
-    window.sessionStorage.setItem(GREETING_SPOKEN_KEY, bootKey);
-    await playVoice(greeting, { pauseRecognition: true });
-    pendingBootGreetingSpeech = null;
-    return true;
+    if (window.sessionStorage.getItem(GREETING_SPOKEN_KEY) === bootKey) {
+      return true;
+    }
   } catch (_error) {
-    window.sessionStorage.removeItem(GREETING_SPOKEN_KEY);
-    pendingBootGreetingSpeech = { greeting, bootKey };
-    setAnswer(greeting, { animate: false });
-    return false;
+    // Ignore storage read failures and continue with playback.
+  }
+
+  const promise = (async () => {
+    try {
+      try {
+        window.sessionStorage.setItem(GREETING_SPOKEN_KEY, bootKey);
+      } catch (_error) {
+        // Ignore storage write failures and continue with playback.
+      }
+      await playVoice(greeting, { pauseRecognition: true });
+      pendingBootGreetingSpeech = null;
+      return true;
+    } catch (_error) {
+      try {
+        window.sessionStorage.removeItem(GREETING_SPOKEN_KEY);
+      } catch (_storageError) {
+        // Ignore storage cleanup failures.
+      }
+      pendingBootGreetingSpeech = { greeting, bootKey };
+      setAnswer(greeting, { animate: false });
+      return false;
+    }
+  })();
+
+  bootGreetingSpeechPromise = promise;
+  try {
+    return await promise;
+  } finally {
+    if (bootGreetingSpeechPromise === promise) {
+      bootGreetingSpeechPromise = null;
+    }
   }
 }
 
 function retryPendingBootGreetingSpeech() {
+  if (bootGreetingSpeechPromise) {
+    return bootGreetingSpeechPromise;
+  }
   if (!pendingBootGreetingSpeech) {
-    return;
+    return Promise.resolve();
   }
   const { greeting, bootKey } = pendingBootGreetingSpeech;
-  void speakBootGreetingIfNeeded(greeting, bootKey);
+  return speakBootGreetingIfNeeded(greeting, bootKey);
 }
 
 async function refreshStandbyGreeting(options = {}) {

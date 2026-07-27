@@ -21,9 +21,9 @@ def _parse_maximum_results(args: dict[str, Any]) -> int:
     if isinstance(raw, bool):
         raise ValueError("maximum_results must be an integer.")
     if isinstance(raw, int):
-        return max(1, raw)
+        return min(2500, max(1, raw))
     if isinstance(raw, str) and raw.isdigit():
-        return max(1, int(raw))
+        return min(2500, max(1, int(raw)))
     return 10
 
 

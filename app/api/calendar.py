@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query
+from googleapiclient.errors import HttpError
 from pydantic import BaseModel
 
 from app.integrations.google_calendar import (
@@ -55,6 +56,11 @@ def read_calendars() -> list[CalendarSummary]:
         calendars = list_available_calendars()
     except GoogleCalendarAuthenticationError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except HttpError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Google Calendar API request failed: {exc}",
+        ) from exc
 
     return [
         CalendarSummary(
@@ -95,6 +101,11 @@ def read_calendar_events(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except GoogleCalendarNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except HttpError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Google Calendar API request failed: {exc}",
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

@@ -13,7 +13,7 @@ const HOME_SCRIPT_ORDER = [
 function loadClassicScript(src) {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = `${src.split("?")[0]}?v=module-entry-5`;
+    script.src = src;
     script.async = false;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error(`Failed to load ${src}`));

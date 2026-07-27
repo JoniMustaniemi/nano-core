@@ -77,11 +77,11 @@ const VIEW_CLIENT_ACTIONS = {
 
 function resolveViewClientAction(command) {
   const action = String(command?.client_action || "").trim();
-  if (action && VIEW_CLIENT_ACTIONS[action]) {
+  if (action && Object.hasOwn(VIEW_CLIENT_ACTIONS, action)) {
     return VIEW_CLIENT_ACTIONS[action];
   }
   const commandId = String(command?.id || "").trim();
-  if (commandId && VIEW_CLIENT_ACTIONS[commandId]) {
+  if (commandId && Object.hasOwn(VIEW_CLIENT_ACTIONS, commandId)) {
     return VIEW_CLIENT_ACTIONS[commandId];
   }
   return null;
@@ -366,9 +366,7 @@ const COMMANDS_SECTION_PATTERNS = [
 ];
 
 const CALENDAR_SECTION_PATTERNS = [
-  /^(open|show)(\s+the)?\s+calendar(\s+view)?$/,
   /\b(show|open|view|display|pull up|bring up)\b.*\bcalendar\s+view\b/,
-  /\bopen\s+(my|the)\s+calendar\b/,
   /\b(show|open|view|display)\b.*\b(full[- ]screen\s+)?calendar\b/,
 ];
 
