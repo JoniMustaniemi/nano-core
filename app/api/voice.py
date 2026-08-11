@@ -4,9 +4,9 @@ from pydantic import BaseModel, Field
 
 from app.api.deps import get_assistant_service, get_voice_service
 from app.assistant.service import AssistantService
+from app.voice.audio_convert import normalize_audio_to_wav
 from app.voice.listener import is_local_listener_running
 from app.voice.service import GladosVoiceService, VoiceUnavailableError
-from app.voice.audio_convert import normalize_audio_to_wav
 from app.voice.stt import SpeechToTextError, transcribe_audio
 from app.voice.volume import get_voice_volume, set_voice_volume
 
@@ -54,7 +54,7 @@ def update_voice_volume(request: VoiceVolumeRequest) -> dict[str, float]:
 
 
 @router.post("/transcribe", response_model=TranscriptResponse)
-async def transcribe_voice(audio: UploadFile = File(...)) -> TranscriptResponse:
+async def transcribe_voice(audio: UploadFile = File(...)) -> TranscriptResponse:  # noqa: B008
     """Transcribe uploaded audio on the Pi."""
     payload = await audio.read()
     if not payload:
@@ -69,7 +69,7 @@ async def transcribe_voice(audio: UploadFile = File(...)) -> TranscriptResponse:
 
 @router.post("/command")
 async def voice_command(
-    audio: UploadFile = File(...),
+    audio: UploadFile = File(...),  # noqa: B008
     assistant: AssistantService = Depends(get_assistant_service),  # noqa: B008
 ) -> dict[str, object]:
     """Transcribe uploaded audio and process it as an agent command."""

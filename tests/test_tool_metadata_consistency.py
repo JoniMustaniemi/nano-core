@@ -1,10 +1,10 @@
+from app.api.tool_commands import EXTRA_UI_COMMANDS, list_tool_commands
 from app.assistant.rules.tools import build_tool_rules, get_tool_rule
 from app.runtime.status_copy import (
     _TOOL_ACTIVITY_COMPLETED_TITLES,
     _TOOL_ACTIVITY_TITLES,
 )
 from app.tools.registry import list_tools, list_ui_tool_commands
-from app.api.tool_commands import EXTRA_UI_COMMANDS, list_tool_commands
 
 
 def test_every_registered_tool_has_activity_copy() -> None:
