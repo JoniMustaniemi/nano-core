@@ -18,18 +18,17 @@ app = typer.Typer(help="Nano Core local assistant CLI.")
 
 def start() -> None:
     """
-    Start Nano with default local dev settings.
+    Start Nano in production API mode.
 
-    This is the setuptools entry point for the ``start-nano`` command. It binds
-    to 127.0.0.1:8000 with auto-reload enabled.
+    This is the setuptools entry point for the ``start-nano`` command.
     """
-    start_dev()
+    _run_serve()
 
 
 @app.command("start-cmd")
 def start_cmd() -> None:
-    """Start Nano locally with default dev settings (same as start-nano entry point)."""
-    start_dev()
+    """Start Nano in production API mode (same as start-nano entry point)."""
+    _run_serve()
 
 
 @app.command()
@@ -84,8 +83,28 @@ def dev(
     port: int = typer.Option(8000, help="Port to bind."),
     reload: bool = typer.Option(True, "--reload/--no-reload", help="Enable auto-reload."),
 ) -> None:
-    """Start the full app locally."""
+    """Start the API locally for development."""
     start_dev(host=host, port=port, reload=reload)
+
+
+@app.command()
+def serve(
+    host: str | None = typer.Option(None, help="Override API_BIND_HOST."),
+    port: int | None = typer.Option(None, help="Override API_BIND_PORT."),
+) -> None:
+    """Start the API-only server for remote UI clients."""
+    _run_serve(host=host, port=port)
+
+
+def _run_serve(host: str | None = None, port: int | None = None) -> None:
+    settings = get_settings()
+    resolved_host = host or settings.api_bind_host
+    resolved_port = port or settings.api_bind_port
+    if settings.api_key.strip():
+        typer.echo(f"API key authentication is enabled on {resolved_host}:{resolved_port}.")
+    else:
+        typer.echo("Warning: API_KEY is not set. Configure one before exposing this server.")
+    start_dev(host=resolved_host, port=resolved_port, reload=False)
 
 
 def start_dev(
@@ -93,7 +112,7 @@ def start_dev(
     port: int = 8000,
     reload: bool = True,
 ) -> None:
-    """Run the local web app through Uvicorn."""
+    """Run the API through Uvicorn."""
     uvicorn.run(
         "app.main:app",
         host=host,

@@ -10,11 +10,19 @@ User-facing capabilities and model overview: [README.md](../README.md).
 | Persistence | SQLite via SQLModel |
 | Scheduling | APScheduler (background jobs) |
 | Local LLM | `llama-cpp-python` (optional `local-llm` extra) |
-| Voice | GLaDOS-TTS (`./vendor/GLaDOS-TTS`) |
+| Voice | GLaDOS-TTS, Vosk STT (optional `voice` extra) |
 | Calendar | Google Calendar API (read-only OAuth) |
-| Web UI | Vanilla JS (ES module entry), SSE (`/api/events`) |
+| Web UI | Separate **nano-ui** repo — thin client over REST + SSE |
 
-Entry points: `app.main` (web server), `app.cli` (CLI / `start-nano`).
+Entry points: `app.main` (API server), `app.cli` (`dev`, `serve`, `start-nano`).
+
+## Remote deployment
+
+1. Set `API_KEY` and `CORS_ALLOWED_ORIGINS` on the Pi.
+2. Expose the API via Tailscale Funnel, Cloudflare Tunnel, or port forwarding.
+3. Deploy **nano-ui** and enter the Pi URL + API key in connection settings.
+
+All processing happens on the Pi. The UI displays state from `GET /api/events` (SSE) and sends commands via REST.
 
 ## Request pipeline
 
@@ -64,7 +72,7 @@ Defaults live in `app/config.py`.
 
 | Path | Responsibility |
 |------|----------------|
-| `app/api/` | REST routers under `/api/*` (chat, calendar, health, memory, tools, improvement plans, proactive, runtime, voice) |
+| `app/api/` | REST routers under `/api/*`, API key auth, tool command metadata |
 | `app/common/` | Shared JSON parsing and domain types (`ProactiveOffer`) |
 | `app/integrations/` | Google Calendar OAuth and event fetching |
 | `app/workspace/` | Workspace file-walking utilities |
@@ -74,8 +82,7 @@ Defaults live in `app/config.py`.
 | `app/proactive/` | Idle crawl, outreach, presence gate, delivery registry |
 | `app/llm/` | Client, factory, protocol |
 | `app/scheduler/` | Timer, health, proactive, and presence-timeout jobs |
-| `app/voice/` | GLaDOS synthesis and volume |
-| `app/web/` | Home page, static assets (`home-entry.js` module loader) |
+| `app/voice/` | GLaDOS synthesis, Vosk STT, Pi-local wake listener |
 
 ## Database
 
@@ -95,7 +102,7 @@ SQLite file from `database_url` (default `./data/nano_core.sqlite3`). Tables in 
 |-------|-------|
 | `POST /api/chat` | Agent or chat mode |
 | `GET /api/chat/wake` | Wake acknowledgement |
-| `GET /api/health` | Aggregated health checks |
+| `GET /api/health` | Aggregated health checks (public) |
 | `GET /api/status` | Activity state + UI copy constants |
 | `GET /api/events` | SSE activity stream |
 | `GET /api/tool-commands` | Web UI quick commands |
@@ -106,6 +113,10 @@ SQLite file from `database_url` (default `./data/nano_core.sqlite3`). Tables in 
 | `GET /api/calendar/default` | Default configured calendar ID |
 | `GET /api/calendar/events` | Events in a date range for one calendar |
 | `POST /api/voice` | TTS request |
+| `POST /api/voice/transcribe` | STT for uploaded audio |
+| `POST /api/voice/command` | STT + agent command in one call |
+
+Protected routes require `Authorization: Bearer <API_KEY>`. SSE also accepts `?api_key=`.
 
 ## Background jobs
 
@@ -123,22 +134,27 @@ Registered in `app/scheduler/jobs.py`:
 Settings live in `app/config.py`. Override any value in `.env` if needed — most
 defaults work out of the box, including model paths under `models/`.
 
+Remote API: `API_KEY`, `CORS_ALLOWED_ORIGINS`, `API_BIND_HOST`, `API_BIND_PORT`.
+
+Voice: `VOICE_INPUT_ENABLED`, `VOICE_INPUT_DEVICE`, `VOICE_OUTPUT_DEVICE`, `STT_MODEL_PATH`,
+`VOICE_WAKE_PHRASE`, `VOICE_PLAYBACK_MODE` (`local`, `browser`, or `both`).
+
 Google Calendar settings: `GOOGLE_CREDENTIALS_PATH`, `GOOGLE_TOKEN_PATH`,
 `GOOGLE_CALENDAR_TIMEZONE`, `GOOGLE_CALENDAR_IDS`. CLI: `auth-google-calendar`,
 `google-calendars`.
 
 Install extras from `pyproject.toml` as needed: `local-llm` for GGUF models,
-`dev` for tests and linting.
+`voice` for Vosk STT, `dev` for tests and linting.
 
 ## Architecture
 
 ```mermaid
 flowchart TB
-    subgraph client [Client]
-        WebUI[Web UI]
+    subgraph client [nano-ui]
+        WebUI[Thin display client]
     end
 
-    subgraph api [API]
+    subgraph api [nano-core API]
         FastAPI
     end
 
@@ -161,7 +177,7 @@ flowchart TB
 
     SQLite[(SQLite)]
 
-    WebUI --> FastAPI --> Orchestrator
+    WebUI -->|REST + SSE| FastAPI --> Orchestrator
     Orchestrator --> ChatModel
     Orchestrator --> Tools
     Orchestrator --> Voice

@@ -1,6 +1,6 @@
 """Mirror of client-side UI command phrase matching in home-ui.js.
 
-Keep regex patterns in sync with app/web/static/home-ui.js when updating either file.
+Keep regex patterns in sync with nano-ui/static/home-ui.js when updating either file.
 """
 
 from __future__ import annotations

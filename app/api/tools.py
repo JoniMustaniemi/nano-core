@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.web.tool_commands import list_tool_commands
+from app.api.tool_commands import list_tool_commands
 
 router = APIRouter(tags=["tools"])
 

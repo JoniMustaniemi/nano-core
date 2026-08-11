@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -59,6 +59,29 @@ class Settings(BaseSettings):
     google_token_path: str = "./token.json"
     google_calendar_timezone: str = "Europe/Helsinki"
     google_calendar_ids: str = "primary"
+    api_key: str = ""
+    cors_allowed_origins: list[str] = Field(default_factory=list)
+    api_bind_host: str = "0.0.0.0"
+    api_bind_port: int = Field(default=8000, ge=1, le=65535)
+    voice_input_enabled: bool = False
+    voice_input_device: str = ""
+    voice_output_device: str = ""
+    stt_backend: Literal["vosk"] = "vosk"
+    stt_model_path: str = "./models/vosk-model-small-en-us-0.15"
+    voice_wake_phrase: str = "hey nano"
+    voice_command_timeout_seconds: float = Field(default=5.0, ge=1.0)
+    voice_playback_mode: Literal["local", "browser", "both"] = "both"
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: object) -> list[str]:
+        if value is None or value == "":
+            return []
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        if isinstance(value, list):
+            return [str(origin).strip() for origin in value if str(origin).strip()]
+        return []
 
 
 @lru_cache

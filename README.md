@@ -18,9 +18,12 @@ term.
   create a feature branch, commit, push, and open a pull request on GitHub when you ask
 - **Self-improvement plans** — while idle, review its own codebase and silently draft
   improvement plans in the **Plans** tab; use **Implement** there to apply changes and open a PR
-- **Google Calendar** — connect a Google account, browse calendars in the web UI and switch between calendars.
-- **Voice** — spoken replies, a standby greeting on startup, and wake-phrase listening with
-  `"hey nano"`
+- **Google Calendar** — connect a Google account, browse calendars in the UI and switch between calendars.
+- **Voice** — spoken replies on the Pi speaker, push-to-talk from the remote UI, and wake-phrase listening with `"hey nano"` on Pi hardware
+
+## Web UI
+
+The web UI lives in the sibling [**nano-ui**](../nano-ui) repository. Nano Core is API-only: run `nano-core serve` on your Pi and connect the hosted UI with your API URL and key.
 
 ## Local models
 

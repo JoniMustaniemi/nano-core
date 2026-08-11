@@ -260,7 +260,7 @@ class ActivityHub:
 
     def announce_voice(self, message: str) -> ActivityEvent | None:
         """
-        Queue one spoken status line for the browser voice UI.
+        Announce a spoken status line on configured playback targets.
 
         Duplicate messages are ignored until a different line is announced.
 
@@ -268,7 +268,7 @@ class ActivityHub:
             message: Message suitable for voice playback.
 
         Returns:
-            ActivityEvent when queued, otherwise None.
+            ActivityEvent when queued for browser playback, otherwise None.
         """
         spoken = message.strip().rstrip(".")
         if not spoken:
@@ -278,7 +278,20 @@ class ActivityHub:
             if normalized == self._last_voice_announcement:
                 return None
             self._last_voice_announcement = normalized
-        return self.log(title=spoken, detail=spoken, source=VOICE_ANNOUNCE_SOURCE)
+
+        from app.config import get_settings
+        from app.voice.service import GladosVoiceService
+
+        settings = get_settings()
+        if settings.voice_playback_mode in {"local", "both"}:
+            try:
+                GladosVoiceService().announce(spoken)
+            except Exception:
+                pass
+
+        if settings.voice_playback_mode in {"browser", "both"}:
+            return self.log(title=spoken, detail=spoken, source=VOICE_ANNOUNCE_SOURCE)
+        return None
 
     def snapshot(self) -> dict[str, object]:
         with self._lock:

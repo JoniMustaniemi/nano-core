@@ -66,7 +66,7 @@ def test_pr_naming_service_retries_generic_slug(monkeypatch: pytest.MonkeyPatch)
     naming = service.generate(
         client=client,
         context={
-            "changed_files": ["app/web/static/home-chat.js", "app/assistant/rules/intents.py"],
+            "changed_files": ["static/home-chat.js", "app/assistant/rules/intents.py"],
             "diff_stat": "2 files changed",
             "diff_patch": "diff",
             "unpushed_commits": ["504802b start_nano_2_2_2_0724"],
@@ -108,7 +108,7 @@ def test_pr_naming_service_falls_back_to_meaningful_slug_for_generic_llm_output(
     naming = service.generate(
         client=client,
         context={
-            "changed_files": ["app/web/static/home-chat.js", "app/assistant/rules/intents.py"],
+            "changed_files": ["static/home-chat.js", "app/assistant/rules/intents.py"],
             "diff_stat": "2 files changed",
             "diff_patch": "diff",
             "unpushed_commits": [],
@@ -117,7 +117,7 @@ def test_pr_naming_service_falls_back_to_meaningful_slug_for_generic_llm_output(
         },
     )
 
-    assert naming.slug == "home_chat_rules_intents"
+    assert naming.slug == "rules_intents"
     assert naming.slug != "start_nano"
     assert client.calls == 2
 
@@ -185,16 +185,16 @@ def test_pr_naming_service_falls_back_when_llm_unavailable(monkeypatch: pytest.M
     naming = service.generate(
         client=client,
         context={
-            "changed_files": ["app/web/home.py", "app/web/static/home.js"],
+            "changed_files": ["static/home-ui.js", "app/assistant/rules/intents.py"],
             "diff_stat": "2 files changed",
             "diff_patch": "diff",
             "unpushed_commits": [],
         },
     )
 
-    assert naming.slug == "web_home"
-    assert naming.branch == "feature/web_home"
-    assert naming.title == "Update home and home"
+    assert naming.slug == "rules_intents"
+    assert naming.branch == "feature/rules_intents"
+    assert naming.title == "Update home-ui and intents"
     assert client.calls == 1
 
 

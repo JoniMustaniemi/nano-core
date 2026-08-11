@@ -276,18 +276,26 @@ def _play_wav_with_tempfile(wav_bytes: bytes) -> None:
     Raises:
         VoiceUnavailableError: If the operation cannot be completed.
     """
+    settings = get_settings()
     player = _find_audio_player()
     if player is None:
         raise VoiceUnavailableError(
             "Audio playback is not available. Install `aplay`, `paplay`, or `afplay`."
         )
 
+    device_args: list[str] = []
+    if settings.voice_output_device:
+        if player[0].endswith("aplay"):
+            device_args = ["-D", settings.voice_output_device]
+        elif player[0].endswith("paplay"):
+            device_args = ["--device", settings.voice_output_device]
+
     temp_path: str | None = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as handle:
             handle.write(wav_bytes)
             temp_path = handle.name
-        subprocess.run([*player, temp_path], check=True, capture_output=True)
+        subprocess.run([*player, *device_args, temp_path], check=True, capture_output=True)
     except subprocess.CalledProcessError as exc:
         stderr = exc.stderr.decode("utf-8", errors="ignore").strip()
         detail = stderr or str(exc)
