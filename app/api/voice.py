@@ -87,7 +87,7 @@ async def voice_command(
         "transcript": transcript,
         "content": response.content,
         "speak": response.speak,
-        "mode": response.mode,
+        "mode": "agent",
     }
 
 
