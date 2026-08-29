@@ -44,6 +44,7 @@ settings = get_settings()
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 register_exception_handlers(app)
 
+app.add_middleware(ApiKeyAuthMiddleware)
 if settings.cors_allowed_origins:
     app.add_middleware(
         CORSMiddleware,
@@ -52,5 +53,4 @@ if settings.cors_allowed_origins:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-app.add_middleware(ApiKeyAuthMiddleware)
 app.include_router(api_router)
