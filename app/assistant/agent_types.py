@@ -14,6 +14,7 @@ AgentToolName = Literal[
     "start_timer",
     "list_timers",
     "cancel_timers",
+    "clear_all_timers",
     "check_health",
     "create_pull_request",
 ]

@@ -287,6 +287,32 @@ def test_stop_stopwatches_removes_active_stopwatch() -> None:
     assert repository.list_stopwatches() == []
 
 
+def test_clear_all_timers_removes_countdowns_and_stopwatches() -> None:
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    timer = repository.add_timer("Tea", due_at)
+    repository.add_stopwatch("Lap")
+    assert timer.id is not None
+    schedule_timer(timer.id, due_at)
+
+    tool = get_tool("clear_all_timers")
+    assert tool is not None
+
+    result = tool.handler({})
+
+    assert result == "Cleared 1 countdown timer and 1 stopwatch."
+    assert repository.list_timers() == []
+    assert scheduler.get_job(_timer_job_id(timer.id)) is None
+
+
+def test_clear_all_timers_reports_when_none_are_active() -> None:
+    tool = get_tool("clear_all_timers")
+    assert tool is not None
+
+    result = tool.handler({})
+
+    assert result == "No active timers."
+
+
 def test_list_timers_reports_stopwatch_elapsed() -> None:
     repository.add_stopwatch("Lap", started_at=datetime.now(UTC) - timedelta(minutes=2))
     tool = get_tool("list_timers")

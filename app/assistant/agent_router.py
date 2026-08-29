@@ -6,6 +6,7 @@ from typing import Any, Literal
 from app.assistant.pending import pending_interactions
 from app.assistant.rules import (
     is_capability_question,
+    is_clear_all_timers_request,
     is_health_check_request,
     is_identity_question,
     is_internal_note_list_request,
@@ -41,8 +42,9 @@ class AgentRouter:
 
     Priority order:
     1. Timer status (clears pending timer follow-ups)
-    2. Stopwatch stop (clears pending timer follow-ups)
-    3. Timer cancel (clears pending timer follow-ups)
+    2. Clear all timers (clears pending timer follow-ups)
+    3. Stopwatch stop (clears pending timer follow-ups)
+    4. Timer cancel (clears pending timer follow-ups)
     4. Pending interaction resume
     5. Stopwatch start
     6. Timer start/duration
@@ -81,6 +83,10 @@ class AgentRouter:
         if is_timer_status_request(message):
             pending_interactions.clear(conversation_id)
             return RouteDecision(mode="tool", tool_name="list_timers", tool_args={})
+
+        if is_clear_all_timers_request(message):
+            pending_interactions.clear(conversation_id)
+            return RouteDecision(mode="tool", tool_name="clear_all_timers", tool_args={})
 
         if is_stopwatch_stop_request(message):
             pending_interactions.clear(conversation_id)

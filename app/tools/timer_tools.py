@@ -139,6 +139,50 @@ def _cancel_timers(args: dict[str, Any]) -> str:
     return f"Cancelled {count} {noun}: {', '.join(labels)}."
 
 
+def _clear_all_timers(args: dict[str, Any]) -> str:
+    """
+    Clear all active countdown timers and stopwatches.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
+    del args
+    countdown_timers = _active_countdown_timers()
+    stopwatches = _active_stopwatches()
+    if not countdown_timers and not stopwatches:
+        return "No active timers."
+
+    for timer in countdown_timers:
+        if timer.id is not None:
+            unschedule_timer(timer.id)
+            repository.delete_timer(timer.id)
+
+    for stopwatch in stopwatches:
+        if stopwatch.id is not None:
+            repository.delete_timer(stopwatch.id)
+
+    if stopwatches:
+        activity.log(
+            title="Stopwatch stopped.",
+            detail="",
+            source="assistant.flows.timer",
+        )
+
+    parts: list[str] = []
+    countdown_count = len(countdown_timers)
+    stopwatch_count = len(stopwatches)
+    if countdown_count:
+        noun = "countdown timer" if countdown_count == 1 else "countdown timers"
+        parts.append(f"{countdown_count} {noun}")
+    if stopwatch_count:
+        noun = "stopwatch" if stopwatch_count == 1 else "stopwatches"
+        parts.append(f"{stopwatch_count} {noun}")
+    return f"Cleared {' and '.join(parts)}."
+
+
 def _stop_stopwatches(args: dict[str, Any]) -> str:
     """
     Stop active stopwatches.
@@ -391,5 +435,22 @@ register_tool(
         ui_message="Stop stopwatch.",
         ui_category="Timers",
         ui_description="Stop active stopwatches.",
+    )
+)
+
+register_tool(
+    ToolSpec(
+        name="clear_all_timers",
+        description=(
+            "clear all active countdown timers and stopwatches created through the timer tools."
+        ),
+        args_schema={},
+        handler=_clear_all_timers,
+        announcement="Clearing all timers.",
+        keywords=("timer", "timers", "clear all timers", "delete all timers"),
+        ui_label="Clear all timers",
+        ui_message="Clear all timers.",
+        ui_category="Timers",
+        ui_description="Remove every active countdown timer and stopwatch.",
     )
 )

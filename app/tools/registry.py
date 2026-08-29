@@ -15,6 +15,7 @@ FLOW_OWNED_TOOLS: frozenset[str] = frozenset(
         "list_timers",
         "cancel_timers",
         "stop_stopwatches",
+        "clear_all_timers",
     }
 )
 

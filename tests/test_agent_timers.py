@@ -9,6 +9,7 @@ from helpers.agent_fixtures import (
 
 from app.assistant.pending import pending_interactions
 from app.assistant.rules.timers import (
+    is_clear_all_timers_request,
     is_stopwatch_start_request,
     is_stopwatch_stop_request,
     is_timer_cancel_request,
@@ -26,6 +27,14 @@ from app.runtime.status_copy import (
 def test_timer_cancel_ignores_clear_inside_other_words() -> None:
     assert not is_timer_cancel_request("Improve yourself by making timer messages clearer.")
     assert is_timer_cancel_request("Cancel timers.")
+
+
+def test_clear_all_timers_phrases() -> None:
+    assert is_clear_all_timers_request("Clear all timers.")
+    assert is_clear_all_timers_request("Delete all timers.")
+    assert is_clear_all_timers_request("Stop all timers.")
+    assert not is_clear_all_timers_request("Cancel timers.")
+    assert not is_clear_all_timers_request("Stop stopwatch.")
 
 
 def test_timer_start_accepts_add_phrase() -> None:
@@ -98,6 +107,23 @@ def test_agent_stops_stopwatch_without_model(monkeypatch, tmp_path) -> None:
 
     assert content == "Stopped 1 stopwatch."
     assert repository.list_stopwatches() == []
+
+
+def test_agent_clears_all_timers_without_model(monkeypatch, tmp_path) -> None:
+    client = ShouldNotBeCalledClient()
+    patch_agent(
+        monkeypatch,
+        client=client,
+        tmp_path=tmp_path,
+        announce=lambda text: None,
+    )
+    repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
+    repository.add_stopwatch("Lap")
+
+    content = agent_respond("Clear all timers.")
+
+    assert content == "Cleared 1 countdown timer and 1 stopwatch."
+    assert repository.list_timers() == []
 
 
 def test_agent_handles_explicit_timer_requests_without_model(monkeypatch, tmp_path) -> None:

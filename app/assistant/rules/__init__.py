@@ -25,6 +25,7 @@ from app.assistant.rules.messages import (
 from app.assistant.rules.parsing import extract_json, parse_decision
 from app.assistant.rules.timers import (
     duration_args_from_message,
+    is_clear_all_timers_request,
     is_stopwatch_start_request,
     is_stopwatch_stop_request,
     is_timer_cancel_request,
@@ -57,6 +58,7 @@ __all__ = [
     "is_internal_note_list_request",
     "is_pull_request_request",
     "is_rejection_message",
+    "is_clear_all_timers_request",
     "is_stopwatch_start_request",
     "is_stopwatch_stop_request",
     "is_timer_cancel_request",

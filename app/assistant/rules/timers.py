@@ -39,6 +39,10 @@ TIMER_CANCEL_KEYWORDS: tuple[str, ...] = (
     "end",
     "kill",
 )
+TIMER_CLEAR_ALL_KEYWORDS: tuple[str, ...] = (
+    "all",
+    "everything",
+)
 TIMER_STATUS_KEYWORDS: tuple[str, ...] = (
     "active",
     "running",
@@ -139,6 +143,26 @@ def is_timer_start_request(message: str) -> bool:
     return any(
         trigger in lowered for trigger in TIMER_REQUEST_TRIGGERS
     ) and _has_timer_start_keyword(lowered)
+
+
+def is_clear_all_timers_request(message: str) -> bool:
+    """
+    Return whether the user wants to clear every active timer and stopwatch.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = message.lower()
+    if not _has_timer_cancel_keyword(lowered):
+        return False
+    if not any(
+        re.search(rf"\b{re.escape(keyword)}\b", lowered) for keyword in TIMER_CLEAR_ALL_KEYWORDS
+    ):
+        return False
+    return any(trigger in lowered for trigger in TIMER_REQUEST_TRIGGERS) or "timers" in lowered
 
 
 def is_timer_cancel_request(message: str) -> bool:

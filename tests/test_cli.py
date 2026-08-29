@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import UTC, datetime, timedelta
 
 from googleapiclient.errors import HttpError
 from typer.testing import CliRunner
@@ -185,6 +186,20 @@ def test_google_calendars_command_exits_on_http_error(monkeypatch) -> None:
 
     assert result.exit_code == 1
     assert "Google Calendar API request failed:" in result.output
+
+
+def test_clear_all_timers_command_removes_active_timers() -> None:
+    from app.memory import repository
+
+    repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
+    repository.add_stopwatch("Lap")
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["clear-all-timers"])
+
+    assert result.exit_code == 0
+    assert "Cleared 1 countdown timer and 1 stopwatch." in result.output
+    assert repository.list_timers() == []
 
 
 def test_serve_runs_auto_update_when_enabled(monkeypatch) -> None:

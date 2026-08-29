@@ -65,6 +65,14 @@ def google_calendars() -> None:
     typer.echo(format_available_calendars(calendars))
 
 
+@app.command("clear-all-timers")
+def clear_all_timers() -> None:
+    """Remove all active countdown timers and stopwatches."""
+    from app.tools.timer_tools import _clear_all_timers
+
+    typer.echo(_clear_all_timers({}))
+
+
 @app.command()
 def chat(
     message: str,
