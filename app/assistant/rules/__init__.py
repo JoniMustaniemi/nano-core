@@ -2,15 +2,14 @@ from __future__ import annotations
 
 from app.assistant.rules.intents import (
     IDENTITY_OR_CAPABILITY_TRIGGERS,
-    extract_self_improve_goal,
     is_capability_question,
     is_health_check_request,
     is_identity_question,
     is_internal_note_list_request,
     is_pull_request_request,
-    is_self_improve_follow_up,
-    is_self_improve_request,
     is_system_analysis_request,
+    needs_reboot_confirmation,
+    needs_service_restart_confirmation,
     needs_wipe_confirmation,
     should_answer_without_tools,
     tool_matches_request,
@@ -18,7 +17,6 @@ from app.assistant.rules.intents import (
 from app.assistant.rules.messages import (
     confirmation_followup,
     is_confirmation_message,
-    is_presence_confirmation,
     is_rejection_message,
     is_wipe_confirmation_prompt,
     normalize_wipe_request,
@@ -42,7 +40,6 @@ from app.assistant.rules.tools import (
     tool_announcement,
     tool_signature,
 )
-from app.intents.self_improve import is_vague_self_improve_goal
 
 __all__ = [
     "ToolIntentRule",
@@ -59,11 +56,6 @@ __all__ = [
     "is_system_analysis_request",
     "is_internal_note_list_request",
     "is_pull_request_request",
-    "is_presence_confirmation",
-    "is_self_improve_follow_up",
-    "is_self_improve_request",
-    "extract_self_improve_goal",
-    "is_vague_self_improve_goal",
     "is_rejection_message",
     "is_stopwatch_start_request",
     "is_stopwatch_stop_request",
@@ -71,6 +63,8 @@ __all__ = [
     "is_timer_start_request",
     "is_timer_status_request",
     "is_wipe_confirmation_prompt",
+    "needs_reboot_confirmation",
+    "needs_service_restart_confirmation",
     "needs_timer_duration",
     "needs_wipe_confirmation",
     "normalize_wipe_request",

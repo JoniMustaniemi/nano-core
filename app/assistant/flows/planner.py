@@ -192,16 +192,6 @@ class AgentPlanner:
         """
         _ = client
         _ = history
-        if executed_tools:
-            latest = next(reversed(executed_tools.values()))
-            if latest.tool == "draft_improvement_plan":
-                return tool_result_source(
-                    user_message=message,
-                    facts=latest.content,
-                    tool_name=latest.tool,
-                    conversation_id=conversation_id,
-                )
-
         content = decision.get("content")
         if isinstance(content, str) and content.strip():
             return answer_source(

@@ -8,25 +8,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-PLANS_SECTION_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
-    re.compile(pattern)
-    for pattern in (
-        r"^(open|show|go to)(\s+the)?\s+plans(\s+(tab|section|panel|view))?$",
-        r"^(open|show|go to)(\s+the)?\s+improvement plans$",
-        r"^(what|show|tell|list)(\s+are)?(\s+my)?\s+(improvement plans|plans)$",
-        r"\bwhat\s+have\s+you\s+planned\b",
-        r"\bwhat\s+do\s+you\s+have\s+planned\b",
-        r"\bwhat\s+plans\s+do\s+you\s+have\b",
-        r"\bwhat\s+(plans|improvement plans)\b",
-        r"\b(your|any|the)\s+(plans|improvement plans)\b",
-        r"\b(show|see|view|open|look at|display|pull up|bring up)\b.*\b(plans|improvement plans)\b",
-        r"\b(can|could|may|would|let)\s+(i|me|we)\s+(see|view|look at|open|show|have)\b.*\b(plans|improvement plans)\b",
-        r"\bwhat\s+(is|are)\s+in\s+(the\s+)?plans\b",
-        r"\btake\s+me\s+to\s+(the\s+)?plans(\s+(tab|section|panel|view))?\b",
-        r"\bgo\s+to\s+(the\s+)?plans\s+tab\b",
-    )
-)
-
 BRAINS_SECTION_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(pattern)
     for pattern in (
@@ -110,7 +91,7 @@ CLOSE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         r"^close it$",
         r"^exit panel$",
         r"^close(\s+the)?\s+(panel|sheet|drawer|view|modal)$",
-        r"^close(\s+the)?\s+(plans|brains|storage|commands)(\s+(tab|panel|drawer|section))?$",
+        r"^close(\s+the)?\s+(brains|storage|commands)(\s+(tab|panel|drawer|section))?$",
         r"^dismiss(\s+the)?\s+(panel|sheet|drawer|view|modal)$",
         r"^hide(\s+the)?\s+(panel|view|this|modal)$",
         r"\b(you can|can you|could you|please)\s+close\b",
@@ -118,7 +99,7 @@ CLOSE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         r"\b(thanks|thank you)\b.*\b(close|dismiss)\b",
         r"\b(close|dismiss|hide)\b.*\b(menu|panel|view|modal|this|it|screen|window)\b",
         r"\b(menu|panel|view|modal|this|it|screen)\b.*\b(close|dismiss|hide)\b",
-        r"\b(close|dismiss|hide)\b.*\b(plans|brains|storage|commands)\b",
+        r"\b(close|dismiss|hide)\b.*\b(brains|storage|commands)\b",
     )
 )
 
@@ -167,9 +148,6 @@ def match_ui_command(message: str) -> dict[str, Any] | None:
 
     if matches_close_command(message):
         return {"type": "close"}
-
-    if _matches_patterns(normalized, PLANS_SECTION_PATTERNS):
-        return {"type": "section", "target": "plans"}
 
     if _matches_patterns(normalized, BRAINS_SECTION_PATTERNS):
         return {"type": "section", "target": "brains"}

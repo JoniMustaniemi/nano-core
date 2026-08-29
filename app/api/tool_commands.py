@@ -26,6 +26,20 @@ EXTRA_UI_COMMANDS: tuple[ToolCommand, ...] = (
         description="Clear conversation and internal memory.",
     ),
     ToolCommand(
+        id="reboot_pi",
+        label="Reboot Pi",
+        message="Reboot the Raspberry Pi.",
+        category="System",
+        description="Restart the entire Raspberry Pi device.",
+    ),
+    ToolCommand(
+        id="restart_nano",
+        label="Restart Nano",
+        message="Restart yourself.",
+        category="System",
+        description="Restart the nano-core service without rebooting the Pi.",
+    ),
+    ToolCommand(
         id="capabilities",
         label="What can you do?",
         message="What can you do?",
@@ -39,14 +53,6 @@ EXTRA_UI_COMMANDS: tuple[ToolCommand, ...] = (
         category="Interface",
         description="Open the Brains activity view.",
         client_action="open_brains",
-    ),
-    ToolCommand(
-        id="open_plans",
-        label="Open Plans",
-        message="Open Plans.",
-        category="Interface",
-        description="Open the Plans view.",
-        client_action="open_plans",
     ),
     ToolCommand(
         id="open_storage",

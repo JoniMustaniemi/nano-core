@@ -11,7 +11,6 @@ from app.assistant.prompts import (
 from app.assistant.response_guard import looks_like_refusal
 from app.assistant.response_source import ResponseSource
 from app.assistant.rules import confirmation_followup, wipe_confirmation_prompt
-from app.intents.self_improve import normalize_self_improve_goal
 from app.llm.protocol import LLMClient
 from app.runtime.status_copy import lint_failure_user_message
 
@@ -45,12 +44,6 @@ class ResponseComposer:
 
         if source.kind == "tool_error" and source.tool_name == "create_pull_request":
             return self._compose_pr_result(source.facts)
-
-        if source.tool_name == "draft_improvement_plan" and source.kind in {
-            "tool_result",
-            "tool_error",
-        }:
-            return self._compose_self_improve_result(source.facts)
 
         if source.kind == "tool_result" and source.tool_name in COMPOSE_HINTS:
             return self._compose_with_hint(client, source)
@@ -230,42 +223,6 @@ class ResponseComposer:
         if error:
             return f"I could not complete the pull request during {step}: {error}"
         return "I could not complete the pull request."
-
-    def _compose_self_improve_result(self, tool_result: str) -> str:
-        payload = self._parse_json_dict(tool_result)
-        if payload.get("ok"):
-            theme = self._brief_plan_theme(payload)
-            if theme:
-                return (
-                    f"I finished a new improvement plan about {theme}. "
-                    "Open the Plans tab to read it."
-                )
-            return "I finished a new improvement plan. Open the Plans tab to read it."
-        error = str(payload.get("error", "")).strip()
-        step = str(payload.get("step", "unknown")).strip()
-        if step == "gate":
-            return (
-                "I already have an improvement plan waiting for review. "
-                "Open the Plans tab, read it, and mark it processed before I draft another."
-            )
-        step_labels = {
-            "draft": "drafting the plan",
-            "select": "choosing files",
-            "read": "reading files",
-        }
-        step_label = step_labels.get(step, step.replace("_", " "))
-        if error:
-            return f"I could not draft an improvement plan. I got stuck at the {step_label} step: {error}"
-        return "I could not draft an improvement plan."
-
-    def _brief_plan_theme(self, payload: dict[str, Any]) -> str:
-        for key in ("title", "goal"):
-            cleaned = normalize_self_improve_goal(str(payload.get(key, "")))
-            if cleaned and cleaned.lower() not in {"improvement plan", "code update"}:
-                if len(cleaned) <= 60:
-                    return cleaned
-                return f"{cleaned[:57]}..."
-        return ""
 
     def _parse_json_dict(self, value: str) -> dict[str, Any]:
         try:

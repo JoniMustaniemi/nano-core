@@ -17,15 +17,12 @@ from app.tools import get_tool, list_tools
 from app.tools.errors import ToolError
 from app.tools.registry import tool_announcement_for
 
-_STRUCTURED_RESULT_TOOLS = frozenset({"draft_improvement_plan", "create_pull_request"})
+_STRUCTURED_RESULT_TOOLS = frozenset({"create_pull_request"})
 _SERVER_ANNOUNCE_SKIP: frozenset[str] = frozenset({"create_pull_request"})
 _STRUCTURED_FAILURE_TITLES: dict[str, str] = {
-    "draft_improvement_plan": failed_tool_title("draft_improvement_plan"),
     "create_pull_request": failed_tool_title("create_pull_request"),
 }
-_STRUCTURED_FAILURE_SPOKEN: dict[str, str] = {
-    "draft_improvement_plan": "I could not draft the improvement plan.",
-}
+_STRUCTURED_FAILURE_SPOKEN: dict[str, str] = {}
 
 
 class ToolRunner:

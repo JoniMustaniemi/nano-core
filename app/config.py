@@ -38,22 +38,9 @@ class Settings(BaseSettings):
     github_pr_verify_command: str = ""
     github_pr_verify_timeout_seconds: int = Field(default=300, ge=1)
     pr_naming_diff_max_chars: int = Field(default=4000, ge=256)
-    proactive_background_interval_seconds: int = Field(default=300, ge=30)
-    idle_examine_idle_seconds: int = Field(default=300, ge=60)
-    proactive_outreach_idle_seconds: int = Field(default=600, ge=60)
-    proactive_outreach_enabled: bool = True
-    idle_examine_enabled: bool = True
-    codebase_crawl_files_per_tick: int = Field(default=1, ge=1)
-    presence_check_timeout_seconds: int = Field(default=60, ge=10)
-    presence_check_poll_interval_seconds: int = Field(default=10, ge=1)
     internal_note_retry_interval_seconds: int = Field(default=1800, ge=60)
     internal_note_retry_max_interval_seconds: int = Field(default=14400, ge=300)
     internal_note_max_attempts: int = Field(default=5, ge=1)
-    self_improve_allowed_prefix: str = "app/"
-    self_improve_max_files: int = Field(default=5, ge=1)
-    self_improve_max_file_chars: int = Field(default=8000, ge=256)
-    self_improve_plan_max_tokens: int = Field(default=8192, ge=512)
-    self_improve_apply_max_attempts: int = Field(default=4, ge=1)
     proactive_conversation_id: str = "agent-default"
     google_credentials_path: str = "./credentials.json"
     google_token_path: str = "./token.json"
@@ -64,6 +51,9 @@ class Settings(BaseSettings):
     auto_update_on_start: bool = False
     auto_update_branch: str = "main"
     auto_update_install: bool = False
+    reboot_enabled: bool = False
+    service_restart_enabled: bool = False
+    service_unit_name: str = "nano-core"
     api_bind_host: str = "0.0.0.0"
     api_bind_port: int = Field(default=8000, ge=1, le=65535)
     voice_input_enabled: bool = False

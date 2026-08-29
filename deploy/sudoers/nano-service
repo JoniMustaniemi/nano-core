@@ -1,0 +1,1 @@
+nano ALL=(ALL) NOPASSWD: /bin/systemctl restart nano-core, /bin/systemctl status nano-core

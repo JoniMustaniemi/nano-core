@@ -39,18 +39,6 @@ def test_controls_toggle_phrases() -> None:
         assert result == {"type": "controls", "action": "toggle"}, phrase
 
 
-def test_plans_section_phrases() -> None:
-    phrases = (
-        "show me your plans",
-        "take me to plans",
-        "go to the plans tab",
-        "what plans do you have",
-    )
-    for phrase in phrases:
-        result = match_ui_command(phrase)
-        assert result == {"type": "section", "target": "plans"}, phrase
-
-
 def test_brains_section_phrases() -> None:
     phrases = (
         "show me your thoughts",

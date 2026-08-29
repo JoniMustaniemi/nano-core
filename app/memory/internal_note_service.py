@@ -4,8 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from app.common.types import ProactiveOffer
 from app.config import get_settings
-from app.intents.self_improve import is_vague_self_improve_goal, normalize_self_improve_goal
-from app.memory import improvement_plans, internal_notes
+from app.memory import internal_notes
 from app.memory.models import InternalNote
 from app.runtime.activity import activity
 from app.runtime.status_copy import (
@@ -18,23 +17,12 @@ from app.runtime.status_copy import (
 class InternalNoteService:
     """High-level API for Nano's private follow-up notes."""
 
-    def has_active_plan_pipeline(self) -> bool:
-        if improvement_plans.has_unprocessed_plan():
-            return True
-        return internal_notes.has_pending_self_improvement_note()
-
     def record_from_offer(
         self,
         offer: ProactiveOffer,
         *,
         next_attempt_at: datetime | None = None,
-    ) -> InternalNote | None:
-        if (
-            offer.kind == "self_improvement_suggestion"
-            and internal_notes.has_pending_self_improvement_note()
-        ):
-            return None
-
+    ) -> InternalNote:
         settings = get_settings()
         scheduled_at = next_attempt_at or datetime.now(UTC) + timedelta(
             seconds=settings.internal_note_retry_interval_seconds
@@ -68,44 +56,6 @@ class InternalNoteService:
 
     def offer_from_internal_note(self, note: InternalNote) -> ProactiveOffer:
         return ProactiveOffer.from_json(note.payload_json)
-
-    def top_pending_self_improvement_note(self) -> InternalNote | None:
-        notes = internal_notes.list_pending_self_improvement_notes(limit=1)
-        return notes[0] if notes else None
-
-    def goal_from_internal_note(self, note: InternalNote) -> str:
-        offer = self.offer_from_internal_note(note)
-        goal = str(offer.payload.get("goal", "")).strip()
-        if goal:
-            return goal
-        return offer.summary.strip()
-
-    def preferred_files_from_note(self, note: InternalNote) -> list[str]:
-        offer = self.offer_from_internal_note(note)
-        raw_files = offer.payload.get("files", [])
-        if not isinstance(raw_files, list):
-            return []
-        files: list[str] = []
-        for raw_path in raw_files:
-            path = str(raw_path).strip()
-            if path and path not in files:
-                files.append(path)
-        return files
-
-    def resolve_self_improve_goal(self, explicit_goal: str) -> tuple[str, int | None, list[str]]:
-        cleaned = normalize_self_improve_goal(explicit_goal)
-        if not is_vague_self_improve_goal(cleaned):
-            return cleaned, None, []
-
-        note = self.top_pending_self_improvement_note()
-        if note is None or note.id is None:
-            return "general improvement", None, []
-
-        return (
-            self.goal_from_internal_note(note),
-            note.id,
-            self.preferred_files_from_note(note),
-        )
 
     def top_priority_due_note(self, *, now: datetime | None = None) -> InternalNote | None:
         due = internal_notes.list_due_internal_notes(now=now, limit=1)

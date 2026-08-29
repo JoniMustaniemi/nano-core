@@ -53,29 +53,6 @@ def list_due_internal_notes(
         return list(session.exec(statement))
 
 
-def has_pending_self_improvement_note() -> bool:
-    statement = (
-        select(InternalNote.id)
-        .where(InternalNote.status == "pending")
-        .where(InternalNote.kind == "self_improvement_suggestion")
-        .limit(1)
-    )
-    with Session(db.engine) as session:
-        return session.exec(statement).first() is not None
-
-
-def list_pending_self_improvement_notes(*, limit: int = 1) -> list[InternalNote]:
-    statement = (
-        select(InternalNote)
-        .where(InternalNote.status == "pending")
-        .where(InternalNote.kind == "self_improvement_suggestion")
-        .order_by(col(InternalNote.next_attempt_at), col(InternalNote.created_at))
-        .limit(limit)
-    )
-    with Session(db.engine) as session:
-        return list(session.exec(statement))
-
-
 def list_internal_notes(*, limit: int = 50) -> list[InternalNote]:
     statement = select(InternalNote).order_by(col(InternalNote.created_at).desc()).limit(limit)
     with Session(db.engine) as session:
@@ -123,15 +100,5 @@ def dismiss_internal_note(note_id: int) -> bool:
             return False
         note.status = "dismissed"
         session.add(note)
-        session.commit()
-        return True
-
-
-def delete_self_improvement_suggestion(note_id: int) -> bool:
-    with Session(db.engine) as session:
-        note = session.get(InternalNote, note_id)
-        if note is None or note.kind != "self_improvement_suggestion" or note.status != "pending":
-            return False
-        session.delete(note)
         session.commit()
         return True

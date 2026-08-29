@@ -21,9 +21,16 @@ _EXTRA_CAPABILITIES: tuple[CapabilityItem, ...] = (
     CapabilityItem(
         name="memory_wipe",
         description=(
-            "clear chat history, internal notes, improvement plans, "
-            "and codebase memory after explicit confirmation."
+            "clear chat history and internal notes after explicit confirmation."
         ),
+    ),
+    CapabilityItem(
+        name="reboot_pi",
+        description="reboot the Raspberry Pi after explicit confirmation when enabled.",
+    ),
+    CapabilityItem(
+        name="restart_nano",
+        description="restart the nano-core service after explicit confirmation when enabled.",
     ),
 )
 
@@ -42,7 +49,7 @@ _CAPABILITY_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
     (
         "Diagnostics and GitHub",
-        ("check_health", "analyze_system", "create_pull_request", "draft_improvement_plan"),
+        ("check_health", "analyze_system", "create_pull_request", "reboot_pi", "restart_nano"),
     ),
 )
 

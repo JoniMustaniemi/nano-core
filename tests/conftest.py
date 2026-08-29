@@ -54,6 +54,18 @@ def isolate_google_calendar_credentials(
     get_settings.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def isolate_api_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep API routes open in tests unless a case explicitly sets API_KEY."""
+    from app.config import get_settings
+
+    monkeypatch.delenv("API_KEY", raising=False)
+    monkeypatch.setenv("APP_ENV", "development")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 def api_client():
     from fastapi.testclient import TestClient

@@ -1,0 +1,1 @@
+nano ALL=(ALL) NOPASSWD: /usr/sbin/reboot, /usr/sbin/shutdown, /bin/systemctl reboot, /bin/systemctl poweroff

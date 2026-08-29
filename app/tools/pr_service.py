@@ -63,9 +63,12 @@ from app.tools.github_ops import (
     gh_available,
     qualify_head_branch,
 )
-from app.tools.plan_implementation_runtime import is_cancelled
 from app.tools.pr_naming import PrNamingService
 from app.tools.pr_verify import command_display, run_pr_lint, run_pr_verification
+
+
+def _is_cancelled(cancel_event: Event | None) -> bool:
+    return cancel_event is not None and cancel_event.is_set()
 
 
 def _finalize_pr_activity(result: PrResult) -> None:
@@ -97,7 +100,7 @@ def _finalize_cancelled_pr() -> PrResult:
 
 
 def _check_cancelled(cancel_event: Event | None) -> PrResult | None:
-    if is_cancelled(cancel_event=cancel_event):
+    if _is_cancelled(cancel_event):
         return _finalize_cancelled_pr()
     return None
 

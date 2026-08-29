@@ -48,12 +48,12 @@ def test_extra_ui_commands_are_not_registered_tools() -> None:
         assert command.id not in registered
 
 
-def test_draft_improvement_plan_is_not_a_ui_command() -> None:
-    ui_tools = {tool.name for tool in list_ui_tool_commands()}
+def test_reboot_pi_is_an_extra_ui_command() -> None:
     command_ids = {item["id"] for item in list_tool_commands()}
 
-    assert "draft_improvement_plan" not in ui_tools
-    assert "draft_improvement_plan" not in command_ids
+    assert "reboot_pi" in command_ids
+    assert "restart_nano" in command_ids
+    assert "open_plans" not in command_ids
 
 
 def test_get_tool_rule_matches_registry_metadata() -> None:

@@ -5,8 +5,6 @@ from sqlmodel import Session, col, desc, select
 import app.memory.db as db
 from app.memory.models import (
     ChatMessage,
-    CodebaseFileRecord,
-    ImprovementPlan,
     InternalNote,
     Timer,
 )
@@ -237,8 +235,6 @@ def wipe_database() -> None:
             ChatMessage,
             Timer,
             InternalNote,
-            ImprovementPlan,
-            CodebaseFileRecord,
         ):
             rows = list(session.exec(select(model)))
             for row in rows:

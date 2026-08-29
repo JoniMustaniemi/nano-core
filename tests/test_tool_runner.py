@@ -119,36 +119,6 @@ def test_tool_runner_reports_structured_pull_request_failure(monkeypatch) -> Non
     assert announced == []
 
 
-def test_tool_runner_reports_structured_draft_failure(monkeypatch) -> None:
-    errors: list[dict[str, str]] = []
-    announced: list[str] = []
-    monkeypatch.setattr(
-        "app.assistant.tool_runner.activity.working",
-        lambda **kwargs: None,
-    )
-    monkeypatch.setattr(
-        "app.assistant.tool_runner.activity.error",
-        lambda **kwargs: errors.append(kwargs),
-    )
-    patch_announce_voice(monkeypatch, announced)
-    monkeypatch.setattr(
-        "app.assistant.tool_runner.get_tool",
-        lambda name: SimpleNamespace(
-            name=name,
-            handler=lambda _args: json.dumps(
-                {"ok": False, "step": "draft", "error": "Could not draft an improvement plan."}
-            ),
-        ),
-    )
-
-    runner = ToolRunner()
-    result = runner.execute("draft_improvement_plan", {"goal": "clearer timer errors"})
-
-    assert result.ok is False
-    assert errors
-    assert announced[-1] == "I could not draft the improvement plan."
-
-
 def test_tool_runner_reports_generic_tool_error(monkeypatch) -> None:
     from app.tools.errors import ToolError
 

@@ -16,12 +16,6 @@ from app.runtime.status_copy import (
 ActivityState = Literal["standby", "working", "error"]
 EventKind = Literal["state", "action", "log"]
 
-_SELF_IMPROVE_BUSY_SOURCES = frozenset(
-    {
-        "tools.improvement_plan_service",
-        "tools.improvement_plan_implementation",
-    }
-)
 VOICE_ANNOUNCE_SOURCE = "runtime.voice.announce"
 
 
@@ -176,10 +170,6 @@ class ActivityHub:
             title=title,
             detail=detail,
         )
-
-    def is_self_improve_busy(self) -> bool:
-        with self._lock:
-            return self._state == "working" and self._working_source in _SELF_IMPROVE_BUSY_SOURCES
 
     def working(
         self,

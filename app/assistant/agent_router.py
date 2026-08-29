@@ -5,19 +5,19 @@ from typing import Any, Literal
 
 from app.assistant.pending import pending_interactions
 from app.assistant.rules import (
-    extract_self_improve_goal,
     is_capability_question,
     is_health_check_request,
     is_identity_question,
     is_internal_note_list_request,
     is_pull_request_request,
-    is_self_improve_request,
     is_stopwatch_start_request,
     is_stopwatch_stop_request,
     is_system_analysis_request,
     is_timer_cancel_request,
     is_timer_start_request,
     is_timer_status_request,
+    needs_reboot_confirmation,
+    needs_service_restart_confirmation,
     needs_timer_duration,
     needs_wipe_confirmation,
     should_answer_without_tools,
@@ -44,10 +44,10 @@ class AgentRouter:
     2. Stopwatch stop (clears pending timer follow-ups)
     3. Timer cancel (clears pending timer follow-ups)
     4. Pending interaction resume
-    5. Self-improvement tool
-    6. Stopwatch start
-    7. Timer start/duration
-    8. Wipe confirmation
+    5. Stopwatch start
+    6. Timer start/duration
+    7. Wipe confirmation
+    8. Reboot confirmation
     9. Health check tool
     10. System analysis tool
     11. Pull request tool
@@ -93,13 +93,6 @@ class AgentRouter:
         if pending_interactions.get(conversation_id) is not None:
             return RouteDecision(mode="pending")
 
-        if is_self_improve_request(message):
-            return RouteDecision(
-                mode="tool",
-                tool_name="draft_improvement_plan",
-                tool_args={"goal": extract_self_improve_goal(message)},
-            )
-
         if is_stopwatch_start_request(message):
             return RouteDecision(mode="tool", tool_name="start_stopwatch", tool_args={})
 
@@ -108,6 +101,12 @@ class AgentRouter:
 
         if needs_wipe_confirmation(message):
             return RouteDecision(mode="interaction", interaction="wipe")
+
+        if needs_service_restart_confirmation(message):
+            return RouteDecision(mode="interaction", interaction="service_restart")
+
+        if needs_reboot_confirmation(message):
+            return RouteDecision(mode="interaction", interaction="reboot")
 
         if is_health_check_request(message):
             return RouteDecision(mode="tool", tool_name="check_health", tool_args={})

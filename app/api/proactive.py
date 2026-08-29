@@ -20,6 +20,6 @@ def dismiss_proactive() -> dict[str, object]:
     activity.standby(
         title=choose_standby_greeting(),
         detail=None,
-        source="proactive.presence_gate",
+        source="proactive.api",
     )
     return {"ok": True}

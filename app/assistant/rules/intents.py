@@ -2,11 +2,6 @@ from __future__ import annotations
 
 import re
 
-from app.intents.self_improve import (  # noqa: F401
-    is_vague_self_improve_goal,
-    normalize_self_improve_goal,
-)
-
 DIRECT_ANSWER_TRIGGERS: tuple[str, ...] = ("help",)
 
 CAPABILITY_QUESTION_TRIGGERS: tuple[str, ...] = (
@@ -97,25 +92,32 @@ PULL_REQUEST_PATTERNS: tuple[str, ...] = (
     r"^\s*(?:pr|pull request|pool request)\s*$",
 )
 
+REBOOT_REQUEST_PATTERNS: tuple[str, ...] = (
+    r"\breboot\b.*\b(?:pi|raspberry|raspberry pi|device|system)\b",
+    r"\b(?:pi|raspberry|raspberry pi)\b.*\breboot\b",
+    r"\brestart\b.*\b(?:pi|raspberry|raspberry pi|device|system)\b",
+    r"\b(?:pi|raspberry|raspberry pi)\b.*\brestart\b",
+    r"^\s*reboot(?:\s+the\s+(?:pi|raspberry pi))?\s*\.?$",
+)
+
+SERVICE_RESTART_REQUEST_PATTERNS: tuple[str, ...] = (
+    r"\brestart\b.*\b(?:yourself|nano|nano-?core|service|server)\b",
+    r"\b(?:yourself|nano)\b.*\brestart\b",
+    r"^\s*restart(?:\s+(?:yourself|nano|nano-core|the\s+service|the\s+server))?\s*\.?$",
+)
+
+_SERVICE_RESTART_EXCLUSIONS: tuple[str, ...] = (
+    "pi",
+    "raspberry",
+    "device",
+    "system",
+)
+
 
 def _normalize_pull_request_homophones(message: str) -> str:
     """Treat speech-recognition homophones like pool/pull as equivalent for PR intent."""
     normalized = re.sub(r"\bpool\s+request\b", "pull request", message)
     return re.sub(r"\bpool\s+pr\b", "pull pr", normalized)
-
-
-SELF_IMPROVE_PATTERNS: tuple[str, ...] = (
-    r"\b(?:improve|fix|change|update|modify)\b.*\b(?:your(?:self)?|your code|nano)\b",
-    r"\badd\b.*\b(?:to yourself|to nano)\b",
-    r"\bpropose\s+self[\s-]?changes?\b",
-    r"\bdraft(?:ing)?\s+(?:an?\s+)?improvement\s+plan\b",
-)
-
-SELF_IMPROVE_FOLLOW_UP_PATTERNS: tuple[str, ...] = (
-    r"^\s*(?:do it|go ahead|proceed|yes do it)\s*\.?$",
-    r"\b(?:implement|apply|execute|make|build|ship)\b.*\bplan\b",
-    r"\b(?:make|apply)\b.*\b(?:changes|improvements?)\b",
-)
 
 
 def _contains_term(lowered_message: str, term: str) -> bool:
@@ -138,18 +140,16 @@ def is_pull_request_request(message: str) -> bool:
     return any(re.search(pattern, lowered) for pattern in PULL_REQUEST_PATTERNS)
 
 
-def is_self_improve_request(message: str) -> bool:
+def needs_reboot_confirmation(message: str) -> bool:
     lowered = " ".join(message.lower().split())
-    return any(re.search(pattern, lowered) for pattern in SELF_IMPROVE_PATTERNS)
+    return any(re.search(pattern, lowered) for pattern in REBOOT_REQUEST_PATTERNS)
 
 
-def is_self_improve_follow_up(message: str) -> bool:
+def needs_service_restart_confirmation(message: str) -> bool:
     lowered = " ".join(message.lower().split())
-    return any(re.search(pattern, lowered) for pattern in SELF_IMPROVE_FOLLOW_UP_PATTERNS)
-
-
-def extract_self_improve_goal(message: str) -> str:
-    return normalize_self_improve_goal(message)
+    if any(term in lowered for term in _SERVICE_RESTART_EXCLUSIONS):
+        return False
+    return any(re.search(pattern, lowered) for pattern in SERVICE_RESTART_REQUEST_PATTERNS)
 
 
 def is_identity_question(message: str) -> bool:
@@ -306,8 +306,6 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_system_analysis_request(message)
     if tool_name == "create_pull_request":
         return is_pull_request_request(message)
-    if tool_name == "draft_improvement_plan":
-        return is_self_improve_request(message)
     if tool_name == "list_internal_notes":
         return is_internal_note_list_request(message)
     return any(keyword in lowered for keyword in rule.keywords)

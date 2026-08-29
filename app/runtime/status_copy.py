@@ -60,16 +60,6 @@ def choose_wake_ack_response() -> str:
     return random.choice(WAKE_ACK_RESPONSES)
 
 
-def format_self_improve_busy_reply(snapshot: dict[str, object]) -> str:
-    headline = str(snapshot.get("headline") or "I'm working on something.").strip()
-    detail = str(snapshot.get("detail") or "").strip()
-    if detail and detail != headline and not headline.lower().startswith(detail.lower()):
-        return f"I'm still working. {headline} — {detail}"
-    if headline:
-        return f"I'm still working. {headline}"
-    return "I'm still working. Wait until the current self-improvement task finishes."
-
-
 PRESENCE_TITLE = "Are you there?"
 PRESENCE_TIMEOUT_TITLE = "I guess not."
 PRESENCE_TIMEOUT_DETAIL = "Topic saved for later."
@@ -112,21 +102,27 @@ WIPED_MEMORY_TITLE = "I wiped my memory."
 PREPARING_WIPE_DETAIL = "Preparing confirmation for the destructive request."
 WAITING_WIPE_CONFIRMATION_DETAIL = "Waiting for your confirmation before I forget everything."
 WIPE_CANCELLED_DETAIL = "Nothing was deleted."
-WIPING_MEMORY_DETAIL = (
-    "Clearing conversation, internal notes, improvement plans, and codebase memory."
-)
-WIPED_MEMORY_DETAIL = (
-    "Conversation history, internal notes, improvement plans, and codebase memory are gone."
-)
+WIPING_MEMORY_DETAIL = "Clearing conversation and internal notes."
+WIPED_MEMORY_DETAIL = "Conversation history and internal notes are gone."
 CANCELLED_WIPE_TITLE = "I cancelled the wipe."
-DRAFTING_IMPROVEMENT_PLAN_TITLE = "I'm drafting an improvement plan."
-DRAFTING_IMPROVEMENT_PLAN_DETAIL = "Reviewing code and writing a readable plan."
-IMPROVEMENT_PLAN_FAILED_TITLE = "I could not draft an improvement plan."
-IMPLEMENTING_IMPROVEMENT_PLAN_TITLE = "I'm implementing an improvement plan."
-APPLYING_PLANNED_CHANGES_DETAIL = "Applying planned code changes."
-IMPROVEMENT_PLAN_IMPLEMENTED_TITLE = "I implemented the improvement plan."
-IMPROVEMENT_PLAN_IMPLEMENTED_DETAIL = "Opened a pull request."
-IMPROVEMENT_PLAN_IMPLEMENTATION_FAILED_TITLE = "I could not implement the improvement plan."
+PREPARING_REBOOT_DETAIL = "Preparing confirmation for the reboot request."
+WAITING_REBOOT_CONFIRMATION_DETAIL = "Waiting for your confirmation before rebooting the Pi."
+REBOOTING_TITLE = "I'm rebooting the Raspberry Pi."
+REBOOTING_DETAIL = "The device should restart shortly."
+CANCELLED_REBOOT_TITLE = "I cancelled the reboot."
+CANCELLED_REBOOT_DETAIL = "The Pi was not rebooted."
+REBOOT_DISABLED_TITLE = "Reboot is disabled."
+REBOOT_DISABLED_DETAIL = "Set REBOOT_ENABLED=true to allow Pi reboots."
+PREPARING_SERVICE_RESTART_DETAIL = "Preparing confirmation for the service restart request."
+WAITING_SERVICE_RESTART_CONFIRMATION_DETAIL = (
+    "Waiting for your confirmation before restarting Nano."
+)
+RESTARTING_SERVICE_TITLE = "I'm restarting Nano."
+RESTARTING_SERVICE_DETAIL = "The service should come back online shortly."
+CANCELLED_SERVICE_RESTART_TITLE = "I cancelled the restart."
+CANCELLED_SERVICE_RESTART_DETAIL = "Nano was not restarted."
+SERVICE_RESTART_DISABLED_TITLE = "Service restart is disabled."
+SERVICE_RESTART_DISABLED_DETAIL = "Set SERVICE_RESTART_ENABLED=true to allow service restarts."
 PREPARING_PR_TITLE = "I'm preparing a pull request."
 PREPARING_PR_PREFLIGHT_DETAIL = "Running preflight checks."
 PREPARING_PR_LINT_DETAIL = "Running lint and type checks before any git writes."
@@ -173,7 +169,6 @@ _TOOL_ACTIVITY_TITLES: dict[str, str] = {
     "list_timers": "I'm checking timers.",
     "list_upcoming_calendar_events": "I'm checking your calendar.",
     "list_google_calendars": "I'm listing your Google calendars.",
-    "draft_improvement_plan": "I'm drafting an improvement plan.",
     "read_file": "I'm reading a file.",
     "run_python": "I'm running code.",
     "start_timer": "I'm setting a timer.",
@@ -191,7 +186,6 @@ _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
     "list_timers": "I checked timers.",
     "list_upcoming_calendar_events": "I checked your calendar.",
     "list_google_calendars": "I listed your Google calendars.",
-    "draft_improvement_plan": "I drafted an improvement plan.",
     "read_file": "I read a file.",
     "run_python": "I ran code.",
     "start_timer": "I set a timer.",
@@ -202,7 +196,6 @@ _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
 
 
 _TOOL_ACTIVITY_FAILED_TITLES: dict[str, str] = {
-    "draft_improvement_plan": IMPROVEMENT_PLAN_FAILED_TITLE,
     "create_pull_request": PR_WORKFLOW_FAILED_TITLE,
 }
 
@@ -259,6 +252,8 @@ def route_acknowledgment(
     if mode == "interaction":
         interaction_titles = {
             "wipe": (WIPING_MEMORY_TITLE, PREPARING_WIPE_DETAIL),
+            "reboot": (REBOOTING_TITLE, PREPARING_REBOOT_DETAIL),
+            "service_restart": (RESTARTING_SERVICE_TITLE, PREPARING_SERVICE_RESTART_DETAIL),
             "timer": (SETTING_TIMER_TITLE, SETTING_TIMER_DETAIL),
         }
         return interaction_titles.get(interaction or "", (RECEIVED_TITLE, RECEIVED_DETAIL))

@@ -2,7 +2,7 @@ import json
 from types import SimpleNamespace
 
 from app.assistant.tool_executor import ToolExecutor
-from app.runtime.status_copy import IMPROVEMENT_PLAN_FAILED_TITLE, failed_tool_title, ran_tool_title
+from app.runtime.status_copy import failed_tool_title, ran_tool_title
 
 
 def test_tool_executor_logs_success_only_when_tool_succeeds(monkeypatch) -> None:
@@ -26,13 +26,13 @@ def test_tool_executor_logs_success_only_when_tool_succeeds(monkeypatch) -> None
 
     executor = ToolExecutor(tool_runner=_Runner())
     source = executor.run(
-        user_message="Improve yourself.",
+        user_message="Check your health.",
         conversation_id="default",
-        tool_name="draft_improvement_plan",
+        tool_name="check_health",
     )
 
     assert source.speak is True
-    assert logged == [(ran_tool_title("draft_improvement_plan"), "Done.")]
+    assert logged == [(ran_tool_title("check_health"), "Done.")]
 
 
 def test_tool_executor_logs_failure_title_when_tool_fails(monkeypatch) -> None:
@@ -62,15 +62,14 @@ def test_tool_executor_logs_failure_title_when_tool_fails(monkeypatch) -> None:
 
     executor = ToolExecutor(tool_runner=_Runner())
     executor.run(
-        user_message="Improve yourself.",
+        user_message="Open a pull request.",
         conversation_id="default",
-        tool_name="draft_improvement_plan",
+        tool_name="create_pull_request",
     )
 
     assert logged == [
         (
-            failed_tool_title("draft_improvement_plan"),
+            failed_tool_title("create_pull_request"),
             "Workspace is not a git repository.",
         )
     ]
-    assert logged[0][0] == IMPROVEMENT_PLAN_FAILED_TITLE

@@ -15,7 +15,6 @@ _POLISH_EXEMPT_TOOLS = frozenset(
         "analyze_system",
         "check_health",
         "create_pull_request",
-        "draft_improvement_plan",
     }
 )
 
