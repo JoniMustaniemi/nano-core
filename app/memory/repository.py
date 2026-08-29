@@ -204,6 +204,28 @@ def list_due_timers(now: datetime | None = None) -> list[Timer]:
         return list(session.exec(statement))
 
 
+def update_timer_label(timer_id: int, label: str) -> Timer | None:
+    """
+    Update the label of an active timer or stopwatch.
+
+    Args:
+        timer_id: Timer id value.
+        label: New label value.
+
+    Returns:
+        Updated timer when found; otherwise None.
+    """
+    with Session(db.engine) as session:
+        timer = session.get(Timer, timer_id)
+        if timer is None:
+            return None
+        timer.label = label
+        session.add(timer)
+        session.commit()
+        session.refresh(timer)
+        return timer
+
+
 def delete_timer(timer_id: int) -> bool:
     """
     Delete timer.

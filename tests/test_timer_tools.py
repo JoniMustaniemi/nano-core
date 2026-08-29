@@ -335,3 +335,102 @@ def test_sync_timer_schedules_skips_stopwatches() -> None:
 
     assert scheduler.get_job(_timer_job_id(countdown.id)) is not None
     assert scheduler.get_job(_timer_job_id(stopwatch.id)) is None
+
+
+def test_rename_timer_by_id_when_labels_duplicate() -> None:
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    first = repository.add_timer("Timer", due_at)
+    second = repository.add_timer("Timer", due_at + timedelta(minutes=1))
+    assert first.id is not None
+    assert second.id is not None
+
+    tool = get_tool("rename_timer")
+    assert tool is not None
+    result = tool.handler({"timer_id": first.id, "new_label": "Pizza"})
+
+    timers = repository.list_countdown_timers()
+    by_id = {timer.id: timer for timer in timers}
+    assert result == 'Renamed timer to "Pizza".'
+    assert by_id[first.id].label == "Pizza"
+    assert by_id[second.id].label == "Timer"
+    assert by_id[first.id].due_at == first.due_at
+    assert by_id[first.id].created_at == first.created_at
+
+
+def test_rename_timer_by_unique_label() -> None:
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    timer = repository.add_timer("Tea", due_at)
+    assert timer.id is not None
+
+    tool = get_tool("rename_timer")
+    assert tool is not None
+    result = tool.handler({"label": "Tea", "new_label": "Coffee"})
+
+    updated = repository.get_timer(timer.id)
+    assert updated is not None
+    assert result == 'Renamed timer to "Coffee".'
+    assert updated.label == "Coffee"
+    assert updated.due_at == timer.due_at
+
+
+def test_rename_timer_rejects_ambiguous_label() -> None:
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    repository.add_timer("Timer", due_at)
+    repository.add_timer("Timer", due_at + timedelta(minutes=1))
+
+    tool = get_tool("rename_timer")
+    assert tool is not None
+    with pytest.raises(ToolError, match="Multiple timers labeled"):
+        tool.handler({"label": "Timer", "new_label": "Pizza"})
+
+
+def test_rename_timer_requires_target() -> None:
+    repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
+    tool = get_tool("rename_timer")
+    assert tool is not None
+
+    with pytest.raises(ToolError, match="Specify which timer to rename"):
+        tool.handler({"new_label": "Pizza"})
+
+
+def test_rename_timer_rejects_invalid_label() -> None:
+    timer = repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
+    tool = get_tool("rename_timer")
+    assert tool is not None
+
+    with pytest.raises(ToolError, match="at most 64 characters"):
+        tool.handler({"timer_id": timer.id, "new_label": "x" * 65})
+
+    with pytest.raises(ToolError, match="control characters"):
+        tool.handler({"timer_id": timer.id, "new_label": "Bad\x00Label"})
+
+
+def test_rename_timer_allows_cancel_by_new_label() -> None:
+    timer = repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
+    rename_tool = get_tool("rename_timer")
+    cancel_tool = get_tool("cancel_timers")
+    assert rename_tool is not None
+    assert cancel_tool is not None
+
+    rename_tool.handler({"timer_id": timer.id, "new_label": "Coffee"})
+    assert cancel_tool.handler({"label": "Tea"}) == "No matching active timers to cancel."
+    assert cancel_tool.handler({"label": "Coffee"}) == "Cancelled 1 timer."
+
+
+def test_rename_stopwatch_by_id_preserves_started_at() -> None:
+    started_at = datetime.now(UTC) - timedelta(seconds=30)
+    stopwatch = repository.add_stopwatch("Lap", started_at=started_at)
+    assert stopwatch.id is not None
+
+    tool = get_tool("rename_stopwatch")
+    assert tool is not None
+    result = tool.handler({"stopwatch_id": stopwatch.id, "new_label": "Run"})
+
+    updated = repository.get_timer(stopwatch.id)
+    assert updated is not None
+    assert result == 'Renamed stopwatch to "Run".'
+    assert updated.label == "Run"
+    updated_started_at = updated.created_at
+    if updated_started_at.tzinfo is None:
+        updated_started_at = updated_started_at.replace(tzinfo=UTC)
+    assert updated_started_at == started_at

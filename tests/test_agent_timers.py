@@ -10,11 +10,14 @@ from helpers.agent_fixtures import (
 from app.assistant.pending import pending_interactions
 from app.assistant.rules.timers import (
     is_clear_all_timers_request,
+    is_stopwatch_rename_request,
     is_stopwatch_start_request,
     is_stopwatch_stop_request,
     is_timer_cancel_request,
+    is_timer_rename_request,
     is_timer_start_request,
     is_timer_status_request,
+    rename_timer_args_from_message,
 )
 from app.memory import repository
 from app.runtime.status_copy import (
@@ -445,3 +448,87 @@ def test_agent_understands_spoken_timer_duration_in_single_request(monkeypatch, 
     assert content == "The timer is set for 5 minutes."
     assert len(timers) == 1
     assert timers[0].label == "Timer"
+
+
+def test_timer_rename_phrases() -> None:
+    assert is_timer_rename_request('Rename timer 3 to "Pizza"')
+    assert is_timer_rename_request('Rename the timer "Tea" to "Coffee"')
+    assert not is_timer_rename_request("Cancel timers.")
+    assert not is_timer_rename_request('Rename stopwatch 2 to "Run"')
+
+
+def test_stopwatch_rename_phrases() -> None:
+    assert is_stopwatch_rename_request('Rename stopwatch 2 to "Run"')
+    assert is_stopwatch_rename_request('Rename the stopwatch "Lap" to "Run"')
+    assert not is_stopwatch_rename_request("Stop stopwatch.")
+
+
+def test_rename_timer_args_from_message() -> None:
+    assert rename_timer_args_from_message('Rename timer 3 to "Pizza"') == {
+        "timer_id": 3,
+        "new_label": "Pizza",
+    }
+    assert rename_timer_args_from_message('Rename the timer "Tea" to "Coffee"') == {
+        "label": "Tea",
+        "new_label": "Coffee",
+    }
+    assert rename_timer_args_from_message("Rename timer 5 to Pizza") == {
+        "timer_id": 5,
+        "new_label": "Pizza",
+    }
+
+
+def test_agent_renames_timer_by_id_without_model(monkeypatch, tmp_path) -> None:
+    client = ShouldNotBeCalledClient()
+    patch_agent(
+        monkeypatch,
+        client=client,
+        tmp_path=tmp_path,
+        announce=lambda text: None,
+    )
+    timer = repository.add_timer("Timer", datetime.now(UTC) + timedelta(minutes=5))
+    assert timer.id is not None
+
+    content = agent_respond(f'Rename timer {timer.id} to "Pizza"')
+    updated = repository.get_timer(timer.id)
+
+    assert content == 'Renamed timer to "Pizza".'
+    assert updated is not None
+    assert updated.label == "Pizza"
+
+
+def test_agent_renames_stopwatch_by_label_without_model(monkeypatch, tmp_path) -> None:
+    client = ShouldNotBeCalledClient()
+    patch_agent(
+        monkeypatch,
+        client=client,
+        tmp_path=tmp_path,
+        announce=lambda text: None,
+    )
+    stopwatch = repository.add_stopwatch("Lap")
+    assert stopwatch.id is not None
+
+    content = agent_respond('Rename the stopwatch "Lap" to "Run"')
+    updated = repository.get_timer(stopwatch.id)
+
+    assert content == 'Renamed stopwatch to "Run".'
+    assert updated is not None
+    assert updated.label == "Run"
+
+
+def test_agent_reports_ambiguous_timer_rename_without_model(monkeypatch, tmp_path) -> None:
+    from app.assistant.agent_router import AgentRouter
+
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    repository.add_timer("Timer", due_at)
+    repository.add_timer("Timer", due_at + timedelta(minutes=1))
+
+    decision = AgentRouter().decide(
+        'Rename the timer "Timer" to "Pizza"',
+        conversation_id="default",
+        history=[],
+    )
+
+    assert decision.mode == "tool"
+    assert decision.tool_name == "rename_timer"
+    assert decision.tool_args == {"label": "Timer", "new_label": "Pizza"}

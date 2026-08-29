@@ -39,6 +39,11 @@ TIMER_CANCEL_KEYWORDS: tuple[str, ...] = (
     "end",
     "kill",
 )
+TIMER_RENAME_KEYWORDS: tuple[str, ...] = (
+    "rename",
+    "change name",
+    "call it",
+)
 TIMER_CLEAR_ALL_KEYWORDS: tuple[str, ...] = (
     "all",
     "everything",
@@ -60,6 +65,30 @@ STOPWATCH_STATUS_KEYWORDS: tuple[str, ...] = (
     "what stopwatch",
 )
 _STOPWATCH_TWO_WORD_RE = re.compile(r"\bstop\s+watch(?:es)?\b", re.IGNORECASE)
+_RENAME_TIMER_BY_ID_QUOTED_RE = re.compile(
+    r'^rename\s+timer\s+(?P<timer_id>\d+)\s+to\s+"(?P<new_label>[^"]+)"\s*$',
+    re.IGNORECASE,
+)
+_RENAME_TIMER_BY_ID_UNQUOTED_RE = re.compile(
+    r"^rename\s+timer\s+(?P<timer_id>\d+)\s+to\s+(?P<new_label>.+?)\s*$",
+    re.IGNORECASE,
+)
+_RENAME_TIMER_BY_LABEL_RE = re.compile(
+    r'^rename\s+the\s+timer\s+"(?P<label>[^"]+)"\s+to\s+"(?P<new_label>[^"]+)"\s*$',
+    re.IGNORECASE,
+)
+_RENAME_STOPWATCH_BY_ID_QUOTED_RE = re.compile(
+    r'^rename\s+stopwatch\s+(?P<stopwatch_id>\d+)\s+to\s+"(?P<new_label>[^"]+)"\s*$',
+    re.IGNORECASE,
+)
+_RENAME_STOPWATCH_BY_ID_UNQUOTED_RE = re.compile(
+    r"^rename\s+stopwatch\s+(?P<stopwatch_id>\d+)\s+to\s+(?P<new_label>.+?)\s*$",
+    re.IGNORECASE,
+)
+_RENAME_STOPWATCH_BY_LABEL_RE = re.compile(
+    r'^rename\s+the\s+stopwatch\s+"(?P<label>[^"]+)"\s+to\s+"(?P<new_label>[^"]+)"\s*$',
+    re.IGNORECASE,
+)
 
 
 def needs_timer_duration(message: str) -> bool:
@@ -176,8 +205,108 @@ def is_timer_cancel_request(message: str) -> bool:
         True when the condition is met; otherwise false.
     """
     lowered = message.lower()
+    if _has_timer_rename_keyword(lowered):
+        return False
     has_timer_trigger = any(trigger in lowered for trigger in TIMER_REQUEST_TRIGGERS)
     return has_timer_trigger and _has_timer_cancel_keyword(lowered)
+
+
+def is_timer_rename_request(message: str) -> bool:
+    """
+    Return whether the user wants to rename a countdown timer.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = _normalize_stopwatch_spelling(message.lower())
+    if _has_stopwatch_trigger(lowered):
+        return False
+    if not _has_timer_rename_keyword(lowered):
+        return False
+    return any(trigger in lowered for trigger in TIMER_REQUEST_TRIGGERS)
+
+
+def is_stopwatch_rename_request(message: str) -> bool:
+    """
+    Return whether the user wants to rename a stopwatch.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    lowered = _normalize_stopwatch_spelling(message.lower())
+    if not _has_stopwatch_trigger(lowered):
+        return False
+    return _has_timer_rename_keyword(lowered)
+
+
+def rename_timer_args_from_message(message: str) -> dict[str, Any]:
+    """
+    Parse rename timer arguments from a UI or voice message.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Tool argument dictionary for rename_timer.
+    """
+    normalized = message.strip()
+    for pattern in (
+        _RENAME_TIMER_BY_ID_QUOTED_RE,
+        _RENAME_TIMER_BY_ID_UNQUOTED_RE,
+        _RENAME_TIMER_BY_LABEL_RE,
+    ):
+        match = pattern.match(normalized)
+        if match is None:
+            continue
+        args = match.groupdict()
+        if args.get("timer_id") is not None:
+            return {
+                "timer_id": int(args["timer_id"]),
+                "new_label": args["new_label"].strip(),
+            }
+        return {
+            "label": args["label"].strip(),
+            "new_label": args["new_label"].strip(),
+        }
+    return {}
+
+
+def rename_stopwatch_args_from_message(message: str) -> dict[str, Any]:
+    """
+    Parse rename stopwatch arguments from a UI or voice message.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Tool argument dictionary for rename_stopwatch.
+    """
+    normalized = message.strip()
+    for pattern in (
+        _RENAME_STOPWATCH_BY_ID_QUOTED_RE,
+        _RENAME_STOPWATCH_BY_ID_UNQUOTED_RE,
+        _RENAME_STOPWATCH_BY_LABEL_RE,
+    ):
+        match = pattern.match(normalized)
+        if match is None:
+            continue
+        args = match.groupdict()
+        if args.get("stopwatch_id") is not None:
+            return {
+                "stopwatch_id": int(args["stopwatch_id"]),
+                "new_label": args["new_label"].strip(),
+            }
+        return {
+            "label": args["label"].strip(),
+            "new_label": args["new_label"].strip(),
+        }
+    return {}
 
 
 def is_timer_status_request(message: str) -> bool:
@@ -240,6 +369,19 @@ def _has_timer_cancel_keyword(lowered_message: str) -> bool:
         re.search(rf"\b{re.escape(keyword)}\b", lowered_message)
         for keyword in TIMER_CANCEL_KEYWORDS
     )
+
+
+def _has_timer_rename_keyword(lowered_message: str) -> bool:
+    """
+    Return whether the message contains a rename keyword.
+
+    Args:
+        lowered_message: Lowered message value.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    return any(keyword in lowered_message for keyword in TIMER_RENAME_KEYWORDS)
 
 
 def timer_confirmation(args: dict[str, Any]) -> str:

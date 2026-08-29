@@ -277,9 +277,11 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
     """
     from app.assistant.rules.timers import (
         is_clear_all_timers_request,
+        is_stopwatch_rename_request,
         is_stopwatch_start_request,
         is_stopwatch_stop_request,
         is_timer_cancel_request,
+        is_timer_rename_request,
         is_timer_start_request,
         is_timer_status_request,
     )
@@ -297,6 +299,10 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_stopwatch_start_request(message)
     if tool_name == "stop_stopwatches":
         return is_stopwatch_stop_request(message)
+    if tool_name == "rename_timer":
+        return is_timer_rename_request(message)
+    if tool_name == "rename_stopwatch":
+        return is_stopwatch_rename_request(message)
     if tool_name == "clear_all_timers":
         return is_clear_all_timers_request(message)
     if tool_name == "list_timers":

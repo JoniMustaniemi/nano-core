@@ -5,6 +5,7 @@ from typing import Any
 
 from app.duration import duration_seconds_from_tool_args, humanize_duration_seconds
 from app.memory import repository
+from app.memory.labels import InvalidTimerLabelError, normalize_timer_label
 from app.memory.models import Timer
 from app.runtime.activity import activity
 from app.runtime.status_copy import STOPWATCH_STARTED_MESSAGE
@@ -223,6 +224,133 @@ def _stop_stopwatches(args: dict[str, Any]) -> str:
     return f"Stopped {count} stopwatches."
 
 
+def _rename_timer(args: dict[str, Any]) -> str:
+    """
+    Rename an active countdown timer.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
+    new_label_raw = args.get("new_label")
+    if new_label_raw in (None, ""):
+        raise ToolError("A new label is required to rename a timer.")
+
+    timer_id = args.get("timer_id")
+    old_label = str(args.get("label", "")).strip()
+    timers = _active_countdown_timers()
+    target = _resolve_rename_target(
+        timers,
+        item_id=timer_id,
+        old_label=old_label,
+        item_noun="timer",
+    )
+    new_label = _normalize_label(str(new_label_raw), "Timer")
+    if target.id is None:
+        raise ToolError("Timer id is missing.")
+    updated = repository.update_timer_label(target.id, new_label)
+    if updated is None:
+        raise ToolError("No matching active timer to rename.")
+    return f'Renamed timer to "{new_label}".'
+
+
+def _rename_stopwatch(args: dict[str, Any]) -> str:
+    """
+    Rename an active stopwatch.
+
+    Args:
+        args: Tool argument dictionary.
+
+    Returns:
+        Generated or formatted string value.
+    """
+    new_label_raw = args.get("new_label")
+    if new_label_raw in (None, ""):
+        raise ToolError("A new label is required to rename a stopwatch.")
+
+    stopwatch_id = args.get("stopwatch_id")
+    old_label = str(args.get("label", "")).strip()
+    stopwatches = _active_stopwatches()
+    target = _resolve_rename_target(
+        stopwatches,
+        item_id=stopwatch_id,
+        old_label=old_label,
+        item_noun="stopwatch",
+    )
+    new_label = _normalize_label(str(new_label_raw), "Stopwatch")
+    if target.id is None:
+        raise ToolError("Stopwatch id is missing.")
+    updated = repository.update_timer_label(target.id, new_label)
+    if updated is None:
+        raise ToolError("No matching active stopwatch to rename.")
+    return f'Renamed stopwatch to "{new_label}".'
+
+
+def _normalize_label(raw: str, default: str) -> str:
+    """
+    Normalize and validate a timer or stopwatch label.
+
+    Args:
+        raw: Raw label text.
+        default: Default label when raw is empty after trimming.
+
+    Returns:
+        Trimmed, validated label.
+
+    Raises:
+        ToolError: When the label fails validation.
+    """
+    try:
+        return normalize_timer_label(raw, default)
+    except InvalidTimerLabelError as exc:
+        raise ToolError(str(exc)) from exc
+
+
+def _resolve_rename_target(
+    items: list[Timer],
+    *,
+    item_id: Any,
+    old_label: str,
+    item_noun: str,
+) -> Timer:
+    """
+    Resolve exactly one timer or stopwatch to rename.
+
+    Args:
+        items: Active items of the requested kind.
+        item_id: Requested item id.
+        old_label: Current label used for disambiguation.
+        item_noun: User-facing noun such as timer or stopwatch.
+
+    Returns:
+        The single matching timer or stopwatch.
+
+    Raises:
+        ToolError: When the target is missing or ambiguous.
+    """
+    if item_id not in (None, ""):
+        try:
+            requested_id = int(item_id)
+        except (TypeError, ValueError) as exc:
+            raise ToolError(f"Invalid {item_noun} id.") from exc
+        for item in items:
+            if item.id == requested_id:
+                return item
+        raise ToolError(f"No matching active {item_noun} to rename.")
+
+    if old_label:
+        matches = [item for item in items if str(item.label).strip().lower() == old_label.lower()]
+        if not matches:
+            raise ToolError(f"No matching active {item_noun} to rename.")
+        if len(matches) > 1:
+            raise ToolError(f'Multiple {item_noun}s labeled "{old_label}". Specify {item_noun} id.')
+        return matches[0]
+
+    raise ToolError(f"Specify which {item_noun} to rename.")
+
+
 def _active_countdown_timers() -> list[Timer]:
     """
     Return active countdown timers.
@@ -435,6 +563,44 @@ register_tool(
         ui_message="Stop stopwatch.",
         ui_category="Timers",
         ui_description="Stop active stopwatches.",
+    )
+)
+
+register_tool(
+    ToolSpec(
+        name="rename_timer",
+        description="rename one active countdown timer without changing its remaining time.",
+        args_schema={
+            "timer_id": "Timer id to rename.",
+            "label": "Current timer label when id is omitted.",
+            "new_label": "New timer label.",
+        },
+        handler=_rename_timer,
+        announcement="Renaming timer.",
+        keywords=("rename", "change name", "timer"),
+        ui_label="Rename timer",
+        ui_message="Rename timer.",
+        ui_category="Timers",
+        ui_description="Rename one active countdown timer.",
+    )
+)
+
+register_tool(
+    ToolSpec(
+        name="rename_stopwatch",
+        description="rename one active stopwatch without changing its elapsed time.",
+        args_schema={
+            "stopwatch_id": "Stopwatch id to rename.",
+            "label": "Current stopwatch label when id is omitted.",
+            "new_label": "New stopwatch label.",
+        },
+        handler=_rename_stopwatch,
+        announcement="Renaming stopwatch.",
+        keywords=("rename", "change name", "stopwatch", "stop watch"),
+        ui_label="Rename stopwatch",
+        ui_message="Rename stopwatch.",
+        ui_category="Timers",
+        ui_description="Rename one active stopwatch.",
     )
 )
 

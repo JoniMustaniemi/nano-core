@@ -20,9 +20,7 @@ _EXTRA_CAPABILITIES: tuple[CapabilityItem, ...] = (
     ),
     CapabilityItem(
         name="memory_wipe",
-        description=(
-            "clear chat history and internal notes after explicit confirmation."
-        ),
+        description=("clear chat history and internal notes after explicit confirmation."),
     ),
     CapabilityItem(
         name="reboot_pi",
@@ -41,7 +39,16 @@ _CAPABILITY_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
     (
         "Timers",
-        ("start_timer", "start_stopwatch", "list_timers", "cancel_timers", "stop_stopwatches", "clear_all_timers"),
+        (
+            "start_timer",
+            "start_stopwatch",
+            "list_timers",
+            "cancel_timers",
+            "stop_stopwatches",
+            "rename_timer",
+            "rename_stopwatch",
+            "clear_all_timers",
+        ),
     ),
     (
         "Files and code",
