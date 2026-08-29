@@ -8,6 +8,8 @@ PendingKind = Literal[
     "timer_duration",
     "wipe_confirmation",
     "presence_check",
+    "reboot_confirmation",
+    "service_restart_confirmation",
 ]
 
 
