@@ -228,10 +228,12 @@ def test_active_timers_appear_in_snapshot() -> None:
     snapshot = build_runtime_snapshot()
 
     assert len(snapshot["active_timers"]) == 1
+    assert snapshot["active_stopwatches"] == []
     entry = snapshot["active_timers"][0]
     assert entry["id"] == timer.id
     assert entry["kind"] == "countdown"
     assert entry["label"] == "Tea"
+    assert entry["started_at"] == timer.created_at.replace(tzinfo=UTC).isoformat()
     assert entry["due_at"] == due_at.isoformat()
     assert 290 <= entry["remaining_seconds"] <= 300
 
@@ -239,7 +241,10 @@ def test_active_timers_appear_in_snapshot() -> None:
 def test_active_timers_empty_when_none() -> None:
     from app.runtime.snapshot import build_runtime_snapshot
 
-    assert build_runtime_snapshot()["active_timers"] == []
+    snapshot = build_runtime_snapshot()
+
+    assert snapshot["active_timers"] == []
+    assert snapshot["active_stopwatches"] == []
 
 
 def test_active_stopwatches_appear_in_snapshot() -> None:
@@ -252,13 +257,32 @@ def test_active_stopwatches_appear_in_snapshot() -> None:
     stopwatch = repository.add_stopwatch("Lap", started_at=started_at)
     snapshot = build_runtime_snapshot()
 
-    assert len(snapshot["active_timers"]) == 1
-    entry = snapshot["active_timers"][0]
+    assert snapshot["active_timers"] == []
+    assert len(snapshot["active_stopwatches"]) == 1
+    entry = snapshot["active_stopwatches"][0]
     assert entry["id"] == stopwatch.id
     assert entry["kind"] == "stopwatch"
     assert entry["label"] == "Lap"
     assert entry["started_at"] == started_at.isoformat()
     assert 40 <= entry["elapsed_seconds"] <= 45
+
+
+def test_active_timers_and_stopwatches_split_in_snapshot() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.memory import repository
+    from app.runtime.snapshot import build_runtime_snapshot
+
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    started_at = datetime.now(UTC) - timedelta(seconds=30)
+    timer = repository.add_timer("Tea", due_at)
+    stopwatch = repository.add_stopwatch("Lap", started_at=started_at)
+    snapshot = build_runtime_snapshot()
+
+    assert len(snapshot["active_timers"]) == 1
+    assert len(snapshot["active_stopwatches"]) == 1
+    assert snapshot["active_timers"][0]["id"] == timer.id
+    assert snapshot["active_stopwatches"][0]["id"] == stopwatch.id
 
 
 def test_announce_voice_uses_single_runtime_source() -> None:

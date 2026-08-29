@@ -355,10 +355,6 @@ register_tool(
         handler=_list_timers,
         announcement="Checking timers.",
         keywords=("timer", "timers", "stopwatch", "stopwatches"),
-        ui_label="Active timers",
-        ui_message="Check active timers.",
-        ui_category="Timers",
-        ui_description="Show running timers and stopwatches.",
     )
 )
 

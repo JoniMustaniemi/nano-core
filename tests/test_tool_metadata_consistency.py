@@ -42,6 +42,12 @@ def test_ui_commands_include_registered_tools_with_metadata() -> None:
         assert match["category"] == tool.ui_category
 
 
+def test_list_timers_is_not_exposed_as_ui_command() -> None:
+    ui_tools = {tool.name for tool in list_ui_tool_commands()}
+
+    assert "list_timers" not in ui_tools
+
+
 def test_extra_ui_commands_are_not_registered_tools() -> None:
     registered = {tool.name for tool in list_tools()}
     for command in EXTRA_UI_COMMANDS:
