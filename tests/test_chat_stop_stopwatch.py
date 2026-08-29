@@ -1,9 +1,8 @@
+from helpers.agent_fixtures import ShouldNotBeCalledClient, patch_agent
 from sqlmodel import Session, select
 from starlette.testclient import TestClient
 
 import app.memory.db as db
-from helpers.agent_fixtures import ShouldNotBeCalledClient, patch_agent
-
 from app.memory import repository
 from app.memory.models import ChatMessage
 

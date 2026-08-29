@@ -393,9 +393,7 @@ def is_ambiguous_singular_stopwatch_stop(message: str) -> bool:
         return False
     if is_plural_stopwatch_stop_request(message):
         return False
-    normalized = _normalize_stopwatch_spelling(
-        normalize_rename_command_message(message).lower()
-    )
+    normalized = _normalize_stopwatch_spelling(normalize_rename_command_message(message).lower())
     return re.search(r"\bstopwatch\b", normalized) is not None
 
 

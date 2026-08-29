@@ -17,8 +17,8 @@ from app.assistant.rules.timers import (
     is_timer_rename_request,
     is_timer_start_request,
     is_timer_status_request,
-    parse_timer_cancel_args,
     parse_stopwatch_stop_args,
+    parse_timer_cancel_args,
     rename_timer_args_from_message,
 )
 from app.memory import repository
