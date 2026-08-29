@@ -304,6 +304,22 @@ def test_stop_stopwatches_removes_active_stopwatch() -> None:
     assert repository.list_stopwatches() == []
 
 
+def test_stop_stopwatches_by_id_leaves_other_stopwatches_active() -> None:
+    tool = get_tool("stop_stopwatches")
+    stopwatch_one = repository.add_stopwatch("One")
+    stopwatch_two = repository.add_stopwatch("Two")
+    assert stopwatch_one.id is not None
+    assert stopwatch_two.id is not None
+
+    assert tool is not None
+    result = tool.handler({"stopwatch_id": stopwatch_one.id})
+    remaining = repository.list_stopwatches()
+
+    assert result == "Stopped 1 stopwatch."
+    assert len(remaining) == 1
+    assert remaining[0].id == stopwatch_two.id
+
+
 def test_clear_all_timers_removes_countdowns_and_stopwatches() -> None:
     due_at = datetime.now(UTC) + timedelta(minutes=5)
     timer = repository.add_timer("Tea", due_at)

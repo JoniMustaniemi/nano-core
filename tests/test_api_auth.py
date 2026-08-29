@@ -220,6 +220,88 @@ def test_delete_timer_returns_cors_headers_on_not_found(monkeypatch) -> None:
     get_settings.cache_clear()
 
 
+def test_cors_preflight_for_delete_stopwatch_endpoint(monkeypatch) -> None:
+    import importlib
+
+    import app.main as main
+
+    monkeypatch.setenv("API_KEY", "secret-key")
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", '["http://localhost:3000"]')
+    get_settings.cache_clear()
+    importlib.reload(main)
+
+    client = TestClient(main.app)
+    response = client.options(
+        "/api/stopwatches/1",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "DELETE",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+
+    assert response.status_code in (200, 204)
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    allow_methods = response.headers.get("access-control-allow-methods", "")
+    assert "DELETE" in allow_methods.upper()
+    get_settings.cache_clear()
+
+
+def test_delete_stopwatch_returns_cors_headers_on_success(monkeypatch) -> None:
+    import importlib
+
+    import app.main as main
+    from app.memory import repository
+
+    monkeypatch.setenv("API_KEY", "secret-key")
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", '["http://localhost:3000"]')
+    get_settings.cache_clear()
+    importlib.reload(main)
+
+    stopwatch = repository.add_stopwatch("Lap")
+    assert stopwatch.id is not None
+
+    client = TestClient(main.app)
+    response = client.delete(
+        f"/api/stopwatches/{stopwatch.id}",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Authorization": "Bearer secret-key",
+        },
+    )
+
+    assert response.status_code == 204
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    get_settings.cache_clear()
+
+
+def test_delete_stopwatch_returns_cors_headers_on_not_found(monkeypatch) -> None:
+    import importlib
+
+    import app.main as main
+
+    monkeypatch.setenv("API_KEY", "secret-key")
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", '["http://localhost:3000"]')
+    get_settings.cache_clear()
+    importlib.reload(main)
+
+    client = TestClient(main.app)
+    response = client.delete(
+        "/api/stopwatches/99999",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Authorization": "Bearer secret-key",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    get_settings.cache_clear()
+
+
 def test_cors_preflight_for_protected_endpoint(monkeypatch) -> None:
     import importlib
 

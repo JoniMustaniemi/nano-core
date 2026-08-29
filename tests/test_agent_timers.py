@@ -18,6 +18,7 @@ from app.assistant.rules.timers import (
     is_timer_start_request,
     is_timer_status_request,
     parse_timer_cancel_args,
+    parse_stopwatch_stop_args,
     rename_timer_args_from_message,
 )
 from app.memory import repository
@@ -630,3 +631,85 @@ def test_agent_singular_cancel_with_one_timer_cancels_it(monkeypatch, tmp_path) 
 
     assert content == "Cancelled 1 timer."
     assert repository.list_timers() == []
+
+
+def test_parse_stopwatch_stop_args_matches_id_phrase() -> None:
+    assert parse_stopwatch_stop_args("Stop stopwatch 2") == {"stopwatch_id": 2}
+    assert parse_stopwatch_stop_args("Stop stopwatch 2.") == {"stopwatch_id": 2}
+    assert parse_stopwatch_stop_args("Stop stop watch 2.") == {"stopwatch_id": 2}
+    assert parse_stopwatch_stop_args("Stop stopwatches.") is None
+
+
+def test_agent_router_routes_stop_stopwatch_by_id(monkeypatch, tmp_path) -> None:
+    from app.assistant.agent_router import AgentRouter
+
+    stopwatch = repository.add_stopwatch("Lap")
+    assert stopwatch.id is not None
+
+    decision = AgentRouter().decide(
+        f"Stop stopwatch {stopwatch.id}",
+        conversation_id="default",
+        history=[],
+    )
+
+    assert decision.mode == "tool"
+    assert decision.tool_name == "stop_stopwatches"
+    assert decision.tool_args == {"stopwatch_id": stopwatch.id}
+
+
+def test_agent_stops_only_requested_stopwatch_with_multiple_active(monkeypatch, tmp_path) -> None:
+    client = ShouldNotBeCalledClient()
+    patch_agent(
+        monkeypatch,
+        client=client,
+        tmp_path=tmp_path,
+        announce=lambda text: None,
+    )
+    stopwatch_one = repository.add_stopwatch("One")
+    stopwatch_two = repository.add_stopwatch("Two")
+    stopwatch_three = repository.add_stopwatch("Three")
+    assert stopwatch_one.id is not None
+    assert stopwatch_two.id is not None
+    assert stopwatch_three.id is not None
+
+    content = agent_respond(f"Stop stopwatch {stopwatch_two.id}")
+    remaining_ids = [stopwatch.id for stopwatch in repository.list_stopwatches()]
+
+    assert content == ""
+    assert remaining_ids == [stopwatch_one.id, stopwatch_three.id]
+
+
+def test_agent_singular_stopwatch_with_multiple_active_returns_clarification(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    client = ShouldNotBeCalledClient()
+    patch_agent(
+        monkeypatch,
+        client=client,
+        tmp_path=tmp_path,
+        announce=lambda text: None,
+    )
+    repository.add_stopwatch("One")
+    repository.add_stopwatch("Two")
+
+    content = agent_respond("Stop the stopwatch.")
+
+    assert "Multiple stopwatches are running" in content
+    assert len(repository.list_stopwatches()) == 2
+
+
+def test_agent_singular_stopwatch_with_one_active_stops_it(monkeypatch, tmp_path) -> None:
+    client = ShouldNotBeCalledClient()
+    patch_agent(
+        monkeypatch,
+        client=client,
+        tmp_path=tmp_path,
+        announce=lambda text: None,
+    )
+    repository.add_stopwatch("Lap")
+
+    content = agent_respond("Stop the stopwatch.")
+
+    assert content == "Stopped 1 stopwatch."
+    assert repository.list_stopwatches() == []

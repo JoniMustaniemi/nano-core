@@ -5,6 +5,7 @@ from typing import Any, Literal
 
 from app.assistant.pending import pending_interactions
 from app.assistant.rules import (
+    is_ambiguous_singular_stopwatch_stop,
     is_ambiguous_singular_timer_cancel,
     is_capability_question,
     is_clear_all_timers_request,
@@ -23,6 +24,7 @@ from app.assistant.rules import (
     needs_timer_duration,
     needs_wipe_confirmation,
     parse_stopwatch_rename_args,
+    parse_stopwatch_stop_args,
     parse_timer_cancel_args,
     parse_timer_rename_args,
     should_answer_without_tools,
@@ -122,8 +124,26 @@ class AgentRouter:
                 tool_args=timer_rename_args,
             )
 
+        stopwatch_stop_args = parse_stopwatch_stop_args(message)
+        if stopwatch_stop_args is not None:
+            pending_interactions.clear(conversation_id)
+            return RouteDecision(
+                mode="tool",
+                tool_name="stop_stopwatches",
+                tool_args=stopwatch_stop_args,
+            )
+
         if is_stopwatch_stop_request(message):
             pending_interactions.clear(conversation_id)
+            if is_ambiguous_singular_stopwatch_stop(message):
+                if len(repository.list_stopwatches()) > 1:
+                    return RouteDecision(
+                        mode="direct",
+                        direct_facts=(
+                            "Multiple stopwatches are running. Say stop stopwatch and the stopwatch id, "
+                            "or stop stopwatches to clear all."
+                        ),
+                    )
             return RouteDecision(mode="tool", tool_name="stop_stopwatches", tool_args={})
 
         timer_cancel_args = parse_timer_cancel_args(message)

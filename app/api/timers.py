@@ -8,6 +8,7 @@ from app.memory.labels import InvalidTimerLabelError, normalize_timer_label
 from app.memory.repository import COUNTDOWN_KIND, STOPWATCH_KIND
 from app.runtime.active_timers import (
     remove_countdown_timer,
+    remove_stopwatch,
     serialize_stopwatch_by_id,
     serialize_timer_by_id,
 )
@@ -62,3 +63,10 @@ def patch_stopwatch(stopwatch_id: int, body: LabelUpdate) -> dict[str, int | str
     if serialized is None:
         raise HTTPException(status_code=404, detail="Stopwatch not found.")
     return serialized
+
+
+@router.delete("/stopwatches/{stopwatch_id}", status_code=204)
+def delete_stopwatch(stopwatch_id: int) -> None:
+    """Stop one active stopwatch."""
+    if not remove_stopwatch(stopwatch_id):
+        raise HTTPException(status_code=404, detail="Stopwatch not found.")

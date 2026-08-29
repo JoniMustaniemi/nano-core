@@ -93,6 +93,10 @@ _CANCEL_TIMER_BY_ID_RE = re.compile(
     r"^cancel\s+timer\s+(?P<timer_id>\d+)\s*$",
     re.IGNORECASE,
 )
+_STOP_STOPWATCH_BY_ID_RE = re.compile(
+    r"^stop\s+stopwatch\s+(?P<stopwatch_id>\d+)\s*$",
+    re.IGNORECASE,
+)
 
 
 def needs_timer_duration(message: str) -> bool:
@@ -340,6 +344,61 @@ def parse_timer_cancel_args(message: str) -> dict[str, Any] | None:
     return {"timer_id": int(match.group("timer_id"))}
 
 
+def parse_stopwatch_stop_args(message: str) -> dict[str, Any] | None:
+    """
+    Parse stop stopwatch arguments when the message matches a supported phrase.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Tool argument dictionary for stop_stopwatches, or None when no phrase matches.
+    """
+    normalized = normalize_rename_command_message(message)
+    normalized = _normalize_stopwatch_spelling(normalized)
+    match = _STOP_STOPWATCH_BY_ID_RE.match(normalized)
+    if match is None:
+        return None
+    return {"stopwatch_id": int(match.group("stopwatch_id"))}
+
+
+def is_plural_stopwatch_stop_request(message: str) -> bool:
+    """
+    Return whether the message explicitly stops multiple stopwatches.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message uses plural stopwatch stop phrasing.
+    """
+    normalized = normalize_rename_command_message(message).lower()
+    normalized = _normalize_stopwatch_spelling(normalized)
+    return re.search(r"\bstopwatches\b", normalized) is not None
+
+
+def is_ambiguous_singular_stopwatch_stop(message: str) -> bool:
+    """
+    Return whether a singular stopwatch stop phrase lacks a target id.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message stops one stopwatch without specifying which.
+    """
+    if parse_stopwatch_stop_args(message) is not None:
+        return False
+    if not is_stopwatch_stop_request(message):
+        return False
+    if is_plural_stopwatch_stop_request(message):
+        return False
+    normalized = _normalize_stopwatch_spelling(
+        normalize_rename_command_message(message).lower()
+    )
+    return re.search(r"\bstopwatch\b", normalized) is not None
+
+
 def is_plural_timer_cancel_request(message: str) -> bool:
     """
     Return whether the message explicitly cancels multiple timers.
@@ -388,6 +447,19 @@ def is_silent_timer_cancel_command(message: str) -> bool:
     return parse_timer_cancel_args(message) is not None
 
 
+def is_silent_stopwatch_stop_command(message: str) -> bool:
+    """
+    Return whether the message is a UI stop stopwatch control command.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message parses as stop stopwatch by id.
+    """
+    return parse_stopwatch_stop_args(message) is not None
+
+
 def is_silent_ui_command(message: str) -> bool:
     """
     Return whether the message is a silent UI control command.
@@ -398,7 +470,11 @@ def is_silent_ui_command(message: str) -> bool:
     Returns:
         True when the message parses as a silent timer or stopwatch control command.
     """
-    return is_silent_rename_command(message) or is_silent_timer_cancel_command(message)
+    return (
+        is_silent_rename_command(message)
+        or is_silent_timer_cancel_command(message)
+        or is_silent_stopwatch_stop_command(message)
+    )
 
 
 def is_silent_rename_command(message: str) -> bool:

@@ -24,6 +24,22 @@ def remove_countdown_timer(timer_id: int) -> bool:
     return repository.delete_timer(timer_id)
 
 
+def remove_stopwatch(stopwatch_id: int) -> bool:
+    """
+    Delete one active stopwatch.
+
+    Args:
+        stopwatch_id: Stopwatch id.
+
+    Returns:
+        True when the stopwatch existed and was removed; otherwise False.
+    """
+    stopwatch = repository.get_timer(stopwatch_id)
+    if stopwatch is None or stopwatch.kind != STOPWATCH_KIND:
+        return False
+    return repository.delete_timer(stopwatch_id)
+
+
 def _normalize_timestamp(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)

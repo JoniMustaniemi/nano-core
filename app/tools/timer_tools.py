@@ -7,7 +7,7 @@ from app.duration import duration_seconds_from_tool_args, humanize_duration_seco
 from app.memory import repository
 from app.memory.labels import InvalidTimerLabelError, normalize_timer_label
 from app.memory.models import Timer
-from app.runtime.active_timers import remove_countdown_timer
+from app.runtime.active_timers import remove_countdown_timer, remove_stopwatch
 from app.runtime.activity import activity
 from app.runtime.status_copy import STOPWATCH_STARTED_MESSAGE
 from app.scheduler.jobs import schedule_timer
@@ -162,7 +162,7 @@ def _clear_all_timers(args: dict[str, Any]) -> str:
 
     for stopwatch in stopwatches:
         if stopwatch.id is not None:
-            repository.delete_timer(stopwatch.id)
+            remove_stopwatch(stopwatch.id)
 
     if stopwatches:
         activity.log(
@@ -203,13 +203,13 @@ def _stop_stopwatches(args: dict[str, Any]) -> str:
     ]
 
     if not selected:
-        if stopwatches:
-            return "No matching active stopwatches to stop."
+        if stopwatch_id not in (None, "") or label:
+            raise ToolError("No matching active stopwatches to stop.")
         return "No active stopwatches."
 
     for stopwatch in selected:
         if stopwatch.id is not None:
-            repository.delete_timer(stopwatch.id)
+            remove_stopwatch(stopwatch.id)
 
     activity.log(
         title="Stopwatch stopped.",

@@ -104,3 +104,46 @@ def test_delete_timer_unschedules_completion_job(api_client: TestClient) -> None
     assert response.status_code == 204
     assert repository.list_timers() == []
     assert scheduler.get_job(_timer_job_id(timer.id)) is None
+
+
+def test_delete_stopwatch_removes_only_requested_stopwatch(api_client: TestClient) -> None:
+    stopwatch_one = repository.add_stopwatch("One")
+    stopwatch_two = repository.add_stopwatch("Two")
+    stopwatch_three = repository.add_stopwatch("Three")
+    assert stopwatch_one.id is not None
+    assert stopwatch_two.id is not None
+    assert stopwatch_three.id is not None
+
+    response = api_client.delete(f"/api/stopwatches/{stopwatch_two.id}")
+    status = api_client.get("/api/status")
+
+    assert response.status_code == 204
+    active_ids = [stopwatch["id"] for stopwatch in status.json()["active_stopwatches"]]
+    assert active_ids == [stopwatch_one.id, stopwatch_three.id]
+
+
+def test_delete_stopwatch_returns_404_for_missing_or_wrong_kind(api_client: TestClient) -> None:
+    timer = repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
+    assert timer.id is not None
+
+    missing = api_client.delete("/api/stopwatches/99999")
+    wrong_kind = api_client.delete(f"/api/stopwatches/{timer.id}")
+
+    assert missing.status_code == 404
+    assert wrong_kind.status_code == 404
+
+
+def test_delete_stopwatch_does_not_affect_countdown_timers(api_client: TestClient) -> None:
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    timer = repository.add_timer("Tea", due_at)
+    stopwatch = repository.add_stopwatch("Lap")
+    assert timer.id is not None
+    assert stopwatch.id is not None
+
+    response = api_client.delete(f"/api/stopwatches/{stopwatch.id}")
+    status = api_client.get("/api/status")
+
+    assert response.status_code == 204
+    assert status.json()["active_stopwatches"] == []
+    assert len(status.json()["active_timers"]) == 1
+    assert status.json()["active_timers"][0]["id"] == timer.id
