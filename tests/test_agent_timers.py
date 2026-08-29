@@ -492,9 +492,22 @@ def test_agent_renames_timer_by_id_without_model(monkeypatch, tmp_path) -> None:
     content = agent_respond(f'Rename timer {timer.id} to "Pizza"')
     updated = repository.get_timer(timer.id)
 
-    assert content == 'Renamed timer to "Pizza".'
+    assert content == ""
     assert updated is not None
     assert updated.label == "Pizza"
+
+
+def test_timer_rename_phrases_reject_broad_matches() -> None:
+    assert not is_timer_rename_request("Rename timer please.")
+    assert not is_timer_rename_request('Rename stopwatch 2 to "Run"')
+
+
+def test_timer_rename_accepts_trailing_period_and_smart_quotes() -> None:
+    assert is_timer_rename_request("Rename timer 3 to “Pizza”.")
+    assert rename_timer_args_from_message("Rename timer 3 to “Pizza”.") == {
+        "timer_id": 3,
+        "new_label": "Pizza",
+    }
 
 
 def test_agent_renames_stopwatch_by_label_without_model(monkeypatch, tmp_path) -> None:
@@ -511,7 +524,7 @@ def test_agent_renames_stopwatch_by_label_without_model(monkeypatch, tmp_path) -
     content = agent_respond('Rename the stopwatch "Lap" to "Run"')
     updated = repository.get_timer(stopwatch.id)
 
-    assert content == 'Renamed stopwatch to "Run".'
+    assert content == ""
     assert updated is not None
     assert updated.label == "Run"
 

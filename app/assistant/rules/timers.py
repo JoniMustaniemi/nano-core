@@ -211,51 +211,35 @@ def is_timer_cancel_request(message: str) -> bool:
     return has_timer_trigger and _has_timer_cancel_keyword(lowered)
 
 
-def is_timer_rename_request(message: str) -> bool:
+def normalize_rename_command_message(message: str) -> str:
     """
-    Return whether the user wants to rename a countdown timer.
+    Normalize a UI rename command before regex parsing.
 
     Args:
-        message: User message or prompt text.
+        message: Raw user or UI message text.
 
     Returns:
-        True when the condition is met; otherwise false.
-    """
-    lowered = _normalize_stopwatch_spelling(message.lower())
-    if _has_stopwatch_trigger(lowered):
-        return False
-    if not _has_timer_rename_keyword(lowered):
-        return False
-    return any(trigger in lowered for trigger in TIMER_REQUEST_TRIGGERS)
-
-
-def is_stopwatch_rename_request(message: str) -> bool:
-    """
-    Return whether the user wants to rename a stopwatch.
-
-    Args:
-        message: User message or prompt text.
-
-    Returns:
-        True when the condition is met; otherwise false.
-    """
-    lowered = _normalize_stopwatch_spelling(message.lower())
-    if not _has_stopwatch_trigger(lowered):
-        return False
-    return _has_timer_rename_keyword(lowered)
-
-
-def rename_timer_args_from_message(message: str) -> dict[str, Any]:
-    """
-    Parse rename timer arguments from a UI or voice message.
-
-    Args:
-        message: User message or prompt text.
-
-    Returns:
-        Tool argument dictionary for rename_timer.
+        Trimmed message with normalized quotes and trailing punctuation removed.
     """
     normalized = message.strip()
+    normalized = normalized.replace("\u201c", '"').replace("\u201d", '"')
+    normalized = normalized.replace("\u2018", "'").replace("\u2019", "'")
+    while normalized and normalized[-1] in ".!":
+        normalized = normalized[:-1].rstrip()
+    return normalized
+
+
+def parse_timer_rename_args(message: str) -> dict[str, Any] | None:
+    """
+    Parse rename timer arguments when the message matches a supported phrase.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Tool argument dictionary for rename_timer, or None when no phrase matches.
+    """
+    normalized = normalize_rename_command_message(message)
     for pattern in (
         _RENAME_TIMER_BY_ID_QUOTED_RE,
         _RENAME_TIMER_BY_ID_UNQUOTED_RE,
@@ -274,20 +258,20 @@ def rename_timer_args_from_message(message: str) -> dict[str, Any]:
             "label": args["label"].strip(),
             "new_label": args["new_label"].strip(),
         }
-    return {}
+    return None
 
 
-def rename_stopwatch_args_from_message(message: str) -> dict[str, Any]:
+def parse_stopwatch_rename_args(message: str) -> dict[str, Any] | None:
     """
-    Parse rename stopwatch arguments from a UI or voice message.
+    Parse rename stopwatch arguments when the message matches a supported phrase.
 
     Args:
         message: User message or prompt text.
 
     Returns:
-        Tool argument dictionary for rename_stopwatch.
+        Tool argument dictionary for rename_stopwatch, or None when no phrase matches.
     """
-    normalized = message.strip()
+    normalized = normalize_rename_command_message(message)
     for pattern in (
         _RENAME_STOPWATCH_BY_ID_QUOTED_RE,
         _RENAME_STOPWATCH_BY_ID_UNQUOTED_RE,
@@ -306,7 +290,72 @@ def rename_stopwatch_args_from_message(message: str) -> dict[str, Any]:
             "label": args["label"].strip(),
             "new_label": args["new_label"].strip(),
         }
-    return {}
+    return None
+
+
+def is_timer_rename_request(message: str) -> bool:
+    """
+    Return whether the user wants to rename a countdown timer.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    return parse_timer_rename_args(message) is not None
+
+
+def is_stopwatch_rename_request(message: str) -> bool:
+    """
+    Return whether the user wants to rename a stopwatch.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the condition is met; otherwise false.
+    """
+    return parse_stopwatch_rename_args(message) is not None
+
+
+def is_silent_rename_command(message: str) -> bool:
+    """
+    Return whether the message is a UI rename control command.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message parses as a timer or stopwatch rename command.
+    """
+    return is_timer_rename_request(message) or is_stopwatch_rename_request(message)
+
+
+def rename_timer_args_from_message(message: str) -> dict[str, Any]:
+    """
+    Parse rename timer arguments from a UI or voice message.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Tool argument dictionary for rename_timer.
+    """
+    return parse_timer_rename_args(message) or {}
+
+
+def rename_stopwatch_args_from_message(message: str) -> dict[str, Any]:
+    """
+    Parse rename stopwatch arguments from a UI or voice message.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Tool argument dictionary for rename_stopwatch.
+    """
+    return parse_stopwatch_rename_args(message) or {}
 
 
 def is_timer_status_request(message: str) -> bool:

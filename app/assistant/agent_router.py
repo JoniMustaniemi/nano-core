@@ -11,20 +11,18 @@ from app.assistant.rules import (
     is_identity_question,
     is_internal_note_list_request,
     is_pull_request_request,
-    is_stopwatch_rename_request,
     is_stopwatch_start_request,
     is_stopwatch_stop_request,
     is_system_analysis_request,
     is_timer_cancel_request,
-    is_timer_rename_request,
     is_timer_start_request,
     is_timer_status_request,
     needs_reboot_confirmation,
     needs_service_restart_confirmation,
     needs_timer_duration,
     needs_wipe_confirmation,
-    rename_stopwatch_args_from_message,
-    rename_timer_args_from_message,
+    parse_stopwatch_rename_args,
+    parse_timer_rename_args,
     should_answer_without_tools,
 )
 
@@ -92,20 +90,22 @@ class AgentRouter:
             pending_interactions.clear(conversation_id)
             return RouteDecision(mode="tool", tool_name="clear_all_timers", tool_args={})
 
-        if is_stopwatch_rename_request(message):
+        stopwatch_rename_args = parse_stopwatch_rename_args(message)
+        if stopwatch_rename_args is not None:
             pending_interactions.clear(conversation_id)
             return RouteDecision(
                 mode="tool",
                 tool_name="rename_stopwatch",
-                tool_args=rename_stopwatch_args_from_message(message),
+                tool_args=stopwatch_rename_args,
             )
 
-        if is_timer_rename_request(message):
+        timer_rename_args = parse_timer_rename_args(message)
+        if timer_rename_args is not None:
             pending_interactions.clear(conversation_id)
             return RouteDecision(
                 mode="tool",
                 tool_name="rename_timer",
-                tool_args=rename_timer_args_from_message(message),
+                tool_args=timer_rename_args,
             )
 
         if is_stopwatch_stop_request(message):

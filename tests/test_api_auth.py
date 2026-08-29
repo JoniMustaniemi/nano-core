@@ -51,6 +51,92 @@ def test_events_endpoint_rejects_missing_api_key(monkeypatch) -> None:
     get_settings.cache_clear()
 
 
+def test_cors_preflight_for_patch_timer_endpoint(monkeypatch) -> None:
+    import importlib
+
+    import app.main as main
+
+    monkeypatch.setenv("API_KEY", "secret-key")
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", '["http://localhost:3000"]')
+    get_settings.cache_clear()
+    importlib.reload(main)
+
+    client = TestClient(main.app)
+    response = client.options(
+        "/api/timers/1",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "PATCH",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+
+    assert response.status_code in (200, 204)
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    allow_methods = response.headers.get("access-control-allow-methods", "")
+    assert "PATCH" in allow_methods.upper()
+    get_settings.cache_clear()
+
+
+def test_patch_timer_returns_cors_headers_on_success(monkeypatch) -> None:
+    import importlib
+    from datetime import UTC, datetime, timedelta
+
+    import app.main as main
+    from app.memory import repository
+
+    monkeypatch.setenv("API_KEY", "secret-key")
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", '["http://localhost:3000"]')
+    get_settings.cache_clear()
+    importlib.reload(main)
+
+    timer = repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
+    assert timer.id is not None
+
+    client = TestClient(main.app)
+    response = client.patch(
+        f"/api/timers/{timer.id}",
+        json={"label": "Pizza"},
+        headers={
+            "Origin": "http://localhost:3000",
+            "Authorization": "Bearer secret-key",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    assert response.json()["label"] == "Pizza"
+    get_settings.cache_clear()
+
+
+def test_patch_timer_returns_cors_headers_on_not_found(monkeypatch) -> None:
+    import importlib
+
+    import app.main as main
+
+    monkeypatch.setenv("API_KEY", "secret-key")
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", '["http://localhost:3000"]')
+    get_settings.cache_clear()
+    importlib.reload(main)
+
+    client = TestClient(main.app)
+    response = client.patch(
+        "/api/timers/99999",
+        json={"label": "Pizza"},
+        headers={
+            "Origin": "http://localhost:3000",
+            "Authorization": "Bearer secret-key",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    get_settings.cache_clear()
+
+
 def test_cors_preflight_for_protected_endpoint(monkeypatch) -> None:
     import importlib
 

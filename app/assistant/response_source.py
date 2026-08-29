@@ -113,6 +113,7 @@ def tool_result_source(
     facts: str,
     tool_name: str,
     conversation_id: str = "default",
+    persist: bool = True,
     speak: bool = True,
 ) -> ResponseSource:
     """
@@ -133,6 +134,7 @@ def tool_result_source(
         facts=facts,
         tool_name=tool_name,
         conversation_id=conversation_id,
+        persist=persist,
         speak=speak,
     )
 
@@ -143,6 +145,7 @@ def tool_error_source(
     facts: str,
     tool_name: str,
     conversation_id: str = "default",
+    persist: bool = True,
     speak: bool = True,
 ) -> ResponseSource:
     """
@@ -163,5 +166,6 @@ def tool_error_source(
         facts=facts,
         tool_name=tool_name,
         conversation_id=conversation_id,
+        persist=persist,
         speak=speak,
     )

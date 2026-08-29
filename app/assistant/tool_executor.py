@@ -8,6 +8,8 @@ from app.assistant.tool_runner import ToolRunner
 from app.runtime.activity import activity
 from app.runtime.status_copy import failed_tool_title, ran_tool_title
 
+_SILENT_TOOL_NAMES = frozenset({"rename_timer", "rename_stopwatch"})
+
 
 class ToolExecutor:
     """
@@ -57,19 +59,38 @@ class ToolExecutor:
                 detail=_tool_failure_detail(result),
                 source="assistant.tool_executor",
             )
+        silent = tool_name in _SILENT_TOOL_NAMES
         if result.ok:
             return tool_result_source(
                 user_message=user_message,
-                facts=result.content,
+                facts="" if silent else result.content,
                 tool_name=tool_name,
                 conversation_id=conversation_id,
+                persist=not silent,
+                speak=not silent,
             )
+        error_facts = _silent_tool_error_facts(result.content) if silent else result.content
         return tool_error_source(
             user_message=user_message,
-            facts=result.content,
+            facts=error_facts,
             tool_name=tool_name,
             conversation_id=conversation_id,
+            persist=not silent,
+            speak=not silent,
         )
+
+
+def _silent_tool_error_facts(content: str) -> str:
+    if content.strip().startswith("{"):
+        try:
+            payload = json.loads(content)
+        except json.JSONDecodeError:
+            return content
+        if isinstance(payload, dict):
+            error = str(payload.get("error", "")).strip()
+            if error:
+                return error
+    return content
 
 
 def _tool_failure_detail(result: Any) -> str:

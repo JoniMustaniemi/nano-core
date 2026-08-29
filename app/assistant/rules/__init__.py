@@ -26,6 +26,7 @@ from app.assistant.rules.parsing import extract_json, parse_decision
 from app.assistant.rules.timers import (
     duration_args_from_message,
     is_clear_all_timers_request,
+    is_silent_rename_command,
     is_stopwatch_rename_request,
     is_stopwatch_start_request,
     is_stopwatch_stop_request,
@@ -34,8 +35,8 @@ from app.assistant.rules.timers import (
     is_timer_start_request,
     is_timer_status_request,
     needs_timer_duration,
-    rename_stopwatch_args_from_message,
-    rename_timer_args_from_message,
+    parse_stopwatch_rename_args,
+    parse_timer_rename_args,
     timer_confirmation,
 )
 from app.assistant.rules.tools import (
@@ -77,8 +78,9 @@ __all__ = [
     "needs_wipe_confirmation",
     "normalize_wipe_request",
     "parse_decision",
-    "rename_stopwatch_args_from_message",
-    "rename_timer_args_from_message",
+    "parse_stopwatch_rename_args",
+    "parse_timer_rename_args",
+    "is_silent_rename_command",
     "should_answer_without_tools",
     "timer_confirmation",
     "tool_announcement",

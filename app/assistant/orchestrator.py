@@ -14,7 +14,11 @@ from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_pipeline import finalize_response
 from app.assistant.response_source import ResponseSource
-from app.assistant.rules import is_capability_question, is_identity_question
+from app.assistant.rules import (
+    is_capability_question,
+    is_identity_question,
+    is_silent_rename_command,
+)
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
 from app.config import get_settings
@@ -114,7 +118,10 @@ class AgentOrchestrator:
 
         settings = get_settings()
         user_activity.touch()
-        repository.add_chat_message(conversation_id=conversation_id, role="user", content=message)
+        if not is_silent_rename_command(message):
+            repository.add_chat_message(
+                conversation_id=conversation_id, role="user", content=message
+            )
         try:
             history = repository.list_chat_messages(
                 conversation_id=conversation_id,
