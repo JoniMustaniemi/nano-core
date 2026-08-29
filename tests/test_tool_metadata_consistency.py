@@ -62,6 +62,13 @@ def test_reboot_pi_is_an_extra_ui_command() -> None:
     assert "open_plans" not in command_ids
 
 
+def test_clear_all_timers_exposed_in_tool_commands() -> None:
+    commands = {item["id"]: item for item in list_tool_commands()}
+    cmd = commands["clear_all_timers"]
+    assert cmd["category"] == "Timers"
+    assert cmd["message"] == "Clear all timers."
+
+
 def test_get_tool_rule_matches_registry_metadata() -> None:
     tool = next(tool for tool in list_tools() if tool.name == "check_health")
     rule = get_tool_rule("check_health")
