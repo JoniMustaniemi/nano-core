@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from app.config import get_settings
 from app.health import HealthCheckResult, run_health_checks
+from app.version import get_version
 
 router = APIRouter(tags=["health"])
 
@@ -11,6 +12,7 @@ class HealthPayload(BaseModel):
     status: str
     app: str
     environment: str
+    version: str
     checks: list[HealthCheckResult]
 
 
@@ -24,5 +26,6 @@ def health() -> HealthPayload:
         status=overall,
         app=settings.app_name,
         environment=settings.app_env,
+        version=get_version(),
         checks=checks,
     )

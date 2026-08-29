@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Nano Core"
     app_env: str = "development"
+    nano_version: str = ""
     database_url: str = "sqlite:///./data/nano_core.sqlite3"
     workspace_root: str = "."
     llm_provider: Literal["local", "auto", "ollama", "llama_cpp", "llama_cpp_server"] = "local"

@@ -28,12 +28,14 @@ def test_health_endpoint_reports_checks(api_client, monkeypatch) -> None:
             HealthCheckResult(name="voice", ok=True, detail="Voice is ready."),
         ],
     )
+    monkeypatch.setattr("app.api.health.get_version", lambda: "1.0.0")
 
     response = api_client.get("/api/health")
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
+    assert payload["version"] == "1.0.0"
     assert payload["checks"][0]["name"] == "database"
 
 
