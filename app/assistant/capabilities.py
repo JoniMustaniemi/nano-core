@@ -30,7 +30,7 @@ _EXTRA_CAPABILITIES: tuple[CapabilityItem, ...] = (
     ),
     CapabilityItem(
         name="restart_nano",
-        description="restart the nano-core service after explicit confirmation when enabled.",
+        description="restart my service after explicit confirmation when enabled.",
     ),
 )
 

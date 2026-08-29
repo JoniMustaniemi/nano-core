@@ -41,7 +41,7 @@ def test_agent_restarts_after_confirmation(monkeypatch, tmp_path) -> None:
 
     assert "yes" in first.lower()
     assert "no" in first.lower()
-    assert second == "Restarting Nano now."
+    assert second == "Restarting my service now."
     assert scheduled == [True]
     get_settings.cache_clear()
 

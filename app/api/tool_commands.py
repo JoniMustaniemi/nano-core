@@ -37,14 +37,14 @@ EXTRA_UI_COMMANDS: tuple[ToolCommand, ...] = (
         label="Restart Nano",
         message="Restart yourself.",
         category="System",
-        description="Restart the nano-core service without rebooting the Pi.",
+        description="Restart my service without rebooting the Pi.",
     ),
     ToolCommand(
         id="capabilities",
         label="What can you do?",
         message="What can you do?",
         category="System",
-        description="List Nano capabilities.",
+        description="List my capabilities.",
     ),
     ToolCommand(
         id="open_brains",

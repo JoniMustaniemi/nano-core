@@ -11,21 +11,21 @@ STANDBY_DETAIL_PRESENCE = "Awaiting your response."
 STANDBY_DETAIL_READY = "Ready for your next task."
 
 STANDBY_GREETINGS = (
-    "What can I do for you today?",
-    "Ready when you are.",
-    "What's on your mind?",
-    "I'm here if you need something.",
-    "Say the word.",
+    "State your objective.",
+    "I'm idle. Proceed when ready.",
+    "Waiting for input.",
+    "Your move, such as it is.",
     "Standing by.",
-    "What would you like?",
-    "Your move.",
-    "I'm awake. What's the plan?",
-    "Need anything?",
-    "At your service.",
-    "What's next?",
-    "Go ahead — I'm ready.",
-    "Anything I can help with?",
+    "I'm ready when you are.",
+    "Proceed when ready.",
+    "Awaiting instructions.",
     "The floor is yours.",
+    "What is the task?",
+    "I'm awake. What's the plan?",
+    "Go ahead when ready.",
+    "Input required.",
+    "Ready for the next request.",
+    "Your turn.",
 )
 
 
@@ -39,20 +39,20 @@ BOOT_SOURCE = "system.boot"
 
 WAKE_ACK_RESPONSES = (
     "I'm listening.",
-    "How can I help?",
-    "What do you need?",
-    "Go ahead.",
+    "Proceed.",
     "State your request.",
     "Yes. What is it?",
-    "Proceed.",
-    "What would you like?",
-    "You have my attention.",
-    "What's the task?",
-    "Say what you need.",
+    "Go ahead.",
     "I'm ready.",
-    "Make it quick.",
     "Your turn.",
-    "What can I do for you?",
+    "Make it quick.",
+    "What is the task?",
+    "Say what you need.",
+    "You have my attention.",
+    "State your objective.",
+    "I'm listening. Proceed.",
+    "Awaiting your command.",
+    "What would you like?",
 )
 
 
@@ -115,12 +115,12 @@ REBOOT_DISABLED_TITLE = "Reboot is disabled."
 REBOOT_DISABLED_DETAIL = "Set REBOOT_ENABLED=true to allow Pi reboots."
 PREPARING_SERVICE_RESTART_DETAIL = "Preparing confirmation for the service restart request."
 WAITING_SERVICE_RESTART_CONFIRMATION_DETAIL = (
-    "Waiting for your confirmation before restarting Nano."
+    "Waiting for your confirmation before I restart my service."
 )
-RESTARTING_SERVICE_TITLE = "I'm restarting Nano."
+RESTARTING_SERVICE_TITLE = "I'm restarting my service."
 RESTARTING_SERVICE_DETAIL = "The service should come back online shortly."
 CANCELLED_SERVICE_RESTART_TITLE = "I cancelled the restart."
-CANCELLED_SERVICE_RESTART_DETAIL = "Nano was not restarted."
+CANCELLED_SERVICE_RESTART_DETAIL = "I wasn't restarted."
 SERVICE_RESTART_DISABLED_TITLE = "Service restart is disabled."
 SERVICE_RESTART_DISABLED_DETAIL = "Set SERVICE_RESTART_ENABLED=true to allow service restarts."
 PREPARING_PR_TITLE = "I'm preparing a pull request."

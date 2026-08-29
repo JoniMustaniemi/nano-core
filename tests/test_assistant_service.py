@@ -301,5 +301,5 @@ def test_wake_ack_responses_include_fifteen_variants() -> None:
     from app.runtime.status_copy import WAKE_ACK_RESPONSES, choose_wake_ack_response
 
     assert len(WAKE_ACK_RESPONSES) == 15
-    assert "How can I help?" in WAKE_ACK_RESPONSES
+    assert "I'm listening." in WAKE_ACK_RESPONSES
     assert choose_wake_ack_response() in WAKE_ACK_RESPONSES

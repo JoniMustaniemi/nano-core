@@ -103,7 +103,7 @@ class ServiceRestartInteractionHandler:
         if not is_confirmation_message(message):
             return follow_up_source(
                 user_message=user_message,
-                facts="Reply yes to restart Nano, or no to cancel.",
+                facts="Reply yes to restart my service, or no to cancel.",
                 conversation_id=conversation_id,
             )
 
@@ -128,7 +128,7 @@ class ServiceRestartInteractionHandler:
 
         return answer_source(
             user_message=user_message,
-            facts="Restarting Nano now.",
+            facts="Restarting my service now.",
             conversation_id=conversation_id,
             persist=False,
         )

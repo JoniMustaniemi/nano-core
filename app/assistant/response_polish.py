@@ -7,7 +7,7 @@ from app.assistant.prompts import POLISH_SYSTEM_PROMPT
 from app.assistant.response_source import ResponseSource
 from app.llm.protocol import LLMClient
 
-_POLISH_PROMPT_MARKER = "polishing nano's final reply"
+_POLISH_PROMPT_MARKER = "polishing your final reply"
 
 # Tools that already return curated, user-facing prose — never send to polish.
 _POLISH_EXEMPT_TOOLS = frozenset(

@@ -41,7 +41,7 @@ def _check_health(args: dict[str, Any]) -> str:
 register_tool(
     ToolSpec(
         name="check_health",
-        description="check Nano's current health and report any problems.",
+        description="check my current health and report any problems.",
         args_schema={},
         handler=_check_health,
         announcement="Running a health diagnostic.",
@@ -61,6 +61,6 @@ register_tool(
         ui_label="Health check",
         ui_message="Check your health.",
         ui_category="System",
-        ui_description="Run Nano diagnostics.",
+        ui_description="Run my diagnostics.",
     )
 )

@@ -68,7 +68,7 @@ def test_polish_user_facing_answer_tightens_repetitive_draft() -> None:
         "I handle notes, reminders, timers, local files, Python, diagnostics, and pull requests."
     )
     assert client.messages is not None
-    assert "polishing nano's final reply" in client.messages[0]["content"].lower()
+    assert "polishing your final reply" in client.messages[0]["content"].lower()
 
 
 def test_polish_user_facing_answer_skips_system_analysis_report() -> None:

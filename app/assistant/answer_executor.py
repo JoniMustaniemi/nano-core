@@ -144,7 +144,7 @@ class AnswerExecutor:
         ]
         content = client.complete(messages=messages).strip()
         if not content:
-            content = "I am Nano. State your business."
+            content = "State your business."
         return answer_source(
             user_message=message,
             facts=content,

@@ -10,6 +10,7 @@ _VARIATION_HINTS: tuple[str, ...] = (
     "Answer compactly, as if the question is mildly redundant but tolerable.",
     "Let the personality show through word choice, not through repeating the same outline.",
     "Sound composed and specific rather than generic.",
+    "Speak as yourself in first person; never narrate about Nano in third person.",
 )
 
 

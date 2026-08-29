@@ -36,7 +36,7 @@ def _list_internal_notes(args: dict[str, Any]) -> str:
 register_tool(
     ToolSpec(
         name="list_internal_notes",
-        description="list Nano's private internal follow-up notes saved for later discussion.",
+        description="list my private internal follow-up notes saved for later discussion.",
         args_schema={},
         handler=_list_internal_notes,
         announcement="Reviewing internal follow-up notes.",
@@ -44,6 +44,6 @@ register_tool(
         ui_label="Internal notes",
         ui_message="Tell me about your internal notes.",
         ui_category="Notes",
-        ui_description="Show Nano's private follow-up notes.",
+        ui_description="Show my private follow-up notes.",
     )
 )

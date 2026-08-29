@@ -15,7 +15,7 @@ def _analyze_system(args: dict[str, Any]) -> str:
 register_tool(
     ToolSpec(
         name="analyze_system",
-        description="Summarize Nano's models, memory headroom, and context limits.",
+        description="Summarize my models, memory headroom, and context limits.",
         args_schema={},
         handler=_analyze_system,
         announcement="Analyzing system specs.",
@@ -36,6 +36,6 @@ register_tool(
         ui_label="System analysis",
         ui_message="Analyze my system specs.",
         ui_category="System",
-        ui_description="Nano models, memory, and context limits.",
+        ui_description="My models, memory, and context limits.",
     )
 )

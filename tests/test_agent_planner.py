@@ -30,7 +30,7 @@ def test_agent_runs_a_legitimate_tool_call(monkeypatch, tmp_path) -> None:
 
     assert content == "The result is 4."
     assert client.calls >= 2
-    assert "never refer to nano in third person" in client.messages[0]["content"].lower()
+    assert "never refer to yourself by name" in client.messages[0]["content"].lower()
 
 
 def test_agent_announces_tool_calls(monkeypatch, tmp_path) -> None:

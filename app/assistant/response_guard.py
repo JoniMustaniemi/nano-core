@@ -89,8 +89,8 @@ _VIOLATION_LABELS: dict[ViolationKind, str] = {
         "Described identity or capabilities instead of answering the user's question."
     ),
     "unsupported_continuation": ("Promised unsupported continued work after responding."),
-    "third_person": "Referred to Nano in third person instead of first person.",
-    "intent_mismatch": ("Refused or contradicted the action Nano is performing or confirming."),
+    "third_person": "Referred to yourself in third person instead of first person.",
+    "intent_mismatch": ("Refused or contradicted the action you are performing or confirming."),
 }
 
 
@@ -249,7 +249,7 @@ def judge_alignment(client: LLMClient, source: ResponseSource, content: str) -> 
             "role": "user",
             "content": (
                 f"User request: {source.user_message}\n\n"
-                f"Nano intent:\n{format_source_context(source)}\n\n"
+                f"Intended action:\n{format_source_context(source)}\n\n"
                 f"Candidate reply:\n{content}"
             ),
         },
@@ -262,9 +262,9 @@ def judge_alignment(client: LLMClient, source: ResponseSource, content: str) -> 
         return []
     problems = payload.get("problems", [])
     if not isinstance(problems, list):
-        return ["Reply does not align with Nano's intended action."]
+        return ["Reply does not align with your intended action."]
     cleaned = [str(problem).strip() for problem in problems if str(problem).strip()]
-    return cleaned or ["Reply does not align with Nano's intended action."]
+    return cleaned or ["Reply does not align with your intended action."]
 
 
 def collect_problems(client: LLMClient, source: ResponseSource, content: str) -> list[str]:
@@ -314,7 +314,7 @@ def rewrite_with_context(
             "role": "user",
             "content": (
                 f"User question: {source.user_message}\n\n"
-                f"Nano intent:\n{format_source_context(source)}\n\n"
+                f"Intended action:\n{format_source_context(source)}\n\n"
                 f"Previous wrong answer:\n{content}\n\n"
                 f"Problems to fix:\n{problem_lines}"
             ),
