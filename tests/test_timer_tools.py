@@ -136,6 +136,23 @@ def test_cancel_timers_removes_all_active_timers() -> None:
     assert timers == []
 
 
+def test_cancel_timers_by_id_leaves_other_timers_active() -> None:
+    tool = get_tool("cancel_timers")
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    timer_one = repository.add_timer("Tea", due_at)
+    timer_two = repository.add_timer("Laundry", due_at + timedelta(minutes=5))
+    assert timer_one.id is not None
+    assert timer_two.id is not None
+
+    assert tool is not None
+    result = tool.handler({"timer_id": timer_one.id})
+    remaining = repository.list_timers()
+
+    assert result == "Cancelled 1 timer."
+    assert len(remaining) == 1
+    assert remaining[0].id == timer_two.id
+
+
 def test_cancel_timers_reports_when_none_are_active() -> None:
     """
     Verify that cancel timers reports when none are active.
@@ -413,7 +430,8 @@ def test_rename_timer_allows_cancel_by_new_label() -> None:
     assert cancel_tool is not None
 
     rename_tool.handler({"timer_id": timer.id, "new_label": "Coffee"})
-    assert cancel_tool.handler({"label": "Tea"}) == "No matching active timers to cancel."
+    with pytest.raises(ToolError, match="No matching active timers to cancel."):
+        cancel_tool.handler({"label": "Tea"})
     assert cancel_tool.handler({"label": "Coffee"}) == "Cancelled 1 timer."
 
 

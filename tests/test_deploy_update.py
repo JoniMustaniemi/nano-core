@@ -7,7 +7,9 @@ from app.config import get_settings
 from app.deploy.update import PullResult, install_dependencies, pull_latest
 
 
-def test_pull_latest_skipped_when_fetch_fails(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_pull_latest_skipped_when_fetch_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.setenv("AUTO_UPDATE_BRANCH", "main")
     get_settings.cache_clear()
 
@@ -24,7 +26,9 @@ def test_pull_latest_skipped_when_fetch_fails(monkeypatch: pytest.MonkeyPatch, t
     get_settings.cache_clear()
 
 
-def test_pull_latest_skipped_when_merge_fails(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_pull_latest_skipped_when_merge_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.setenv("AUTO_UPDATE_BRANCH", "main")
     get_settings.cache_clear()
 
@@ -46,7 +50,9 @@ def test_pull_latest_skipped_when_merge_fails(monkeypatch: pytest.MonkeyPatch, t
     get_settings.cache_clear()
 
 
-def test_pull_latest_reports_already_up_to_date(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_pull_latest_reports_already_up_to_date(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.setenv("AUTO_UPDATE_BRANCH", "main")
     get_settings.cache_clear()
 

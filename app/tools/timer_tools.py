@@ -7,9 +7,10 @@ from app.duration import duration_seconds_from_tool_args, humanize_duration_seco
 from app.memory import repository
 from app.memory.labels import InvalidTimerLabelError, normalize_timer_label
 from app.memory.models import Timer
+from app.runtime.active_timers import remove_countdown_timer
 from app.runtime.activity import activity
 from app.runtime.status_copy import STOPWATCH_STARTED_MESSAGE
-from app.scheduler.jobs import schedule_timer, unschedule_timer
+from app.scheduler.jobs import schedule_timer
 from app.tools.base import ToolSpec
 from app.tools.errors import ToolError
 from app.tools.registry import register_tool
@@ -122,15 +123,14 @@ def _cancel_timers(args: dict[str, Any]) -> str:
     ]
 
     if not selected:
-        if timers:
-            return "No matching active timers to cancel."
+        if timer_id not in (None, "") or label:
+            raise ToolError("No matching active timers to cancel.")
         return "No active timers to cancel."
 
     labels: list[str] = []
     for timer in selected:
         if timer.id is not None:
-            unschedule_timer(timer.id)
-            repository.delete_timer(timer.id)
+            remove_countdown_timer(timer.id)
         labels.append(timer.label)
 
     count = len(selected)
@@ -158,8 +158,7 @@ def _clear_all_timers(args: dict[str, Any]) -> str:
 
     for timer in countdown_timers:
         if timer.id is not None:
-            unschedule_timer(timer.id)
-            repository.delete_timer(timer.id)
+            remove_countdown_timer(timer.id)
 
     for stopwatch in stopwatches:
         if stopwatch.id is not None:

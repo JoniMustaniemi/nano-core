@@ -5,6 +5,7 @@ from typing import Any, Literal
 
 from app.assistant.pending import pending_interactions
 from app.assistant.rules import (
+    is_ambiguous_singular_timer_cancel,
     is_capability_question,
     is_clear_all_timers_request,
     is_health_check_request,
@@ -22,20 +23,33 @@ from app.assistant.rules import (
     needs_timer_duration,
     needs_wipe_confirmation,
     parse_stopwatch_rename_args,
+    parse_timer_cancel_args,
     parse_timer_rename_args,
     should_answer_without_tools,
 )
+from app.memory import repository
 
 
 @dataclass(frozen=True, slots=True)
 class RouteDecision:
-    mode: Literal["answer", "capabilities", "identity", "tool", "interaction", "planner", "pending"]
+    mode: Literal[
+        "answer",
+        "capabilities",
+        "direct",
+        "identity",
+        "tool",
+        "interaction",
+        "planner",
+        "pending",
+    ]
 
     tool_name: str | None = None
 
     tool_args: dict[str, Any] | None = None
 
     interaction: str | None = None
+
+    direct_facts: str | None = None
 
 
 class AgentRouter:
@@ -112,8 +126,26 @@ class AgentRouter:
             pending_interactions.clear(conversation_id)
             return RouteDecision(mode="tool", tool_name="stop_stopwatches", tool_args={})
 
+        timer_cancel_args = parse_timer_cancel_args(message)
+        if timer_cancel_args is not None:
+            pending_interactions.clear(conversation_id)
+            return RouteDecision(
+                mode="tool",
+                tool_name="cancel_timers",
+                tool_args=timer_cancel_args,
+            )
+
         if is_timer_cancel_request(message):
             pending_interactions.clear(conversation_id)
+            if is_ambiguous_singular_timer_cancel(message):
+                if len(repository.list_countdown_timers()) > 1:
+                    return RouteDecision(
+                        mode="direct",
+                        direct_facts=(
+                            "Multiple timers are running. Say cancel timer and the timer id, "
+                            "or cancel timers to clear all."
+                        ),
+                    )
             return RouteDecision(mode="tool", tool_name="cancel_timers", tool_args={})
 
         if pending_interactions.get(conversation_id) is not None:

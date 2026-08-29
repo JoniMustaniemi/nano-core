@@ -32,7 +32,9 @@ class VoskSpeechToText:
         try:
             self._model = Model(self._model_path)
         except Exception as exc:
-            raise SpeechToTextError(f"Could not load Vosk model at {self._model_path}: {exc}") from exc
+            raise SpeechToTextError(
+                f"Could not load Vosk model at {self._model_path}: {exc}"
+            ) from exc
         return self._model
 
     def transcribe_wav(self, wav_bytes: bytes) -> str:

@@ -6,7 +6,11 @@ from pydantic import BaseModel
 from app.memory import repository
 from app.memory.labels import InvalidTimerLabelError, normalize_timer_label
 from app.memory.repository import COUNTDOWN_KIND, STOPWATCH_KIND
-from app.runtime.active_timers import serialize_stopwatch_by_id, serialize_timer_by_id
+from app.runtime.active_timers import (
+    remove_countdown_timer,
+    serialize_stopwatch_by_id,
+    serialize_timer_by_id,
+)
 
 router = APIRouter(tags=["timers"])
 
@@ -32,6 +36,13 @@ def patch_timer(timer_id: int, body: LabelUpdate) -> dict[str, int | str]:
     if serialized is None:
         raise HTTPException(status_code=404, detail="Timer not found.")
     return serialized
+
+
+@router.delete("/timers/{timer_id}", status_code=204)
+def delete_timer(timer_id: int) -> None:
+    """Cancel one active countdown timer."""
+    if not remove_countdown_timer(timer_id):
+        raise HTTPException(status_code=404, detail="Timer not found.")
 
 
 @router.patch("/stopwatches/{stopwatch_id}")

@@ -32,7 +32,9 @@ def start_voice_listener() -> None:
         return
 
     _stop_event.clear()
-    _listener_thread = threading.Thread(target=_listener_loop, name="nano-voice-listener", daemon=True)
+    _listener_thread = threading.Thread(
+        target=_listener_loop, name="nano-voice-listener", daemon=True
+    )
     _listener_thread.start()
 
 

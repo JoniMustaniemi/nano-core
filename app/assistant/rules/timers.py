@@ -89,6 +89,10 @@ _RENAME_STOPWATCH_BY_LABEL_RE = re.compile(
     r'^rename\s+the\s+stopwatch\s+"(?P<label>[^"]+)"\s+to\s+"(?P<new_label>[^"]+)"\s*$',
     re.IGNORECASE,
 )
+_CANCEL_TIMER_BY_ID_RE = re.compile(
+    r"^cancel\s+timer\s+(?P<timer_id>\d+)\s*$",
+    re.IGNORECASE,
+)
 
 
 def needs_timer_duration(message: str) -> bool:
@@ -317,6 +321,84 @@ def is_stopwatch_rename_request(message: str) -> bool:
         True when the condition is met; otherwise false.
     """
     return parse_stopwatch_rename_args(message) is not None
+
+
+def parse_timer_cancel_args(message: str) -> dict[str, Any] | None:
+    """
+    Parse cancel timer arguments when the message matches a supported phrase.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        Tool argument dictionary for cancel_timers, or None when no phrase matches.
+    """
+    normalized = normalize_rename_command_message(message)
+    match = _CANCEL_TIMER_BY_ID_RE.match(normalized)
+    if match is None:
+        return None
+    return {"timer_id": int(match.group("timer_id"))}
+
+
+def is_plural_timer_cancel_request(message: str) -> bool:
+    """
+    Return whether the message explicitly cancels multiple timers.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message uses plural timer cancel phrasing.
+    """
+    normalized = normalize_rename_command_message(message).lower()
+    return re.search(r"\btimers\b", normalized) is not None
+
+
+def is_ambiguous_singular_timer_cancel(message: str) -> bool:
+    """
+    Return whether a singular timer cancel phrase lacks a target id.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message cancels one timer without specifying which.
+    """
+    if parse_timer_cancel_args(message) is not None:
+        return False
+    if not is_timer_cancel_request(message):
+        return False
+    if is_plural_timer_cancel_request(message):
+        return False
+    if extract_duration_seconds(message.lower()) is not None:
+        return False
+    return re.search(r"\btimer\b", normalize_rename_command_message(message).lower()) is not None
+
+
+def is_silent_timer_cancel_command(message: str) -> bool:
+    """
+    Return whether the message is a UI cancel control command.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message parses as cancel timer by id.
+    """
+    return parse_timer_cancel_args(message) is not None
+
+
+def is_silent_ui_command(message: str) -> bool:
+    """
+    Return whether the message is a silent UI control command.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when the message parses as a silent timer or stopwatch control command.
+    """
+    return is_silent_rename_command(message) or is_silent_timer_cancel_command(message)
 
 
 def is_silent_rename_command(message: str) -> bool:

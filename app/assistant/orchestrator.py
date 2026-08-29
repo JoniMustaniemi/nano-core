@@ -13,11 +13,11 @@ from app.assistant.flows.wipe import WipeInteractionHandler
 from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_composer import ResponseComposer
 from app.assistant.response_pipeline import finalize_response
-from app.assistant.response_source import ResponseSource
+from app.assistant.response_source import ResponseSource, answer_source
 from app.assistant.rules import (
     is_capability_question,
     is_identity_question,
-    is_silent_rename_command,
+    is_silent_ui_command,
 )
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
@@ -118,7 +118,7 @@ class AgentOrchestrator:
 
         settings = get_settings()
         user_activity.touch()
-        if not is_silent_rename_command(message):
+        if not is_silent_ui_command(message):
             repository.add_chat_message(
                 conversation_id=conversation_id, role="user", content=message
             )
@@ -271,6 +271,13 @@ class AgentOrchestrator:
                 conversation_id=conversation_id,
                 tool_name=decision.tool_name or "",
                 args=decision.tool_args or {},
+            )
+
+        if decision.mode == "direct":
+            return answer_source(
+                user_message=message,
+                facts=decision.direct_facts or "",
+                conversation_id=conversation_id,
             )
 
         if decision.mode == "capabilities":

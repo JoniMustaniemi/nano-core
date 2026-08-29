@@ -115,7 +115,9 @@ def _run_serve(host: str | None = None, port: int | None = None) -> None:
             if install_dependencies():
                 typer.echo("Auto-update: dependencies reinstalled.")
             else:
-                typer.echo("Auto-update: dependency reinstall failed; continuing with local install.")
+                typer.echo(
+                    "Auto-update: dependency reinstall failed; continuing with local install."
+                )
 
     resolved_host = host or settings.api_bind_host
     resolved_port = port or settings.api_bind_port

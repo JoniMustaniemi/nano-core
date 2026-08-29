@@ -4,6 +4,24 @@ from datetime import UTC, datetime
 
 from app.memory import repository
 from app.memory.repository import COUNTDOWN_KIND, STOPWATCH_KIND
+from app.scheduler.jobs import unschedule_timer
+
+
+def remove_countdown_timer(timer_id: int) -> bool:
+    """
+    Unschedule and delete one active countdown timer.
+
+    Args:
+        timer_id: Countdown timer id.
+
+    Returns:
+        True when the timer existed and was removed; otherwise False.
+    """
+    timer = repository.get_timer(timer_id)
+    if timer is None or timer.kind != COUNTDOWN_KIND:
+        return False
+    unschedule_timer(timer_id)
+    return repository.delete_timer(timer_id)
 
 
 def _normalize_timestamp(value: datetime) -> datetime:

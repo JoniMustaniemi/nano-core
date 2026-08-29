@@ -60,3 +60,47 @@ def test_patch_timer_rejects_invalid_label(api_client: TestClient) -> None:
 
     assert response.status_code == 400
     assert "64 characters" in response.json()["detail"]
+
+
+def test_delete_timer_removes_only_requested_timer(api_client: TestClient) -> None:
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    timer_one = repository.add_timer("One", due_at)
+    timer_two = repository.add_timer("Two", due_at + timedelta(minutes=1))
+    timer_three = repository.add_timer("Three", due_at + timedelta(minutes=2))
+    assert timer_one.id is not None
+    assert timer_two.id is not None
+    assert timer_three.id is not None
+
+    response = api_client.delete(f"/api/timers/{timer_two.id}")
+    status = api_client.get("/api/status")
+
+    assert response.status_code == 204
+    active_ids = [timer["id"] for timer in status.json()["active_timers"]]
+    assert active_ids == [timer_one.id, timer_three.id]
+
+
+def test_delete_timer_returns_404_for_missing_or_wrong_kind(api_client: TestClient) -> None:
+    stopwatch = repository.add_stopwatch("Lap")
+    assert stopwatch.id is not None
+
+    missing = api_client.delete("/api/timers/99999")
+    wrong_kind = api_client.delete(f"/api/timers/{stopwatch.id}")
+
+    assert missing.status_code == 404
+    assert wrong_kind.status_code == 404
+
+
+def test_delete_timer_unschedules_completion_job(api_client: TestClient) -> None:
+    from app.scheduler.jobs import _timer_job_id, schedule_timer, scheduler
+
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    timer = repository.add_timer("Tea", due_at)
+    assert timer.id is not None
+    schedule_timer(timer.id, due_at)
+    assert scheduler.get_job(_timer_job_id(timer.id)) is not None
+
+    response = api_client.delete(f"/api/timers/{timer.id}")
+
+    assert response.status_code == 204
+    assert repository.list_timers() == []
+    assert scheduler.get_job(_timer_job_id(timer.id)) is None

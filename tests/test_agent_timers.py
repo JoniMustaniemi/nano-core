@@ -17,6 +17,7 @@ from app.assistant.rules.timers import (
     is_timer_rename_request,
     is_timer_start_request,
     is_timer_status_request,
+    parse_timer_cancel_args,
     rename_timer_args_from_message,
 )
 from app.memory import repository
@@ -545,3 +546,87 @@ def test_agent_reports_ambiguous_timer_rename_without_model(monkeypatch, tmp_pat
     assert decision.mode == "tool"
     assert decision.tool_name == "rename_timer"
     assert decision.tool_args == {"label": "Timer", "new_label": "Pizza"}
+
+
+def test_parse_timer_cancel_args_matches_id_phrase() -> None:
+    assert parse_timer_cancel_args("Cancel timer 2") == {"timer_id": 2}
+    assert parse_timer_cancel_args("Cancel timer 2.") == {"timer_id": 2}
+    assert parse_timer_cancel_args("Cancel timers.") is None
+
+
+def test_agent_router_routes_cancel_timer_by_id(monkeypatch, tmp_path) -> None:
+    from app.assistant.agent_router import AgentRouter
+
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    timer = repository.add_timer("Tea", due_at)
+    assert timer.id is not None
+
+    decision = AgentRouter().decide(
+        f"Cancel timer {timer.id}",
+        conversation_id="default",
+        history=[],
+    )
+
+    assert decision.mode == "tool"
+    assert decision.tool_name == "cancel_timers"
+    assert decision.tool_args == {"timer_id": timer.id}
+
+
+def test_agent_cancels_only_requested_timer_with_multiple_active(monkeypatch, tmp_path) -> None:
+    client = ShouldNotBeCalledClient()
+    patch_agent(
+        monkeypatch,
+        client=client,
+        tmp_path=tmp_path,
+        announce=lambda text: None,
+    )
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    timer_one = repository.add_timer("One", due_at)
+    timer_two = repository.add_timer("Two", due_at + timedelta(minutes=1))
+    timer_three = repository.add_timer("Three", due_at + timedelta(minutes=2))
+    assert timer_one.id is not None
+    assert timer_two.id is not None
+    assert timer_three.id is not None
+
+    content = agent_respond(f"Cancel timer {timer_two.id}")
+    remaining_ids = [timer.id for timer in repository.list_timers()]
+
+    assert content == ""
+    assert remaining_ids == [timer_one.id, timer_three.id]
+
+
+def test_agent_singular_cancel_with_multiple_timers_returns_clarification(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    client = ShouldNotBeCalledClient()
+    patch_agent(
+        monkeypatch,
+        client=client,
+        tmp_path=tmp_path,
+        announce=lambda text: None,
+    )
+    due_at = datetime.now(UTC) + timedelta(minutes=5)
+    repository.add_timer("One", due_at)
+    repository.add_timer("Two", due_at + timedelta(minutes=1))
+
+    content = agent_respond("Cancel the timer.")
+
+    assert "Multiple timers are running" in content
+    assert len(repository.list_timers()) == 2
+
+
+def test_agent_singular_cancel_with_one_timer_cancels_it(monkeypatch, tmp_path) -> None:
+    client = ShouldNotBeCalledClient()
+    patch_agent(
+        monkeypatch,
+        client=client,
+        tmp_path=tmp_path,
+        announce=lambda text: None,
+    )
+    repository.add_timer("Tea", datetime.now(UTC) + timedelta(minutes=5))
+
+    content = agent_respond("Cancel the timer.")
+
+    assert content == "Cancelled 1 timer."
+    assert repository.list_timers() == []

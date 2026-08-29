@@ -59,7 +59,9 @@ class ToolExecutor:
                 detail=_tool_failure_detail(result),
                 source="assistant.tool_executor",
             )
-        silent = tool_name in _SILENT_TOOL_NAMES
+        silent = tool_name in _SILENT_TOOL_NAMES or (
+            tool_name == "cancel_timers" and tool_args.get("timer_id") not in (None, "")
+        )
         if result.ok:
             return tool_result_source(
                 user_message=user_message,
