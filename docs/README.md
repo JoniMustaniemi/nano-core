@@ -157,6 +157,7 @@ SQLite file from `database_url` (default `./data/nano_core.sqlite3`). Tables in 
 | `GET /api/chat/wake` | Wake acknowledgement |
 | `GET /api/health` | Aggregated health checks (public) |
 | `GET /api/status` | Activity state + UI copy constants |
+| `GET /api/system/metrics` | CPU temperature and throttle state |
 | `GET /api/events` | SSE activity stream |
 | `GET /api/tool-commands` | Web UI quick commands |
 | `GET /api/storage` | Storage snapshot |

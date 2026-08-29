@@ -7,6 +7,7 @@ from app.api import (
     memory,
     proactive,
     runtime,
+    system,
     tools,
     voice,
 )
@@ -17,6 +18,7 @@ api_router.include_router(chat.router)
 api_router.include_router(health.router)
 api_router.include_router(memory.router)
 api_router.include_router(runtime.router)
+api_router.include_router(system.router)
 api_router.include_router(proactive.router)
 api_router.include_router(voice.router)
 api_router.include_router(tools.router)

@@ -6,6 +6,7 @@ from app.proactive.store import proactive_store
 from app.runtime.active_timers import serialize_active_stopwatches, serialize_active_timers
 from app.runtime.activity import activity
 from app.runtime.status_copy import client_copy_payload
+from app.system.specs import serialize_system_metrics
 
 
 def build_runtime_snapshot() -> dict[str, object]:
@@ -21,4 +22,5 @@ def build_runtime_snapshot() -> dict[str, object]:
         "active_stopwatches": serialize_active_stopwatches(),
         "proactive": proactive_store.snapshot(),
         "pending": {"kind": pending_kind},
+        "system": serialize_system_metrics(),
     }
