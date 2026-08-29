@@ -24,6 +24,35 @@ Entry points: `app.main` (API server), `app.cli` (`dev`, `serve`, `start-nano`).
 
 All processing happens on the Pi. The UI displays state from `GET /api/events` (SSE) and sends commands via REST.
 
+## Pi deployment
+
+One-time setup on the Raspberry Pi:
+
+1. Clone the repo via SSH: `git clone git@github.com:ORG/nano-core.git`
+2. Generate a deploy key on the Pi and add the read-only public key to the GitHub repo.
+3. Create a venv, install extras, copy models, and configure `.env`:
+
+```env
+API_KEY=...
+CORS_ALLOWED_ORIGINS=["http://localhost:3000"]
+AUTO_UPDATE_ON_START=true
+AUTO_UPDATE_BRANCH=main
+```
+
+4. Install and enable the systemd unit:
+
+```bash
+sudo cp deploy/nano-core.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now nano-core
+```
+
+With `AUTO_UPDATE_ON_START=true`, every boot or service restart runs `git fetch` + `git merge --ff-only origin/main` before `nano-core serve`. Pull failures (no network, dirty tree, merge conflict) are logged and startup continues with the local checkout.
+
+Optional: set `AUTO_UPDATE_INSTALL=true` to run `pip install -e ".[local-llm,voice]"` after a successful pull (slow on Pi; only needed when dependencies change).
+
+After the initial setup, push to `main` and restart the service (or reboot) to deploy code changes — no manual `scp` required.
+
 ## Request pipeline
 
 Agent mode (`AgentOrchestrator`) is the main path for tool-capable chat:
@@ -135,6 +164,8 @@ Settings live in `app/config.py`. Override any value in `.env` if needed — mos
 defaults work out of the box, including model paths under `models/`.
 
 Remote API: `API_KEY`, `CORS_ALLOWED_ORIGINS`, `API_BIND_HOST`, `API_BIND_PORT`.
+
+Pi auto-update: `AUTO_UPDATE_ON_START`, `AUTO_UPDATE_BRANCH`, `AUTO_UPDATE_INSTALL`.
 
 Voice: `VOICE_INPUT_ENABLED`, `VOICE_INPUT_DEVICE`, `VOICE_OUTPUT_DEVICE`, `STT_MODEL_PATH`,
 `VOICE_WAKE_PHRASE`, `VOICE_PLAYBACK_MODE` (`local`, `browser`, or `both`).

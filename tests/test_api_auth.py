@@ -49,3 +49,29 @@ def test_events_endpoint_rejects_missing_api_key(monkeypatch) -> None:
 
     assert response.status_code == 401
     get_settings.cache_clear()
+
+
+def test_cors_preflight_for_protected_endpoint(monkeypatch) -> None:
+    import importlib
+
+    import app.main as main
+
+    monkeypatch.setenv("API_KEY", "secret-key")
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", '["http://localhost:3000"]')
+    get_settings.cache_clear()
+    importlib.reload(main)
+
+    client = TestClient(main.app)
+    response = client.options(
+        "/api/status",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+
+    assert response.status_code in (200, 204)
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
+    get_settings.cache_clear()

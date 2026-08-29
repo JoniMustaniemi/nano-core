@@ -98,6 +98,17 @@ def serve(
 
 def _run_serve(host: str | None = None, port: int | None = None) -> None:
     settings = get_settings()
+    if settings.auto_update_on_start:
+        from app.deploy.update import install_dependencies, pull_latest
+
+        result = pull_latest()
+        typer.echo(f"Auto-update: {result.message}")
+        if result.updated and settings.auto_update_install:
+            if install_dependencies():
+                typer.echo("Auto-update: dependencies reinstalled.")
+            else:
+                typer.echo("Auto-update: dependency reinstall failed; continuing with local install.")
+
     resolved_host = host or settings.api_bind_host
     resolved_port = port or settings.api_bind_port
     if settings.api_key.strip():

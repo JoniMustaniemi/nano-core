@@ -40,6 +40,9 @@ class ApiKeyAuthMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         path = request.url.path
         if not path.startswith(_API_PREFIX) or _is_public_api_path(path):
             return await call_next(request)

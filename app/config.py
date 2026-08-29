@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     google_calendar_ids: str = "primary"
     api_key: str = ""
     cors_allowed_origins: list[str] = Field(default_factory=list)
+    auto_update_on_start: bool = False
+    auto_update_branch: str = "main"
+    auto_update_install: bool = False
     api_bind_host: str = "0.0.0.0"
     api_bind_port: int = Field(default=8000, ge=1, le=65535)
     voice_input_enabled: bool = False

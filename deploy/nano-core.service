@@ -1,0 +1,16 @@
+[Unit]
+Description=Nano Core API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nano
+WorkingDirectory=/home/nano/nano-core
+EnvironmentFile=/home/nano/nano-core/.env
+ExecStart=/home/nano/nano-core/.venv/bin/nano-core serve
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from googleapiclient.errors import HttpError
 from typer.testing import CliRunner
 
@@ -183,3 +185,27 @@ def test_google_calendars_command_exits_on_http_error(monkeypatch) -> None:
 
     assert result.exit_code == 1
     assert "Google Calendar API request failed:" in result.output
+
+
+def test_serve_runs_auto_update_when_enabled(monkeypatch) -> None:
+    from app.config import get_settings
+    from app.deploy.update import PullResult
+
+    pull_calls: list[Path | None] = []
+
+    def fake_pull(repo_root: Path | None = None) -> PullResult:
+        pull_calls.append(repo_root)
+        return PullResult(updated=False, message="Already up to date.")
+
+    monkeypatch.setenv("AUTO_UPDATE_ON_START", "true")
+    get_settings.cache_clear()
+    monkeypatch.setattr("app.deploy.update.pull_latest", fake_pull)
+    monkeypatch.setattr("app.cli.uvicorn.run", lambda *args, **kwargs: None)
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["serve"])
+
+    assert result.exit_code == 0
+    assert pull_calls == [None]
+    assert "Auto-update: Already up to date." in result.output
+    get_settings.cache_clear()

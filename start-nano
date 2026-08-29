@@ -10,4 +10,4 @@ else
   PYTHON="python3"
 fi
 
-exec "$PYTHON" -m app.cli dev "$@"
+exec "$PYTHON" -m app.cli serve "$@"
