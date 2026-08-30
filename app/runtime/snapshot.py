@@ -4,6 +4,7 @@ from app.assistant.pending import pending_interactions
 from app.config import get_settings
 from app.proactive.store import proactive_store
 from app.runtime.activity import activity
+from app.runtime.location import location_store
 from app.runtime.status_copy import client_copy_payload
 from app.system.specs import serialize_system_metrics
 from app.timers.serialization import serialize_active_stopwatches, serialize_active_timers
@@ -23,4 +24,5 @@ def build_runtime_snapshot() -> dict[str, object]:
         "proactive": proactive_store.snapshot(),
         "pending": {"kind": pending_kind},
         "system": serialize_system_metrics(),
+        "location": location_store.snapshot(),
     }

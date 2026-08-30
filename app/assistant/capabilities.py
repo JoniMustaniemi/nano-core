@@ -58,6 +58,10 @@ _CAPABILITY_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
         "Diagnostics",
         ("check_health", "analyze_system", "reboot_pi", "restart_nano"),
     ),
+    (
+        "Weather",
+        ("get_current_weather",),
+    ),
 )
 
 

@@ -14,6 +14,7 @@ term.
 - **Health checks** — diagnose database, voice, and model issues in plain language
 - **System control** — reboot the Raspberry Pi or restart the nano-core service from the UI after confirmation (when enabled)
 - **Google Calendar** — connect a Google account, browse calendars in the UI and switch between calendars.
+- **Weather** — report current conditions via chat when the UI has reported browser location (`POST /api/location`); data from Open-Meteo (no API key)
 - **Voice** — spoken replies on the Pi speaker, push-to-talk from the remote UI, and wake-phrase listening with `"hey nano"` on Pi hardware
 
 ## Web UI

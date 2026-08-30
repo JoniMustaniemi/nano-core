@@ -12,6 +12,7 @@ User-facing capabilities and model overview: [README.md](../README.md).
 | Local LLM | `llama-cpp-python` (optional `local-llm` extra) |
 | Voice | GLaDOS-TTS, Vosk STT (optional `voice` extra) |
 | Calendar | Google Calendar API (read-only OAuth) |
+| Weather | Open-Meteo forecast API (read-only, no API key) |
 | Web UI | Separate **nano-ui** repo — thin client over REST + SSE |
 
 Entry points: `app.main` (API server), `app.cli` (`dev`, `serve`, `start-nano`).
@@ -128,6 +129,8 @@ Defaults live in `app/config.py`.
 | `app/api/` | REST routers under `/api/*`, API key auth, tool command metadata |
 | `app/common/` | Shared JSON parsing, duration parsing, and domain types (`ProactiveOffer`) |
 | `app/integrations/google_calendar/` | Google Calendar auth, client, and formatting |
+| `app/integrations/weather/` | Open-Meteo client, WMO formatting, and weather errors |
+| `app/runtime/location.py` | In-memory client-reported geographic location |
 | `app/workspace/` | Workspace file-walking and inventory hashing |
 | `app/assistant/` | Orchestrator, dispatch, router, planner, flows, response pipeline |
 | `app/assistant/guard/` | Response quality detectors and LLM rewrite pass |
@@ -158,8 +161,11 @@ SQLite file from `database_url` (default `./data/nano_core.sqlite3`). Tables in 
 | `POST /api/chat` | Agent or chat mode |
 | `GET /api/chat/wake` | Wake acknowledgement |
 | `GET /api/health` | Aggregated health checks (public) |
-| `GET /api/status` | Activity state + UI copy constants |
+| `GET /api/status` | Activity state + UI copy constants (includes last reported `location`) |
 | `GET /api/system/metrics` | CPU temperature and throttle state |
+| `POST /api/location` | Store browser-reported latitude/longitude |
+| `GET /api/location` | Last reported location (404 if unset) |
+| `GET /api/weather/current` | Current weather for last reported location |
 | `GET /api/events` | SSE activity stream |
 | `GET /api/tool-commands` | Web UI quick commands |
 | `GET /api/storage` | Storage snapshot |
@@ -216,6 +222,11 @@ Voice: `VOICE_INPUT_ENABLED`, `VOICE_INPUT_DEVICE`, `VOICE_OUTPUT_DEVICE`, `STT_
 Google Calendar settings: `GOOGLE_CREDENTIALS_PATH`, `GOOGLE_TOKEN_PATH`,
 `GOOGLE_CALENDAR_TIMEZONE`, `GOOGLE_CALENDAR_IDS`. CLI: `auth-google-calendar`,
 `google-calendars`.
+
+Weather: `WEATHER_TIMEOUT_SECONDS` (default 10). No API key — forecasts come from
+Open-Meteo. Location is not configured in `.env`; the web UI reports coordinates via
+`POST /api/location` (browser geolocation). Weather endpoints and the
+`get_current_weather` tool use that in-memory location until the next UI report.
 
 Install extras from `pyproject.toml` as needed: `local-llm` for GGUF models,
 `voice` for Vosk STT, `dev` for tests and linting.

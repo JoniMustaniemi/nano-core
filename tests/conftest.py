@@ -9,6 +9,7 @@ import app.memory.db as db
 from app.assistant.pending import pending_interactions
 from app.memory import models  # noqa: F401
 from app.runtime.activity import activity
+from app.runtime.location import location_store
 
 
 @pytest.fixture(autouse=True)
@@ -30,6 +31,7 @@ def isolated_db(monkeypatch: pytest.MonkeyPatch):
 def reset_runtime_state() -> None:
     activity.reset()
     pending_interactions.reset()
+    location_store.reset()
 
 
 @pytest.fixture(autouse=True)

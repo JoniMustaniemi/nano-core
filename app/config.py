@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     voice_wake_phrase: str = "hey nano"
     voice_command_timeout_seconds: float = Field(default=5.0, ge=1.0)
     voice_playback_mode: Literal["local", "browser", "both"] = "both"
+    weather_units: Literal["metric"] = "metric"
+    weather_timeout_seconds: int = Field(default=10, ge=1)
 
     @field_validator("cors_allowed_origins", mode="before")
     @classmethod
