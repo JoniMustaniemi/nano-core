@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 import pytest
 from googleapiclient.errors import HttpError
 
-from app.integrations import google_calendar
 from app.integrations.google_calendar import (
     GoogleCalendarAuthenticationError,
     GoogleCalendarNotFoundError,
@@ -25,8 +24,7 @@ def test_configured_calendar_ids_defaults_to_primary(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        google_calendar,
-        "get_settings",
+        "app.integrations.google_calendar.auth.get_settings",
         lambda: SimpleNamespace(google_calendar_ids=""),
     )
 
@@ -37,8 +35,7 @@ def test_configured_calendar_ids_parses_comma_separated(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        google_calendar,
-        "get_settings",
+        "app.integrations.google_calendar.auth.get_settings",
         lambda: SimpleNamespace(
             google_calendar_ids=" primary , work@company.com , family@group.calendar.google.com "
         ),
@@ -121,8 +118,7 @@ def test_list_upcoming_events_missing_token(
     tmp_path: Path,
 ) -> None:
     monkeypatch.setattr(
-        google_calendar,
-        "get_settings",
+        "app.integrations.google_calendar.auth.get_settings",
         lambda: SimpleNamespace(
             google_token_path=str(tmp_path / "missing-token.json"),
             google_calendar_ids="primary",
@@ -173,11 +169,12 @@ def test_list_upcoming_events_merges_multiple_calendars(
     service.events.return_value = events_resource
 
     monkeypatch.setattr(
-        google_calendar,
-        "get_settings",
+        "app.integrations.google_calendar.auth.get_settings",
         lambda: SimpleNamespace(google_calendar_ids="primary,work@company.com"),
     )
-    monkeypatch.setattr(google_calendar, "get_calendar_service", lambda: service)
+    monkeypatch.setattr(
+        "app.integrations.google_calendar.client.get_calendar_service", lambda: service
+    )
 
     events = list_upcoming_events(maximum_results=5)
 
@@ -194,7 +191,9 @@ def test_list_upcoming_events_raises_for_unknown_calendar(
         "items": [{"id": "primary", "summary": "Personal", "primary": True}],
     }
 
-    monkeypatch.setattr(google_calendar, "get_calendar_service", lambda: service)
+    monkeypatch.setattr(
+        "app.integrations.google_calendar.client.get_calendar_service", lambda: service
+    )
 
     with pytest.raises(GoogleCalendarNotFoundError):
         list_upcoming_events(calendar_id="missing@company.com")

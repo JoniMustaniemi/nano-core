@@ -21,6 +21,7 @@ def isolated_db(monkeypatch: pytest.MonkeyPatch):
     SQLModel.metadata.create_all(engine)
     monkeypatch.setattr(db, "engine", engine)
     monkeypatch.setattr("app.memory.db.engine", engine)
+    monkeypatch.setattr("app.memory.db.get_engine", lambda: engine)
     yield
     engine.dispose()
 

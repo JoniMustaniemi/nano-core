@@ -6,7 +6,8 @@ from app.api.deps import get_assistant_service, get_voice_service
 from app.assistant.service import AssistantService
 from app.voice.audio_convert import normalize_audio_to_wav
 from app.voice.listener import is_local_listener_running
-from app.voice.service import GladosVoiceService, VoiceUnavailableError
+from app.voice.protocol import VoiceOutput
+from app.voice.service import VoiceUnavailableError
 from app.voice.stt import SpeechToTextError, transcribe_audio
 from app.voice.volume import get_voice_volume, set_voice_volume
 
@@ -26,7 +27,7 @@ class TranscriptResponse(BaseModel):
 
 
 @router.get("/status")
-def voice_status(voice: GladosVoiceService = Depends(get_voice_service)) -> dict[str, str | bool]:  # noqa: B008
+def voice_status(voice: VoiceOutput = Depends(get_voice_service)) -> dict[str, str | bool]:  # noqa: B008
     """Return voice service status."""
     status = voice.status()
     from app.config import get_settings
@@ -94,7 +95,7 @@ async def voice_command(
 @router.post("")
 def synthesize_voice(
     request: VoiceRequest,
-    voice: GladosVoiceService = Depends(get_voice_service),  # noqa: B008
+    voice: VoiceOutput = Depends(get_voice_service),  # noqa: B008
 ) -> Response:
     """Synthesize voice audio for the given text."""
     try:

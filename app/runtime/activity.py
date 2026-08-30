@@ -270,12 +270,12 @@ class ActivityHub:
             self._last_voice_announcement = normalized
 
         from app.config import get_settings
-        from app.voice.service import GladosVoiceService
+        from app.voice.output import get_voice_output
 
         settings = get_settings()
         if settings.voice_playback_mode in {"local", "both"}:
             try:
-                GladosVoiceService().announce(spoken)
+                get_voice_output().announce(spoken)
             except Exception:
                 pass
 

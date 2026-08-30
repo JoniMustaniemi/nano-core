@@ -8,7 +8,13 @@ from helpers.agent_fixtures import (
 )
 
 from app.assistant.pending import pending_interactions
-from app.assistant.rules.timers import (
+from app.memory import repository
+from app.runtime.status_copy import (
+    STOPWATCH_STARTED_MESSAGE,
+    TIMER_DURATION_PROMPT,
+    TIMER_DURATION_RETRY_PROMPT,
+)
+from app.timers.parsing import (
     is_clear_all_timers_request,
     is_stopwatch_rename_request,
     is_stopwatch_start_request,
@@ -20,12 +26,6 @@ from app.assistant.rules.timers import (
     parse_stopwatch_stop_args,
     parse_timer_cancel_args,
     rename_timer_args_from_message,
-)
-from app.memory import repository
-from app.runtime.status_copy import (
-    STOPWATCH_STARTED_MESSAGE,
-    TIMER_DURATION_PROMPT,
-    TIMER_DURATION_RETRY_PROMPT,
 )
 
 

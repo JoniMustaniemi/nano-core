@@ -7,15 +7,14 @@ import threading
 import time
 from pathlib import Path
 
-from app.assistant.service import AssistantService
 from app.config import get_settings
-from app.runtime.activity import activity
-from app.voice.service import GladosVoiceService, VoiceUnavailableError
+from app.voice.command_service import VoiceCommandService
 from app.voice.stt import SpeechToTextError, transcribe_audio
 
 _listener_thread: threading.Thread | None = None
 _stop_event = threading.Event()
 _listening = False
+_command_service = VoiceCommandService()
 
 
 def is_local_listener_running() -> bool:
@@ -63,7 +62,7 @@ def _listener_loop() -> None:
                 continue
 
             command = _extract_command(transcript)
-            _handle_wake()
+            _command_service.handle_wake()
             if not command:
                 try:
                     command_audio = _record_audio(
@@ -74,7 +73,7 @@ def _listener_loop() -> None:
                     continue
 
             if command.strip():
-                _handle_command(command.strip())
+                _command_service.handle_command(command.strip())
     finally:
         _listening = False
 
@@ -91,25 +90,6 @@ def _extract_command(transcript: str) -> str:
     if match is None:
         return ""
     return match.group(1).strip()
-
-
-def _handle_wake() -> None:
-    response = AssistantService().wake_response()
-    activity.log(title=response.content, detail=response.content, source="assistant.wake")
-    try:
-        GladosVoiceService().announce(response.content)
-    except VoiceUnavailableError:
-        pass
-
-
-def _handle_command(message: str) -> None:
-    response = AssistantService().respond(message, mode="agent")
-    activity.log(title=response.content, detail=response.content, source="assistant.chat")
-    if response.speak:
-        try:
-            GladosVoiceService().announce(response.content)
-        except VoiceUnavailableError:
-            pass
 
 
 def _record_audio(duration_seconds: float) -> bytes:

@@ -33,3 +33,23 @@ The model loads on first use.
 
 For a technical overview — architecture and capabilities in more
 detail — see [docs/README.md](docs/README.md).
+
+## Local development
+
+```bash
+python -m pip install -e ".[dev]"
+nano-core dev
+```
+
+Run the test suite:
+
+```bash
+pytest
+```
+
+Lint and type-check:
+
+```bash
+ruff check app tests
+mypy app
+```

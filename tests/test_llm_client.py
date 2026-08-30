@@ -24,22 +24,21 @@ class _LocalModel:
 def test_llm_client_uses_local_gguf_model(monkeypatch) -> None:
     client = LocalLLMClient()
     model = _LocalModel()
-
-    monkeypatch.setattr(
-        "app.llm.client.get_settings",
-        lambda: SimpleNamespace(
-            llm_provider="local",
-            llm_model_path="./models/nano.gguf",
-            llm_context_size=4096,
-            llm_max_tokens=512,
-            llm_temperature=0.7,
-            llm_base_url="http://localhost:11434",
-            llm_model="test-model",
-            llm_timeout_seconds=30,
-        ),
+    settings = SimpleNamespace(
+        llm_provider="local",
+        llm_model_path="./models/nano.gguf",
+        llm_context_size=4096,
+        llm_max_tokens=512,
+        llm_temperature=0.7,
+        llm_base_url="http://localhost:11434",
+        llm_model="test-model",
+        llm_timeout_seconds=30,
     )
+
+    monkeypatch.setattr("app.llm.client.get_settings", lambda: settings)
+    monkeypatch.setattr("app.llm.providers.local.get_settings", lambda: settings)
     monkeypatch.setattr(
-        "app.llm.client.load_local_model",
+        "app.llm.providers.local.load_local_model",
         lambda path, context_size: model,
     )
 
@@ -53,22 +52,21 @@ def test_llm_client_uses_local_gguf_model(monkeypatch) -> None:
 def test_llm_client_complete_overrides_max_tokens_and_temperature(monkeypatch) -> None:
     client = LocalLLMClient()
     model = _LocalModel()
-
-    monkeypatch.setattr(
-        "app.llm.client.get_settings",
-        lambda: SimpleNamespace(
-            llm_provider="local",
-            llm_model_path="./models/nano.gguf",
-            llm_context_size=4096,
-            llm_max_tokens=512,
-            llm_temperature=0.7,
-            llm_base_url="http://localhost:11434",
-            llm_model="test-model",
-            llm_timeout_seconds=30,
-        ),
+    settings = SimpleNamespace(
+        llm_provider="local",
+        llm_model_path="./models/nano.gguf",
+        llm_context_size=4096,
+        llm_max_tokens=512,
+        llm_temperature=0.7,
+        llm_base_url="http://localhost:11434",
+        llm_model="test-model",
+        llm_timeout_seconds=30,
     )
+
+    monkeypatch.setattr("app.llm.client.get_settings", lambda: settings)
+    monkeypatch.setattr("app.llm.providers.local.get_settings", lambda: settings)
     monkeypatch.setattr(
-        "app.llm.client.load_local_model",
+        "app.llm.providers.local.load_local_model",
         lambda path, context_size: model,
     )
 
@@ -85,28 +83,27 @@ def test_llm_client_complete_overrides_max_tokens_and_temperature(monkeypatch) -
 def test_llm_client_ollama_payload_includes_num_predict(monkeypatch) -> None:
     client = LocalLLMClient()
     captured: dict[str, object] = {}
+    settings = SimpleNamespace(
+        llm_provider="ollama",
+        llm_model_path="",
+        llm_context_size=4096,
+        llm_max_tokens=512,
+        llm_temperature=0.7,
+        llm_base_url="http://localhost:11434",
+        llm_model="test-model",
+        llm_timeout_seconds=30,
+    )
 
-    def fake_post(_self, path, payload, *, raise_on_error):
+    def fake_post(path, payload, *, raise_on_error):
         captured["path"] = path
         captured["payload"] = payload
         return SimpleNamespace(
             json=lambda: {"message": {"content": "hello from ollama"}},
         )
 
-    monkeypatch.setattr(
-        "app.llm.client.get_settings",
-        lambda: SimpleNamespace(
-            llm_provider="ollama",
-            llm_model_path="",
-            llm_context_size=4096,
-            llm_max_tokens=512,
-            llm_temperature=0.7,
-            llm_base_url="http://localhost:11434",
-            llm_model="test-model",
-            llm_timeout_seconds=30,
-        ),
-    )
-    monkeypatch.setattr("app.llm.client.LocalLLMClient._post", fake_post)
+    monkeypatch.setattr("app.llm.client.get_settings", lambda: settings)
+    monkeypatch.setattr("app.llm.providers.shared.get_settings", lambda: settings)
+    monkeypatch.setattr("app.llm.providers.ollama.post_json", fake_post)
 
     content = client.complete(
         [{"role": "user", "content": "hi"}],
@@ -124,26 +121,25 @@ def test_llm_client_ollama_payload_includes_num_predict(monkeypatch) -> None:
 
 def test_llm_client_auto_falls_back_when_no_local_model(monkeypatch) -> None:
     client = LocalLLMClient()
-
-    monkeypatch.setattr(
-        "app.llm.client.get_settings",
-        lambda: SimpleNamespace(
-            llm_provider="auto",
-            llm_model_path="",
-            llm_context_size=4096,
-            llm_max_tokens=512,
-            llm_temperature=0.7,
-            llm_base_url="http://localhost:11434",
-            llm_model="test-model",
-            llm_timeout_seconds=30,
-        ),
+    settings = SimpleNamespace(
+        llm_provider="auto",
+        llm_model_path="",
+        llm_context_size=4096,
+        llm_max_tokens=512,
+        llm_temperature=0.7,
+        llm_base_url="http://localhost:11434",
+        llm_model="test-model",
+        llm_timeout_seconds=30,
     )
+
+    monkeypatch.setattr("app.llm.client.get_settings", lambda: settings)
+    monkeypatch.setattr("app.llm.providers.local.get_settings", lambda: settings)
     monkeypatch.setattr(
-        "app.llm.client.LocalLLMClient._complete_ollama",
+        "app.llm.providers.ollama.complete_ollama",
         lambda *args, **kwargs: None,
     )
     monkeypatch.setattr(
-        "app.llm.client.LocalLLMClient._complete_llama_cpp_server",
+        "app.llm.providers.llama_cpp_server.complete_llama_cpp_server",
         lambda *args, **kwargs: None,
     )
 
@@ -155,26 +151,25 @@ def test_llm_client_auto_falls_back_when_no_local_model(monkeypatch) -> None:
 def test_llm_client_prefixes_context_downgrade_notice(monkeypatch) -> None:
     client = LocalLLMClient()
     model = _LocalModel()
-
-    monkeypatch.setattr(
-        "app.llm.client.get_settings",
-        lambda: SimpleNamespace(
-            llm_provider="local",
-            llm_model_path="./models/nano.gguf",
-            llm_context_size=32768,
-            llm_max_tokens=512,
-            llm_temperature=0.7,
-            llm_base_url="http://localhost:11434",
-            llm_model="test-model",
-            llm_timeout_seconds=30,
-        ),
+    settings = SimpleNamespace(
+        llm_provider="local",
+        llm_model_path="./models/nano.gguf",
+        llm_context_size=32768,
+        llm_max_tokens=512,
+        llm_temperature=0.7,
+        llm_base_url="http://localhost:11434",
+        llm_model="test-model",
+        llm_timeout_seconds=30,
     )
+
+    monkeypatch.setattr("app.llm.client.get_settings", lambda: settings)
+    monkeypatch.setattr("app.llm.providers.local.get_settings", lambda: settings)
     monkeypatch.setattr(
-        "app.llm.client.load_local_model",
+        "app.llm.providers.local.load_local_model",
         lambda path, context_size: model,
     )
     monkeypatch.setattr(
-        "app.llm.client.pop_context_load_notice",
+        "app.llm.providers.local.pop_context_load_notice",
         lambda path: (
             "I had to use a smaller memory window" if path == "./models/nano.gguf" else None
         ),

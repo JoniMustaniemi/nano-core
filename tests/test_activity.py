@@ -205,9 +205,7 @@ def test_chat_exception_releases_activity_to_idle(api_client, monkeypatch) -> No
 
     monkeypatch.setattr("app.assistant.service.AssistantService.respond", _boom)
 
-    response = api_client.post(
-        "/api/chat", json={"message": "Check your health.", "mode": "agent"}
-    )
+    response = api_client.post("/api/chat", json={"message": "Check your health.", "mode": "agent"})
     status = api_client.get("/api/status")
 
     assert response.status_code == 500

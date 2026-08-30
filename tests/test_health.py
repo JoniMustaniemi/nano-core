@@ -7,6 +7,11 @@ from app.health.checks import HealthCheckResult, run_health_checks
 from app.scheduler import jobs
 
 
+def _patch_voice_ready(monkeypatch) -> None:
+    voice = SimpleNamespace(status=lambda: {"available": True, "detail": "Voice is ready."})
+    monkeypatch.setattr("app.health.checks.get_voice_output", lambda: voice)
+
+
 def test_health_endpoint_reports_checks(api_client, monkeypatch) -> None:
     """
     Verify that health endpoint reports checks.
@@ -103,7 +108,7 @@ def test_database_size_health_check_warns_when_threshold_is_exceeded(
     """
     db_file = tmp_path / "nano.sqlite3"
     db_file.write_bytes(b"x" * 2048)
-    monkeypatch.setattr("app.health.checks.db.sqlite_path", db_file)
+    monkeypatch.setattr("app.health.checks.db.get_sqlite_path", lambda: db_file)
     monkeypatch.setattr(
         "app.health.checks.get_settings",
         lambda: SimpleNamespace(
@@ -113,10 +118,7 @@ def test_database_size_health_check_warns_when_threshold_is_exceeded(
             llm_base_url="",
         ),
     )
-    monkeypatch.setattr(
-        "app.health.checks.GladosVoiceService.status",
-        lambda self: {"available": True, "detail": "Voice is ready."},
-    )
+    _patch_voice_ready(monkeypatch)
 
     results = run_health_checks()
     size_result = next(result for result in results if result.name == "database_size")
@@ -141,7 +143,7 @@ def test_database_size_health_check_reports_when_below_threshold(
     """
     db_file = tmp_path / "nano.sqlite3"
     db_file.write_bytes(b"x" * 2048)
-    monkeypatch.setattr("app.health.checks.db.sqlite_path", db_file)
+    monkeypatch.setattr("app.health.checks.db.get_sqlite_path", lambda: db_file)
     monkeypatch.setattr(
         "app.health.checks.get_settings",
         lambda: SimpleNamespace(
@@ -151,10 +153,7 @@ def test_database_size_health_check_reports_when_below_threshold(
             llm_base_url="",
         ),
     )
-    monkeypatch.setattr(
-        "app.health.checks.GladosVoiceService.status",
-        lambda self: {"available": True, "detail": "Voice is ready."},
-    )
+    _patch_voice_ready(monkeypatch)
 
     results = run_health_checks()
     size_result = next(result for result in results if result.name == "database_size")
@@ -182,10 +181,7 @@ def test_test_failure_health_check_is_disabled_by_default(monkeypatch) -> None:
             llm_base_url="",
         ),
     )
-    monkeypatch.setattr(
-        "app.health.checks.GladosVoiceService.status",
-        lambda self: {"available": True, "detail": "Voice is ready."},
-    )
+    _patch_voice_ready(monkeypatch)
 
     results = run_health_checks()
 
@@ -202,10 +198,7 @@ def test_llm_health_check_reports_configured_provider(monkeypatch) -> None:
             llm_base_url="",
         ),
     )
-    monkeypatch.setattr(
-        "app.health.checks.GladosVoiceService.status",
-        lambda self: {"available": True, "detail": "Voice is ready."},
-    )
+    _patch_voice_ready(monkeypatch)
 
     result = next(check for check in run_health_checks() if check.name == "llm")
 
@@ -234,10 +227,7 @@ def test_test_failure_health_check_can_be_enabled(monkeypatch) -> None:
             health_test_failure_detail="Testing the warning path.",
         ),
     )
-    monkeypatch.setattr(
-        "app.health.checks.GladosVoiceService.status",
-        lambda self: {"available": True, "detail": "Voice is ready."},
-    )
+    _patch_voice_ready(monkeypatch)
 
     results = run_health_checks()
     test_result = next(result for result in results if result.name == "test_failure")

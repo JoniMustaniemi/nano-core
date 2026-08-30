@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 
+from app.assistant.guard import looks_like_refusal
 from app.assistant.prompts import (
     COMPOSE_HINTS,
     RESPONSE_COMPOSER_PROMPT,
     WIPE_CONFIRMATION_SYSTEM_PROMPT,
 )
-from app.assistant.response_guard import looks_like_refusal
 from app.assistant.response_source import ResponseSource
 from app.assistant.rules import confirmation_followup, wipe_confirmation_prompt
 from app.llm.protocol import LLMClient

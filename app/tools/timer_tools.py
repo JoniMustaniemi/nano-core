@@ -1,481 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-from typing import Any
-
-from app.duration import duration_seconds_from_tool_args, humanize_duration_seconds
-from app.memory import repository
-from app.memory.labels import InvalidTimerLabelError, normalize_timer_label
-from app.memory.models import Timer
-from app.runtime.active_timers import remove_countdown_timer, remove_stopwatch
-from app.runtime.activity import activity
-from app.runtime.status_copy import STOPWATCH_STARTED_MESSAGE
-from app.scheduler.jobs import schedule_timer
+from app.timers import operations
 from app.tools.base import ToolSpec
-from app.tools.errors import ToolError
 from app.tools.registry import register_tool
-
-
-def _start_timer(args: dict[str, Any]) -> str:
-    """
-    Start timer.
-
-    Args:
-        args: Tool argument dictionary.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    duration_seconds = _resolve_duration_seconds(args)
-    if duration_seconds <= 0:
-        raise ToolError("Timer duration is required. Ask the user how long the timer should run.")
-
-    label = str(args.get("label", "")).strip() or "Timer"
-    due_at = datetime.now(UTC) + timedelta(seconds=duration_seconds)
-    timer = repository.add_timer(label, due_at)
-    if timer.id is not None:
-        schedule_timer(timer.id, due_at)
-    return (
-        f"started timer {timer.id}: {label} "
-        f"for {duration_seconds} seconds, due at {due_at.isoformat()}"
-    )
-
-
-def _start_stopwatch(args: dict[str, Any]) -> str:
-    """
-    Start stopwatch.
-
-    Args:
-        args: Tool argument dictionary.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    label = str(args.get("label", "")).strip() or "Stopwatch"
-    repository.add_stopwatch(label)
-    activity.log(
-        title=STOPWATCH_STARTED_MESSAGE,
-        detail=label,
-        source="assistant.flows.timer",
-    )
-    return STOPWATCH_STARTED_MESSAGE
-
-
-def _resolve_duration_seconds(args: dict[str, Any]) -> int:
-    """
-    Resolve duration seconds.
-
-    Args:
-        args: Tool argument dictionary.
-
-    Returns:
-        Computed integer value.
-    """
-    return duration_seconds_from_tool_args(args)
-
-
-def _list_timers(args: dict[str, Any]) -> str:
-    """
-    List timers.
-
-    Args:
-        args: Tool argument dictionary.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    del args
-    countdown_timers = _active_countdown_timers()
-    stopwatches = _active_stopwatches()
-    if not countdown_timers and not stopwatches:
-        return "No active timers."
-
-    now = datetime.now(UTC)
-    lines: list[str] = []
-    for timer in countdown_timers:
-        lines.append(_format_countdown_timer(timer.label, timer.due_at, now))
-    for stopwatch in stopwatches:
-        lines.append(_format_stopwatch(stopwatch.label, stopwatch.created_at, now))
-
-    total = len(lines)
-    if total == 1:
-        return f"You have one timer active. {lines[0]}"
-    return f"You have {total} timers active:\n" + "\n".join(lines)
-
-
-def _cancel_timers(args: dict[str, Any]) -> str:
-    """
-    Cancel timers.
-
-    Args:
-        args: Tool argument dictionary.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    timer_id = args.get("timer_id")
-    label = str(args.get("label", "")).strip().lower()
-    timers = _active_countdown_timers()
-    selected = [
-        timer
-        for timer in timers
-        if _timer_matches_cancel_request(timer.id, timer.label, timer_id, label)
-    ]
-
-    if not selected:
-        if timer_id not in (None, "") or label:
-            raise ToolError("No matching active timers to cancel.")
-        return "No active timers to cancel."
-
-    labels: list[str] = []
-    for timer in selected:
-        if timer.id is not None:
-            remove_countdown_timer(timer.id)
-        labels.append(timer.label)
-
-    count = len(selected)
-    noun = "timer" if count == 1 else "timers"
-    if count == 1:
-        return f"Cancelled 1 {noun}."
-    return f"Cancelled {count} {noun}: {', '.join(labels)}."
-
-
-def _clear_all_timers(args: dict[str, Any]) -> str:
-    """
-    Clear all active countdown timers and stopwatches.
-
-    Args:
-        args: Tool argument dictionary.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    del args
-    countdown_timers = _active_countdown_timers()
-    stopwatches = _active_stopwatches()
-    if not countdown_timers and not stopwatches:
-        return "No active timers."
-
-    for timer in countdown_timers:
-        if timer.id is not None:
-            remove_countdown_timer(timer.id)
-
-    for stopwatch in stopwatches:
-        if stopwatch.id is not None:
-            remove_stopwatch(stopwatch.id)
-
-    if stopwatches:
-        activity.log(
-            title="Stopwatch stopped.",
-            detail="",
-            source="assistant.flows.timer",
-        )
-
-    parts: list[str] = []
-    countdown_count = len(countdown_timers)
-    stopwatch_count = len(stopwatches)
-    if countdown_count:
-        noun = "countdown timer" if countdown_count == 1 else "countdown timers"
-        parts.append(f"{countdown_count} {noun}")
-    if stopwatch_count:
-        noun = "stopwatch" if stopwatch_count == 1 else "stopwatches"
-        parts.append(f"{stopwatch_count} {noun}")
-    return f"Cleared {' and '.join(parts)}."
-
-
-def _stop_stopwatches(args: dict[str, Any]) -> str:
-    """
-    Stop active stopwatches.
-
-    Args:
-        args: Tool argument dictionary.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    stopwatch_id = args.get("stopwatch_id")
-    label = str(args.get("label", "")).strip().lower()
-    stopwatches = _active_stopwatches()
-    selected = [
-        stopwatch
-        for stopwatch in stopwatches
-        if _timer_matches_cancel_request(stopwatch.id, stopwatch.label, stopwatch_id, label)
-    ]
-
-    if not selected:
-        if stopwatch_id not in (None, "") or label:
-            raise ToolError("No matching active stopwatches to stop.")
-        return "No active stopwatches."
-
-    for stopwatch in selected:
-        if stopwatch.id is not None:
-            remove_stopwatch(stopwatch.id)
-
-    activity.log(
-        title="Stopwatch stopped.",
-        detail="",
-        source="assistant.flows.timer",
-    )
-
-    count = len(selected)
-    if count == 1:
-        return "Stopped 1 stopwatch."
-    return f"Stopped {count} stopwatches."
-
-
-def _rename_timer(args: dict[str, Any]) -> str:
-    """
-    Rename an active countdown timer.
-
-    Args:
-        args: Tool argument dictionary.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    new_label_raw = args.get("new_label")
-    if new_label_raw in (None, ""):
-        raise ToolError("A new label is required to rename a timer.")
-
-    timer_id = args.get("timer_id")
-    old_label = str(args.get("label", "")).strip()
-    timers = _active_countdown_timers()
-    target = _resolve_rename_target(
-        timers,
-        item_id=timer_id,
-        old_label=old_label,
-        item_noun="timer",
-    )
-    new_label = _normalize_label(str(new_label_raw), "Timer")
-    if target.id is None:
-        raise ToolError("Timer id is missing.")
-    updated = repository.update_timer_label(target.id, new_label)
-    if updated is None:
-        raise ToolError("No matching active timer to rename.")
-    return f'Renamed timer to "{new_label}".'
-
-
-def _rename_stopwatch(args: dict[str, Any]) -> str:
-    """
-    Rename an active stopwatch.
-
-    Args:
-        args: Tool argument dictionary.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    new_label_raw = args.get("new_label")
-    if new_label_raw in (None, ""):
-        raise ToolError("A new label is required to rename a stopwatch.")
-
-    stopwatch_id = args.get("stopwatch_id")
-    old_label = str(args.get("label", "")).strip()
-    stopwatches = _active_stopwatches()
-    target = _resolve_rename_target(
-        stopwatches,
-        item_id=stopwatch_id,
-        old_label=old_label,
-        item_noun="stopwatch",
-    )
-    new_label = _normalize_label(str(new_label_raw), "Stopwatch")
-    if target.id is None:
-        raise ToolError("Stopwatch id is missing.")
-    updated = repository.update_timer_label(target.id, new_label)
-    if updated is None:
-        raise ToolError("No matching active stopwatch to rename.")
-    return f'Renamed stopwatch to "{new_label}".'
-
-
-def _normalize_label(raw: str, default: str) -> str:
-    """
-    Normalize and validate a timer or stopwatch label.
-
-    Args:
-        raw: Raw label text.
-        default: Default label when raw is empty after trimming.
-
-    Returns:
-        Trimmed, validated label.
-
-    Raises:
-        ToolError: When the label fails validation.
-    """
-    try:
-        return normalize_timer_label(raw, default)
-    except InvalidTimerLabelError as exc:
-        raise ToolError(str(exc)) from exc
-
-
-def _resolve_rename_target(
-    items: list[Timer],
-    *,
-    item_id: Any,
-    old_label: str,
-    item_noun: str,
-) -> Timer:
-    """
-    Resolve exactly one timer or stopwatch to rename.
-
-    Args:
-        items: Active items of the requested kind.
-        item_id: Requested item id.
-        old_label: Current label used for disambiguation.
-        item_noun: User-facing noun such as timer or stopwatch.
-
-    Returns:
-        The single matching timer or stopwatch.
-
-    Raises:
-        ToolError: When the target is missing or ambiguous.
-    """
-    if item_id not in (None, ""):
-        try:
-            requested_id = int(item_id)
-        except (TypeError, ValueError) as exc:
-            raise ToolError(f"Invalid {item_noun} id.") from exc
-        for item in items:
-            if item.id == requested_id:
-                return item
-        raise ToolError(f"No matching active {item_noun} to rename.")
-
-    if old_label:
-        matches = [item for item in items if str(item.label).strip().lower() == old_label.lower()]
-        if not matches:
-            raise ToolError(f"No matching active {item_noun} to rename.")
-        if len(matches) > 1:
-            raise ToolError(f'Multiple {item_noun}s labeled "{old_label}". Specify {item_noun} id.')
-        return matches[0]
-
-    raise ToolError(f"Specify which {item_noun} to rename.")
-
-
-def _active_countdown_timers() -> list[Timer]:
-    """
-    Return active countdown timers.
-
-    Returns:
-        List of matching records or values.
-    """
-    return sorted(
-        repository.list_countdown_timers(), key=lambda timer: timer.due_at or datetime.min
-    )
-
-
-def _active_stopwatches() -> list[Timer]:
-    """
-    Return active stopwatches.
-
-    Returns:
-        List of matching records or values.
-    """
-    return repository.list_stopwatches()
-
-
-def _timer_matches_cancel_request(
-    timer_id: int | None,
-    timer_label: str,
-    requested_id: Any,
-    requested_label: str,
-) -> bool:
-    """
-    Return whether an active timer matches a cancel request.
-
-    Args:
-        timer_id: Timer id value.
-        timer_label: Timer label value.
-        requested_id: Requested id value.
-        requested_label: Requested label value.
-
-    Returns:
-        True when the condition is met; otherwise false.
-    """
-    if requested_id in (None, "") and not requested_label:
-        return True
-    if requested_id not in (None, ""):
-        try:
-            if timer_id == int(requested_id):
-                return True
-        except (TypeError, ValueError):
-            return False
-    return bool(requested_label and timer_label.lower() == requested_label)
-
-
-def _format_countdown_timer(
-    label: str,
-    due_at: datetime | None,
-    now: datetime,
-) -> str:
-    """
-    Format active countdown timer.
-
-    Args:
-        label: Timer label.
-        due_at: Timer due timestamp.
-        now: Current timestamp used for time-based filtering.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    if due_at is None:
-        return f"{label} countdown is active."
-    remaining = _timer_remaining_text(due_at, now)
-    return f"{label} has {remaining} remaining."
-
-
-def _format_stopwatch(
-    label: str,
-    started_at: datetime,
-    now: datetime,
-) -> str:
-    """
-    Format active stopwatch.
-
-    Args:
-        label: Stopwatch label.
-        started_at: Stopwatch start timestamp.
-        now: Current timestamp used for time-based filtering.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    elapsed = _timer_elapsed_text(started_at, now)
-    return f"{label} stopwatch has been running for {elapsed}."
-
-
-def _timer_remaining_text(due_at: datetime, now: datetime) -> str:
-    """
-    Format the remaining time for an active timer.
-
-    Args:
-        due_at: Timer due timestamp.
-        now: Current timestamp used for time-based filtering.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    if due_at.tzinfo is None:
-        due_at = due_at.replace(tzinfo=UTC)
-    remaining_seconds = max(0, int((due_at - now).total_seconds()))
-    return humanize_duration_seconds(remaining_seconds)
-
-
-def _timer_elapsed_text(started_at: datetime, now: datetime) -> str:
-    """
-    Format elapsed time for an active stopwatch.
-
-    Args:
-        started_at: Stopwatch start timestamp.
-        now: Current timestamp used for time-based filtering.
-
-    Returns:
-        Generated or formatted string value.
-    """
-    if started_at.tzinfo is None:
-        started_at = started_at.replace(tzinfo=UTC)
-    elapsed_seconds = max(0, int((now - started_at).total_seconds()))
-    return humanize_duration_seconds(elapsed_seconds)
-
 
 register_tool(
     ToolSpec(
@@ -491,7 +18,7 @@ register_tool(
             "duration_text": "Optional natural duration like 30s or 2min.",
             "label": "Optional short timer label.",
         },
-        handler=_start_timer,
+        handler=operations.start_timer,
         announcement="Starting a timer.",
         keywords=("timer", "countdown", "add timer", "start timer", "set timer"),
         ui_label="Add timer",
@@ -508,7 +35,7 @@ register_tool(
         args_schema={
             "label": "Optional short stopwatch label.",
         },
-        handler=_start_stopwatch,
+        handler=operations.start_stopwatch,
         announcement="Starting a stopwatch.",
         keywords=("stopwatch", "stop watch", "start stopwatch", "add stopwatch"),
         ui_label="Start stopwatch",
@@ -523,7 +50,7 @@ register_tool(
         name="list_timers",
         description="list timers and stopwatches that have been created through the timer tools.",
         args_schema={},
-        handler=_list_timers,
+        handler=operations.list_timers,
         announcement="Checking timers.",
         keywords=("timer", "timers", "stopwatch", "stopwatches"),
     )
@@ -537,7 +64,7 @@ register_tool(
             "timer_id": "Optional timer id to cancel. If omitted, cancel all active timers.",
             "label": "Optional timer label to cancel. If omitted, cancel all active timers.",
         },
-        handler=_cancel_timers,
+        handler=operations.cancel_timers,
         announcement="Cancelling timers.",
         keywords=("timer", "timers", "countdown"),
         ui_label="Cancel timers",
@@ -555,7 +82,7 @@ register_tool(
             "stopwatch_id": "Optional stopwatch id to stop. If omitted, stop all active stopwatches.",
             "label": "Optional stopwatch label to stop. If omitted, stop all active stopwatches.",
         },
-        handler=_stop_stopwatches,
+        handler=operations.stop_stopwatches,
         announcement="Stopping stopwatches.",
         keywords=("stopwatch", "stopwatches", "stop watch"),
         ui_label="Stop stopwatch",
@@ -574,7 +101,7 @@ register_tool(
             "label": "Current timer label when id is omitted.",
             "new_label": "New timer label.",
         },
-        handler=_rename_timer,
+        handler=operations.rename_timer,
         announcement="Renaming timer.",
         keywords=("rename", "change name", "timer"),
         ui_label="Rename timer",
@@ -593,7 +120,7 @@ register_tool(
             "label": "Current stopwatch label when id is omitted.",
             "new_label": "New stopwatch label.",
         },
-        handler=_rename_stopwatch,
+        handler=operations.rename_stopwatch,
         announcement="Renaming stopwatch.",
         keywords=("rename", "change name", "stopwatch", "stop watch"),
         ui_label="Rename stopwatch",
@@ -610,7 +137,7 @@ register_tool(
             "clear all active countdown timers and stopwatches created through the timer tools."
         ),
         args_schema={},
-        handler=_clear_all_timers,
+        handler=operations.clear_all_timers,
         announcement="Clearing all timers.",
         keywords=("timer", "timers", "clear all timers", "delete all timers"),
         ui_label="Clear all timers",

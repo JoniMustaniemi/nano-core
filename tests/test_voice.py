@@ -1,4 +1,18 @@
+from types import SimpleNamespace
+
 from app.voice.service import GladosVoiceService
+
+
+def _patch_voice_service(monkeypatch, **methods) -> SimpleNamespace:
+    from app.api.deps import get_voice_service
+    from app.voice.output import get_voice_output
+
+    get_voice_service.cache_clear()
+    get_voice_output.cache_clear()
+    voice = SimpleNamespace(**methods)
+    monkeypatch.setattr("app.api.deps.get_voice_service", lambda: voice)
+    monkeypatch.setattr("app.api.deps.get_voice_output", lambda: voice)
+    return voice
 
 
 def test_voice_status_reports_backend(api_client, monkeypatch) -> None:
@@ -12,9 +26,9 @@ def test_voice_status_reports_backend(api_client, monkeypatch) -> None:
     Returns:
         None.
     """
-    monkeypatch.setattr(
-        "app.api.voice.GladosVoiceService.status",
-        lambda self: {
+    _patch_voice_service(
+        monkeypatch,
+        status=lambda: {
             "available": True,
             "backend": "glados",
             "detail": "GLaDOS voice is ready.",
@@ -39,9 +53,9 @@ def test_voice_endpoint_returns_wav(api_client, monkeypatch) -> None:
     Returns:
         None.
     """
-    monkeypatch.setattr(
-        "app.api.voice.GladosVoiceService.synthesize_wav_for_client",
-        lambda self, text: b"RIFFdemoWAVE",
+    _patch_voice_service(
+        monkeypatch,
+        synthesize_wav_for_client=lambda text: b"RIFFdemoWAVE",
     )
 
     response = api_client.post("/api/voice", json={"text": "hello"})

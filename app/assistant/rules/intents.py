@@ -245,7 +245,8 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
     Returns:
         True when the condition is met; otherwise false.
     """
-    from app.assistant.rules.timers import (
+    from app.assistant.rules.tools import get_tool_rule
+    from app.timers.parsing import (
         is_clear_all_timers_request,
         is_stopwatch_rename_request,
         is_stopwatch_start_request,
@@ -255,7 +256,6 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         is_timer_start_request,
         is_timer_status_request,
     )
-    from app.assistant.rules.tools import get_tool_rule
 
     lowered = message.lower()
     rule = get_tool_rule(tool_name)

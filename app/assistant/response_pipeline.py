@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from app.assistant.guard import enforce_user_facing_answer
 from app.assistant.response_composer import ResponseComposer
-from app.assistant.response_guard import enforce_user_facing_answer
 from app.assistant.response_polish import polish_user_facing_answer
 from app.assistant.response_source import ResponseSource
 from app.llm.protocol import LLMClient

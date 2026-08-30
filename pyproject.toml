@@ -27,6 +27,7 @@ dependencies = [
 dev = [
   "mypy>=1.11.0",
   "pytest>=8.3.0",
+  "pytest-cov>=5.0.0",
   "ruff>=0.6.0",
 ]
 local-llm = [
@@ -75,5 +76,5 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --basetemp=.pytest-tmp"
+addopts = "-q --basetemp=.pytest-tmp --cov=app --cov-report=term-missing:skip-covered --cov-fail-under=75"
 tmp_path_retention_policy = "failed"

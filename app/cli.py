@@ -68,9 +68,9 @@ def google_calendars() -> None:
 @app.command("clear-all-timers")
 def clear_all_timers() -> None:
     """Remove all active countdown timers and stopwatches."""
-    from app.tools.timer_tools import _clear_all_timers
+    from app.timers.operations import clear_all_timers as clear_all_timers_operation
 
-    typer.echo(_clear_all_timers({}))
+    typer.echo(clear_all_timers_operation({}))
 
 
 @app.command()

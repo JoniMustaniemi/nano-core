@@ -6,12 +6,12 @@ from helpers.voice_announce import patch_announce_voice
 from app.memory import repository
 from app.runtime.activity import activity
 from app.scheduler.jobs import (
-    _format_due_timer,
     _timer_job_id,
     check_due_timers,
     schedule_timer,
     scheduler,
 )
+from app.timers.formatting import format_due_timer
 from app.tools import get_tool
 from app.tools.errors import ToolError
 
@@ -214,7 +214,7 @@ def test_due_default_timer_omits_default_label() -> None:
     Returns:
         None.
     """
-    _, detail = _format_due_timer(
+    _, detail = format_due_timer(
         "Timer",
         datetime.now(UTC) - timedelta(seconds=30),
         datetime.now(UTC),
@@ -224,7 +224,7 @@ def test_due_default_timer_omits_default_label() -> None:
 
 
 def test_due_one_hour_timer_uses_hour_phrasing() -> None:
-    _, detail = _format_due_timer(
+    _, detail = format_due_timer(
         "Tea",
         datetime.now(UTC) - timedelta(hours=1),
         datetime.now(UTC),

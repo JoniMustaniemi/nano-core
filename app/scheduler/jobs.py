@@ -5,12 +5,12 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 
 from app.config import get_settings
-from app.duration import humanize_duration_seconds
 from app.health import HealthCheckResult, run_health_checks
 from app.memory import repository
 from app.memory.repository import COUNTDOWN_KIND, delete_timer, get_timer, list_due_timers
 from app.runtime.activity import activity
 from app.runtime.status_copy import HEALTH_ISSUE_DETECTED_TITLE
+from app.timers.formatting import format_due_timer
 
 scheduler = BackgroundScheduler(daemon=True)
 
@@ -49,7 +49,7 @@ def complete_timer(timer_id: int) -> None:
         schedule_timer(timer_id, due_at)
         return
 
-    title, detail = _format_due_timer(timer.label, timer.created_at, timer.due_at)
+    title, detail = format_due_timer(timer.label, timer.created_at, timer.due_at)
     activity.log(title=title, detail=detail, source="scheduler.timers")
     activity.announce_voice(detail)
     delete_timer(timer_id)
@@ -126,31 +126,6 @@ def check_due_timers() -> None:
         if timer.id is None:
             continue
         complete_timer(timer.id)
-
-
-def _format_due_timer(label: str, created_at: datetime, due_at: datetime) -> tuple[str, str]:
-    """
-    Format due timer.
-
-    Args:
-        label: Timer label.
-        created_at: Timestamp when the record was created.
-        due_at: Timer due timestamp.
-
-    Returns:
-        Tuple containing the requested values.
-    """
-
-    display_label = label.strip() or "Timer"
-
-    duration_seconds = max(1, int((due_at - created_at).total_seconds()))
-
-    label_suffix = "" if display_label == "Timer" else f" for {display_label}"
-
-    return (
-        "Timer complete.",
-        f"Your {humanize_duration_seconds(duration_seconds)} timer{label_suffix} is complete.",
-    )
 
 
 def check_system_health() -> list[HealthCheckResult]:

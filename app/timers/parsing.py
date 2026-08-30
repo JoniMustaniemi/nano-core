@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.duration import (
+from app.common.duration import (
     duration_seconds_from_tool_args,
     extract_duration_args,
     extract_duration_seconds,

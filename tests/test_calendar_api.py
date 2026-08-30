@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.integrations import google_calendar
 from app.integrations.google_calendar import (
     GoogleCalendarNotFoundError,
     list_events_in_range,
@@ -37,8 +36,7 @@ def test_list_events_in_range_returns_normalized_events(
     service.events.return_value = events_resource
 
     monkeypatch.setattr(
-        google_calendar,
-        "list_available_calendars",
+        "app.integrations.google_calendar.client.list_available_calendars",
         lambda: [
             {
                 "id": "primary",
@@ -48,7 +46,9 @@ def test_list_events_in_range_returns_normalized_events(
             }
         ],
     )
-    monkeypatch.setattr(google_calendar, "get_calendar_service", lambda: service)
+    monkeypatch.setattr(
+        "app.integrations.google_calendar.client.get_calendar_service", lambda: service
+    )
 
     events = list_events_in_range(
         "primary",
@@ -72,11 +72,13 @@ def test_list_events_in_range_raises_for_unknown_calendar(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        google_calendar,
-        "list_available_calendars",
+        "app.integrations.google_calendar.client.list_available_calendars",
         lambda: [{"id": "primary", "summary": "Personal", "primary": "true"}],
     )
-    monkeypatch.setattr(google_calendar, "get_calendar_service", lambda: MagicMock())
+    monkeypatch.setattr(
+        "app.integrations.google_calendar.client.get_calendar_service",
+        lambda: MagicMock(),
+    )
 
     with pytest.raises(GoogleCalendarNotFoundError):
         list_events_in_range(

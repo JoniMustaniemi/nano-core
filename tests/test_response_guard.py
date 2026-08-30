@@ -1,6 +1,6 @@
 import json
 
-from app.assistant.response_guard import (
+from app.assistant.guard import (
     collect_problems,
     detect_intent_mismatch,
     enforce_user_facing_answer,

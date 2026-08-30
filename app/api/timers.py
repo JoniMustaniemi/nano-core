@@ -6,12 +6,8 @@ from pydantic import BaseModel
 from app.memory import repository
 from app.memory.labels import InvalidTimerLabelError, normalize_timer_label
 from app.memory.repository import COUNTDOWN_KIND, STOPWATCH_KIND
-from app.runtime.active_timers import (
-    remove_countdown_timer,
-    remove_stopwatch,
-    serialize_stopwatch_by_id,
-    serialize_timer_by_id,
-)
+from app.timers.operations import remove_countdown_timer, remove_stopwatch
+from app.timers.serialization import serialize_stopwatch_by_id, serialize_timer_by_id
 
 router = APIRouter(tags=["timers"])
 

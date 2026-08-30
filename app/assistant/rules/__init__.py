@@ -22,7 +22,14 @@ from app.assistant.rules.messages import (
     wipe_confirmation_prompt,
 )
 from app.assistant.rules.parsing import extract_json, parse_decision
-from app.assistant.rules.timers import (
+from app.assistant.rules.tools import (
+    ToolIntentRule,
+    build_tool_rules,
+    get_tool_rule,
+    tool_announcement,
+    tool_signature,
+)
+from app.timers.parsing import (
     duration_args_from_message,
     is_ambiguous_singular_stopwatch_stop,
     is_ambiguous_singular_timer_cancel,
@@ -45,13 +52,6 @@ from app.assistant.rules.timers import (
     parse_timer_cancel_args,
     parse_timer_rename_args,
     timer_confirmation,
-)
-from app.assistant.rules.tools import (
-    ToolIntentRule,
-    build_tool_rules,
-    get_tool_rule,
-    tool_announcement,
-    tool_signature,
 )
 
 __all__ = [

@@ -4,40 +4,6 @@ from datetime import UTC, datetime
 
 from app.memory import repository
 from app.memory.repository import COUNTDOWN_KIND, STOPWATCH_KIND
-from app.scheduler.jobs import unschedule_timer
-
-
-def remove_countdown_timer(timer_id: int) -> bool:
-    """
-    Unschedule and delete one active countdown timer.
-
-    Args:
-        timer_id: Countdown timer id.
-
-    Returns:
-        True when the timer existed and was removed; otherwise False.
-    """
-    timer = repository.get_timer(timer_id)
-    if timer is None or timer.kind != COUNTDOWN_KIND:
-        return False
-    unschedule_timer(timer_id)
-    return repository.delete_timer(timer_id)
-
-
-def remove_stopwatch(stopwatch_id: int) -> bool:
-    """
-    Delete one active stopwatch.
-
-    Args:
-        stopwatch_id: Stopwatch id.
-
-    Returns:
-        True when the stopwatch existed and was removed; otherwise False.
-    """
-    stopwatch = repository.get_timer(stopwatch_id)
-    if stopwatch is None or stopwatch.kind != STOPWATCH_KIND:
-        return False
-    return repository.delete_timer(stopwatch_id)
 
 
 def _normalize_timestamp(value: datetime) -> datetime:
@@ -47,12 +13,6 @@ def _normalize_timestamp(value: datetime) -> datetime:
 
 
 def serialize_active_timers() -> list[dict[str, int | str]]:
-    """
-    Return active countdown timers for the activity snapshot.
-
-    Returns:
-        Serializable countdown timer records sorted by due time.
-    """
     now = datetime.now(UTC)
     serialized: list[dict[str, int | str]] = []
     for timer in repository.list_countdown_timers():
@@ -78,12 +38,6 @@ def serialize_active_timers() -> list[dict[str, int | str]]:
 
 
 def serialize_active_stopwatches() -> list[dict[str, int | str]]:
-    """
-    Return active stopwatches for the activity snapshot.
-
-    Returns:
-        Serializable stopwatch records sorted by start time.
-    """
     now = datetime.now(UTC)
     serialized: list[dict[str, int | str]] = []
     for stopwatch in repository.list_stopwatches():
@@ -104,15 +58,6 @@ def serialize_active_stopwatches() -> list[dict[str, int | str]]:
 
 
 def serialize_timer_by_id(timer_id: int) -> dict[str, int | str] | None:
-    """
-    Return one active countdown timer in status shape.
-
-    Args:
-        timer_id: Timer id value.
-
-    Returns:
-        Serialized timer when active; otherwise None.
-    """
     timer = repository.get_timer(timer_id)
     if timer is None or timer.kind != COUNTDOWN_KIND or timer.id is None:
         return None
@@ -134,15 +79,6 @@ def serialize_timer_by_id(timer_id: int) -> dict[str, int | str] | None:
 
 
 def serialize_stopwatch_by_id(stopwatch_id: int) -> dict[str, int | str] | None:
-    """
-    Return one active stopwatch in status shape.
-
-    Args:
-        stopwatch_id: Stopwatch id value.
-
-    Returns:
-        Serialized stopwatch when active; otherwise None.
-    """
     stopwatch = repository.get_timer(stopwatch_id)
     if stopwatch is None or stopwatch.kind != STOPWATCH_KIND or stopwatch.id is None:
         return None

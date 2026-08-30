@@ -1,4 +1,4 @@
-from app.duration import (
+from app.common.duration import (
     _normalize_unit,
     _words_to_number,
     extract_duration_args,

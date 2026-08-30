@@ -17,7 +17,7 @@ from app.assistant.rules import (
 )
 from app.assistant.tool_executor import ToolExecutor
 from app.assistant.tool_runner import ToolRunner
-from app.duration import extract_duration_seconds
+from app.common.duration import extract_duration_seconds
 from app.runtime.activity import activity
 from app.runtime.status_copy import (
     CANCELLED_TIMER_TITLE,

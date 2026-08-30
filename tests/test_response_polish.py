@@ -58,15 +58,11 @@ def test_polish_user_facing_answer_tightens_repetitive_draft() -> None:
         "list files, list notes, list reminders, list timers, read files, run Python, "
         "start timers, and write files."
     )
-    client = _StubClient(
-        "I handle notes, reminders, timers, local files, Python, and diagnostics."
-    )
+    client = _StubClient("I handle notes, reminders, timers, local files, Python, and diagnostics.")
 
     content = polish_user_facing_answer(client, source, draft)
 
-    assert content == (
-        "I handle notes, reminders, timers, local files, Python, and diagnostics."
-    )
+    assert content == ("I handle notes, reminders, timers, local files, Python, and diagnostics.")
     assert client.messages is not None
     assert "polishing your final reply" in client.messages[0]["content"].lower()
 

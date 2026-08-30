@@ -25,7 +25,7 @@ def add_chat_message(conversation_id: str, role: str, content: str) -> ChatMessa
     Returns:
         ChatMessage result.
     """
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         message = ChatMessage(
             conversation_id=conversation_id,
             role=role,
@@ -57,7 +57,7 @@ def list_chat_messages(
         .order_by(desc(ChatMessage.created_at), desc(ChatMessage.id))
         .limit(limit)
     )
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         rows = list(session.exec(statement))
     return list(reversed(rows))
 
@@ -77,7 +77,7 @@ def list_recent_chat_messages(limit: int = 20) -> list[ChatMessage]:
         .order_by(desc(ChatMessage.created_at), desc(ChatMessage.id))
         .limit(limit)
     )
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         rows = list(session.exec(statement))
     return list(reversed(rows))
 
@@ -93,7 +93,7 @@ def add_timer(label: str, due_at: datetime) -> Timer:
     Returns:
         Timer result.
     """
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         timer = Timer(label=label or "Timer", due_at=due_at, kind=COUNTDOWN_KIND)
         session.add(timer)
         session.commit()
@@ -113,7 +113,7 @@ def add_stopwatch(label: str, started_at: datetime | None = None) -> Timer:
         Timer result.
     """
     start_time = started_at or datetime.now(UTC)
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         timer = Timer(
             label=label or "Stopwatch",
             kind=STOPWATCH_KIND,
@@ -134,7 +134,7 @@ def list_timers() -> list[Timer]:
         List of matching records or values.
     """
     statement = select(Timer).order_by(col(Timer.created_at), col(Timer.id))
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         return list(session.exec(statement))
 
 
@@ -148,7 +148,7 @@ def list_countdown_timers() -> list[Timer]:
     statement = (
         select(Timer).where(Timer.kind == COUNTDOWN_KIND).order_by(col(Timer.due_at), col(Timer.id))
     )
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         return list(session.exec(statement))
 
 
@@ -164,7 +164,7 @@ def list_stopwatches() -> list[Timer]:
         .where(Timer.kind == STOPWATCH_KIND)
         .order_by(col(Timer.created_at), col(Timer.id))
     )
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         return list(session.exec(statement))
 
 
@@ -178,7 +178,7 @@ def get_timer(timer_id: int) -> Timer | None:
     Returns:
         Timer when found; otherwise None.
     """
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         return session.get(Timer, timer_id)
 
 
@@ -200,7 +200,7 @@ def list_due_timers(now: datetime | None = None) -> list[Timer]:
         .where(col(Timer.due_at) <= current_time)
         .order_by(col(Timer.due_at), col(Timer.id))
     )
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         return list(session.exec(statement))
 
 
@@ -215,7 +215,7 @@ def update_timer_label(timer_id: int, label: str) -> Timer | None:
     Returns:
         Updated timer when found; otherwise None.
     """
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         timer = session.get(Timer, timer_id)
         if timer is None:
             return None
@@ -236,7 +236,7 @@ def delete_timer(timer_id: int) -> bool:
     Returns:
         True when the condition is met; otherwise false.
     """
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         timer = session.get(Timer, timer_id)
         if timer is None:
             return False
@@ -252,7 +252,7 @@ def wipe_database() -> None:
     Returns:
         None.
     """
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         for model in (
             ChatMessage,
             Timer,

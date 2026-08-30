@@ -16,7 +16,7 @@ def add_internal_note(
     payload_json: str,
     next_attempt_at: datetime,
 ) -> InternalNote:
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         note = InternalNote(
             kind=kind,
             title=title,
@@ -32,7 +32,7 @@ def add_internal_note(
 
 
 def get_internal_note(note_id: int) -> InternalNote | None:
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         return session.get(InternalNote, note_id)
 
 
@@ -49,19 +49,19 @@ def list_due_internal_notes(
         .order_by(col(InternalNote.next_attempt_at), col(InternalNote.created_at))
         .limit(limit)
     )
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         return list(session.exec(statement))
 
 
 def list_internal_notes(*, limit: int = 50) -> list[InternalNote]:
     statement = select(InternalNote).order_by(col(InternalNote.created_at).desc()).limit(limit)
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         return list(session.exec(statement))
 
 
 def mark_internal_note_attempted(note_id: int, *, attempted_at: datetime | None = None) -> None:
     current = attempted_at or datetime.now(UTC)
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         note = session.get(InternalNote, note_id)
         if note is None:
             return
@@ -72,7 +72,7 @@ def mark_internal_note_attempted(note_id: int, *, attempted_at: datetime | None 
 
 
 def reschedule_internal_note(note_id: int, *, next_attempt_at: datetime) -> None:
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         note = session.get(InternalNote, note_id)
         if note is None:
             return
@@ -83,7 +83,7 @@ def reschedule_internal_note(note_id: int, *, next_attempt_at: datetime) -> None
 
 def mark_internal_note_delivered(note_id: int, *, delivered_at: datetime | None = None) -> None:
     current = delivered_at or datetime.now(UTC)
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         note = session.get(InternalNote, note_id)
         if note is None:
             return
@@ -94,7 +94,7 @@ def mark_internal_note_delivered(note_id: int, *, delivered_at: datetime | None 
 
 
 def dismiss_internal_note(note_id: int) -> bool:
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         note = session.get(InternalNote, note_id)
         if note is None:
             return False

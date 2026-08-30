@@ -52,7 +52,7 @@ def test_format_system_analysis_report_is_human_readable(
     chat_model = tmp_path / "chat.gguf"
     chat_model.write_bytes(b"x" * 500_000_000)
     monkeypatch.setattr(
-        "app.system.specs.get_settings",
+        "app.system.specs.report.get_settings",
         lambda: type(
             "Settings",
             (),
@@ -90,9 +90,9 @@ def test_probe_cpu_temperature_from_sysfs(tmp_path: Path) -> None:
 
 
 def test_probe_cpu_temperature_from_vcgencmd(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.system.specs.shutil.which", lambda cmd: "/usr/bin/vcgencmd")
+    monkeypatch.setattr("app.system.specs.metrics.shutil.which", lambda cmd: "/usr/bin/vcgencmd")
     monkeypatch.setattr(
-        "app.system.specs.subprocess.run",
+        "app.system.specs.metrics.subprocess.run",
         lambda *args, **kwargs: CompletedProcess(
             args=args[0],
             returncode=0,
@@ -105,9 +105,9 @@ def test_probe_cpu_temperature_from_vcgencmd(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_probe_cpu_throttled_from_vcgencmd(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.system.specs.shutil.which", lambda cmd: "/usr/bin/vcgencmd")
+    monkeypatch.setattr("app.system.specs.metrics.shutil.which", lambda cmd: "/usr/bin/vcgencmd")
     monkeypatch.setattr(
-        "app.system.specs.subprocess.run",
+        "app.system.specs.metrics.subprocess.run",
         lambda *args, **kwargs: CompletedProcess(
             args=args[0],
             returncode=0,
@@ -124,8 +124,8 @@ def test_probe_cpu_temperature_unavailable(
     tmp_path: Path,
 ) -> None:
     missing = tmp_path / "missing"
-    monkeypatch.setattr("app.system.specs._THERMAL_ZONE_PATH", missing)
-    monkeypatch.setattr("app.system.specs.shutil.which", lambda cmd: None)
+    monkeypatch.setattr("app.system.specs.metrics._THERMAL_ZONE_PATH", missing)
+    monkeypatch.setattr("app.system.specs.metrics.shutil.which", lambda cmd: None)
 
     assert probe_cpu_temperature() is None
     assert serialize_system_metrics() == {

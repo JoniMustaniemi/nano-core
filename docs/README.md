@@ -126,16 +126,20 @@ Defaults live in `app/config.py`.
 | Path | Responsibility |
 |------|----------------|
 | `app/api/` | REST routers under `/api/*`, API key auth, tool command metadata |
-| `app/common/` | Shared JSON parsing and domain types (`ProactiveOffer`) |
-| `app/integrations/` | Google Calendar OAuth and event fetching |
-| `app/workspace/` | Workspace file-walking utilities |
-| `app/assistant/` | Orchestrator, router, planner, flows (timer, wipe, reboot), response pipeline |
-| `app/tools/` | Registered tool handlers |
-| `app/memory/` | SQLModel tables and repositories |
+| `app/common/` | Shared JSON parsing, duration parsing, and domain types (`ProactiveOffer`) |
+| `app/integrations/google_calendar/` | Google Calendar auth, client, and formatting |
+| `app/workspace/` | Workspace file-walking and inventory hashing |
+| `app/assistant/` | Orchestrator, dispatch, router, planner, flows, response pipeline |
+| `app/assistant/guard/` | Response quality detectors and LLM rewrite pass |
+| `app/tools/` | Registered tool handlers (`*_tools.py` register via `registry.py`) |
+| `app/tools/files.py` | Core file I/O used by tools; `file_tools.py` registers the tool wrappers |
+| `app/timers/` | Timer parsing, operations, formatting, and API serialization |
+| `app/memory/` | SQLModel tables, repositories, and schema migrations |
 | `app/proactive/` | Proactive offer state for the web UI |
-| `app/llm/` | Client, factory, protocol |
+| `app/llm/` | Client, factory, protocol, and provider backends |
 | `app/scheduler/` | Timer and health jobs |
-| `app/voice/` | GLaDOS synthesis, Vosk STT, Pi-local wake listener |
+| `app/voice/` | `VoiceOutput` protocol, GLaDOS synthesis, Vosk STT, wake listener |
+| `app/system/specs/` | Host memory/CPU probes and system analysis report |
 
 ## Database
 
@@ -236,7 +240,6 @@ flowchart TB
     subgraph models [Local models]
         direction LR
         ChatModel[Chat model]
-        CodeModel[Code model]
     end
 
     subgraph services [Services]
@@ -251,7 +254,6 @@ flowchart TB
     Orchestrator --> ChatModel
     Orchestrator --> Tools
     Orchestrator --> Voice
-    Tools --> CodeModel
     Orchestrator --> SQLite
     Tools --> SQLite
     Scheduler --> Tools

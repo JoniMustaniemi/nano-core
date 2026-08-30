@@ -105,5 +105,5 @@ def test_chat_rename_accepts_trailing_period(api_client: TestClient, monkeypatch
 
 
 def _chat_message_count() -> int:
-    with Session(db.engine) as session:
+    with Session(db.get_engine()) as session:
         return len(list(session.exec(select(ChatMessage))))

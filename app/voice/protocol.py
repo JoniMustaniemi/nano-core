@@ -1,0 +1,13 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+
+class VoiceOutput(Protocol):
+    def status(self) -> dict[str, str | bool]: ...
+
+    def announce(self, text: str) -> None: ...
+
+    def synthesize_wav(self, text: str) -> bytes: ...
+
+    def synthesize_wav_for_client(self, text: str) -> bytes: ...

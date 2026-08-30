@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 import app.memory.db as db
 from app.config import get_settings
 from app.memory.models import ChatMessage
-from app.voice.service import GladosVoiceService
+from app.voice.output import get_voice_output
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,7 +44,7 @@ def _database_health_check() -> HealthCheckResult:
         HealthCheckResult result.
     """
     try:
-        with Session(db.engine) as session:
+        with Session(db.get_engine()) as session:
             list(session.exec(select(ChatMessage).limit(1)))
     except Exception as exc:
         return HealthCheckResult(
@@ -67,7 +67,7 @@ def _database_size_health_check() -> HealthCheckResult:
         HealthCheckResult result.
     """
     settings = get_settings()
-    sqlite_path = db.sqlite_path
+    sqlite_path = db.get_sqlite_path()
     if sqlite_path is None:
         return HealthCheckResult(
             name="database_size",
@@ -112,7 +112,7 @@ def _voice_health_check() -> HealthCheckResult:
     Returns:
         HealthCheckResult result.
     """
-    status = GladosVoiceService().status()
+    status = get_voice_output().status()
     available = bool(status.get("available"))
     detail = str(status.get("detail", "Voice status is unknown."))
     return HealthCheckResult(
