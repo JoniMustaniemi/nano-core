@@ -55,8 +55,8 @@ _CAPABILITY_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
         ("read_file", "write_file", "list_files", "run_python"),
     ),
     (
-        "Diagnostics and GitHub",
-        ("check_health", "analyze_system", "create_pull_request", "reboot_pi", "restart_nano"),
+        "Diagnostics",
+        ("check_health", "analyze_system", "reboot_pi", "restart_nano"),
     ),
 )
 

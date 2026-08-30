@@ -244,15 +244,9 @@ def collect_system_specs() -> dict[str, Any]:
     settings = get_settings()
     memory = probe_memory()
     chat_model_path = settings.llm_model_path
-    code_model_path = settings.llm_code_model_path or settings.llm_model_path
     chat_model_bytes = model_file_size_bytes(chat_model_path)
-    code_model_bytes = model_file_size_bytes(code_model_path)
     chat_ctx_cap = estimate_max_context_tokens(
         chat_model_path,
-        available_bytes=memory.available_bytes,
-    )
-    code_ctx_cap = estimate_max_context_tokens(
-        code_model_path,
         available_bytes=memory.available_bytes,
     )
     return {
@@ -271,16 +265,10 @@ def collect_system_specs() -> dict[str, Any]:
         "llm": {
             "provider": settings.llm_provider,
             "chat_model_path": chat_model_path,
-            "code_model_path": code_model_path,
             "chat_model_label": _friendly_model_label(chat_model_path),
-            "code_model_label": _friendly_model_label(code_model_path),
-            "same_brain": chat_model_path == code_model_path,
             "chat_model_size_bytes": chat_model_bytes,
-            "code_model_size_bytes": code_model_bytes,
             "configured_chat_context": settings.llm_context_size,
-            "configured_code_context": settings.llm_code_context_size,
             "estimated_chat_context_cap": chat_ctx_cap,
-            "estimated_code_context_cap": code_ctx_cap,
         },
     }
 
@@ -347,48 +335,19 @@ def format_system_analysis_report() -> str:
     llm = specs["llm"]
     memory = specs["memory"]
 
-    chat_path = llm["chat_model_path"]
-    code_path = llm["code_model_path"]
-    same_brain = chat_path == code_path
-
     lines = [
         "Here's how I'm running on your machine.",
         "",
         _describe_memory_for_models(memory.get("available_bytes"), memory.get("total_bytes")),
         "",
         f"I run on {_describe_provider(llm['provider'])}.",
-    ]
-
-    if same_brain:
-        lines.append(_describe_model_role("everything I do", llm["chat_model_size_bytes"]))
-        lines.append(
-            _describe_context_window(
-                llm["configured_chat_context"],
-                llm["estimated_chat_context_cap"],
-            )
-        )
-    else:
-        lines.append(_describe_model_role("talking with you", llm["chat_model_size_bytes"]))
-        lines.append(
-            _describe_context_window(
-                llm["configured_chat_context"],
-                llm["estimated_chat_context_cap"],
-            )
-        )
-        lines.append(_describe_model_role("code and planning work", llm["code_model_size_bytes"]))
-        if llm["configured_code_context"] != llm["configured_chat_context"] or (
-            llm["estimated_code_context_cap"] != llm["estimated_chat_context_cap"]
-        ):
-            lines.append(
-                _describe_context_window(
-                    llm["configured_code_context"],
-                    llm["estimated_code_context_cap"],
-                )
-            )
-
-    lines.append("")
-    lines.append(
+        _describe_model_role("everything I do", llm["chat_model_size_bytes"]),
+        _describe_context_window(
+            llm["configured_chat_context"],
+            llm["estimated_chat_context_cap"],
+        ),
+        "",
         "If memory is tight when I wake up, I'll automatically try a smaller window "
-        "and let you know."
-    )
+        "and let you know.",
+    ]
     return "\n".join(lines)

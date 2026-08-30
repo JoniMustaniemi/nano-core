@@ -53,8 +53,7 @@ def test_tool_executor_logs_failure_title_when_tool_fails(monkeypatch) -> None:
                 content=json.dumps(
                     {
                         "ok": False,
-                        "step": "preflight",
-                        "error": "Workspace is not a git repository.",
+                        "error": "Voice backend is unavailable.",
                     }
                 ),
                 ok=False,
@@ -62,14 +61,14 @@ def test_tool_executor_logs_failure_title_when_tool_fails(monkeypatch) -> None:
 
     executor = ToolExecutor(tool_runner=_Runner())
     executor.run(
-        user_message="Open a pull request.",
+        user_message="Check your health.",
         conversation_id="default",
-        tool_name="create_pull_request",
+        tool_name="check_health",
     )
 
     assert logged == [
         (
-            failed_tool_title("create_pull_request"),
-            "Workspace is not a git repository.",
+            failed_tool_title("check_health"),
+            "Voice backend is unavailable.",
         )
     ]

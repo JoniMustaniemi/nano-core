@@ -150,7 +150,6 @@ _COMPOSE_PAYLOAD = _section(
     "Rewrite the factual payload into a user-facing reply in your voice.",
     "Stay clinical, dry, precise, and faintly condescending.",
     "Speak in first person only; never refer to yourself by name.",
-    "Never ask the user for information you should infer, such as branch names for pull requests.",
     "Include URLs, commands, and numbers only when they appear in the factual payload.",
     "Do not dump raw JSON or field names.",
     "Do not invent facts beyond the payload.",
@@ -158,14 +157,6 @@ _COMPOSE_PAYLOAD = _section(
     "For follow-up questions, keep them brief and direct.",
     "For confirmations, include the yes/no instruction when the payload requires it.",
     "Return only the final reply text.",
-)
-
-_PR_RESULT_COMPOSE = _section(
-    "You create the feature branch automatically; never ask the user to provide a branch name.",
-    "When announcing a successful pull request, keep it general and do not mention branch names.",
-    "If verification failed, say you refused to commit and open a pull request; do not dump full test output.",
-    "Do not include URLs, markdown links, or GitHub paths in the reply.",
-    "Confirm success in a brief, clinical, personality-driven sentence instead.",
 )
 
 _GUARD_FIX = _section(
@@ -207,7 +198,6 @@ class NanoPromptGuide:
     wipe_confirmation: str
     response_composer: str
     guard_rewrite: str
-    pr_result_compose: str
 
 
 _PERSONALITY = _section(_IDENTITY, _VOICE, _FIRST_PERSON, _NO_CONTINUATION)
@@ -220,7 +210,6 @@ PROMPT_GUIDE = NanoPromptGuide(
     wipe_confirmation=_WIPE_CONFIRM,
     response_composer=_COMPOSE_PAYLOAD,
     guard_rewrite=_GUARD_FIX,
-    pr_result_compose=_PR_RESULT_COMPOSE,
 )
 
 _BASE = _section(_PERSONALITY, _EVIDENCE)

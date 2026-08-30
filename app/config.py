@@ -15,13 +15,10 @@ class Settings(BaseSettings):
     workspace_root: str = "."
     llm_provider: Literal["local", "auto", "ollama", "llama_cpp", "llama_cpp_server"] = "local"
     llm_model_path: str = "./models/qwen2.5-1.5b-instruct-q5_k_m.gguf"
-    llm_code_model_path: str = "./models/qwen2.5-coder-1.5b-instruct-q5_k_m.gguf"
     llm_base_url: str = "http://localhost:11434"
     llm_model: str = "local-assistant"
-    llm_code_model: str = ""
     llm_timeout_seconds: int = Field(default=60, ge=1)
     llm_context_size: int = Field(default=32768, ge=512)
-    llm_code_context_size: int = Field(default=32768, ge=512)
     llm_max_tokens: int = Field(default=512, ge=1)
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     voice_backend: Literal["glados"] = "glados"
@@ -33,12 +30,6 @@ class Settings(BaseSettings):
     health_test_failure_enabled: bool = False
     health_test_failure_detail: str = "Intentional health-check failure for testing."
     database_size_warning_bytes: int = Field(default=50_000_000, ge=1)
-    github_default_base_branch: str = "main"
-    git_executable: str = ""
-    github_cli_path: str = ""
-    github_pr_verify_command: str = ""
-    github_pr_verify_timeout_seconds: int = Field(default=300, ge=1)
-    pr_naming_diff_max_chars: int = Field(default=4000, ge=256)
     internal_note_retry_interval_seconds: int = Field(default=1800, ge=60)
     internal_note_retry_max_interval_seconds: int = Field(default=14400, ge=300)
     internal_note_max_attempts: int = Field(default=5, ge=1)

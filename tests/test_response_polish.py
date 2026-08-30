@@ -20,7 +20,7 @@ class _StubClient:
 def test_looks_repetitive_detects_listy_capability_dump() -> None:
     content = (
         "I can add notes, reminders, timers, and notes, cancel timers, check health, "
-        "initiate pull requests, list files, list notes, list reminders, list timers, "
+        "initiate health checks, list files, list notes, list reminders, list timers, "
         "clear storage, read files, run Python code, start timers, and write files."
     )
 
@@ -59,13 +59,13 @@ def test_polish_user_facing_answer_tightens_repetitive_draft() -> None:
         "start timers, and write files."
     )
     client = _StubClient(
-        "I handle notes, reminders, timers, local files, Python, diagnostics, and pull requests."
+        "I handle notes, reminders, timers, local files, Python, and diagnostics."
     )
 
     content = polish_user_facing_answer(client, source, draft)
 
     assert content == (
-        "I handle notes, reminders, timers, local files, Python, diagnostics, and pull requests."
+        "I handle notes, reminders, timers, local files, Python, and diagnostics."
     )
     assert client.messages is not None
     assert "polishing your final reply" in client.messages[0]["content"].lower()
@@ -78,8 +78,7 @@ def test_polish_user_facing_answer_skips_system_analysis_report() -> None:
             "Here's how I'm running on your machine.\n\n"
             "You have 16.5 GB free out of 31.7 GB total. That's plenty for me to run smoothly.\n\n"
             "I run on your machine — my models stay on your device.\n"
-            "For talking with you, I use a 1.2 GB model on your device.\n"
-            "For code work, I use a 2.4 GB model on your device.\n"
+            "For everything I do, I use a 1.2 GB model on your device.\n"
             "My working memory window is about 32k tokens."
         ),
         tool_name="analyze_system",

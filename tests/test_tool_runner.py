@@ -1,4 +1,3 @@
-import json
 from types import SimpleNamespace
 
 from helpers.voice_announce import patch_announce_voice, silence_announce_voice
@@ -44,29 +43,6 @@ def test_tool_runner_announces_and_sets_working_before_handler(monkeypatch) -> N
     assert announced == ["Checking health"]
 
 
-def test_tool_runner_skips_pull_request_voice_announcement(monkeypatch) -> None:
-    announced: list[str] = []
-    monkeypatch.setattr(
-        "app.assistant.tool_runner.activity.working",
-        lambda **kwargs: None,
-    )
-    patch_announce_voice(monkeypatch, announced)
-    monkeypatch.setattr(
-        "app.assistant.tool_runner.get_tool",
-        lambda name: SimpleNamespace(
-            name=name,
-            handler=lambda _args: '{"ok": true, "step": "complete"}',
-            announcement="I'm opening a pull request.",
-        ),
-    )
-
-    runner = ToolRunner()
-    result = runner.execute("create_pull_request", {})
-
-    assert result.ok is True
-    assert announced == []
-
-
 def test_tool_runner_can_skip_announcement(monkeypatch) -> None:
     announced: list[str] = []
     monkeypatch.setattr(
@@ -86,36 +62,6 @@ def test_tool_runner_can_skip_announcement(monkeypatch) -> None:
     runner = ToolRunner()
     runner.execute("check_health", {}, announce=False)
 
-    assert announced == []
-
-
-def test_tool_runner_reports_structured_pull_request_failure(monkeypatch) -> None:
-    errors: list[dict[str, str]] = []
-    announced: list[str] = []
-    monkeypatch.setattr(
-        "app.assistant.tool_runner.activity.working",
-        lambda **kwargs: None,
-    )
-    monkeypatch.setattr(
-        "app.assistant.tool_runner.activity.error",
-        lambda **kwargs: errors.append(kwargs),
-    )
-    patch_announce_voice(monkeypatch, announced)
-    monkeypatch.setattr(
-        "app.assistant.tool_runner.get_tool",
-        lambda name: SimpleNamespace(
-            name=name,
-            handler=lambda _args: json.dumps(
-                {"ok": False, "step": "lint", "error": "Lint checks failed."}
-            ),
-        ),
-    )
-
-    runner = ToolRunner()
-    result = runner.execute("create_pull_request", {})
-
-    assert result.ok is False
-    assert errors == []
     assert announced == []
 
 

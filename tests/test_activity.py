@@ -186,7 +186,7 @@ def test_release_to_idle_returns_standby() -> None:
     from app.runtime.activity import activity
     from app.runtime.status_copy import STANDBY_GREETINGS
 
-    activity.working(title="Opening pull request", detail="Running checks.")
+    activity.working(title="Running a health check.", detail="Give me a moment.")
     activity.release_to_idle(source="test.activity")
     snapshot = activity.snapshot()
 
@@ -198,7 +198,7 @@ def test_release_to_idle_returns_standby() -> None:
 def test_chat_exception_releases_activity_to_idle(api_client, monkeypatch) -> None:
     from app.runtime.activity import activity
 
-    activity.working(title="Opening pull request", detail="Running checks.")
+    activity.working(title="Running a health check.", detail="Give me a moment.")
 
     def _boom(self, message: str, mode: str = "agent"):
         raise RuntimeError("boom")
@@ -206,7 +206,7 @@ def test_chat_exception_releases_activity_to_idle(api_client, monkeypatch) -> No
     monkeypatch.setattr("app.assistant.service.AssistantService.respond", _boom)
 
     response = api_client.post(
-        "/api/chat", json={"message": "Open a pull request.", "mode": "agent"}
+        "/api/chat", json={"message": "Check your health.", "mode": "agent"}
     )
     status = api_client.get("/api/status")
 
@@ -289,20 +289,20 @@ def test_announce_voice_uses_single_runtime_source() -> None:
     from app.runtime.activity import VOICE_ANNOUNCE_SOURCE, activity
 
     activity.reset()
-    event = activity.announce_voice("I'm opening a pull request.")
+    event = activity.announce_voice("I'm running a health check.")
 
     assert event is not None
     assert event.source == VOICE_ANNOUNCE_SOURCE
-    assert event.title == "I'm opening a pull request"
-    assert event.detail == "I'm opening a pull request"
+    assert event.title == "I'm running a health check"
+    assert event.detail == "I'm running a health check"
 
 
 def test_announce_voice_ignores_duplicate_messages() -> None:
     from app.runtime.activity import activity
 
     activity.reset()
-    first = activity.announce_voice("I'm opening a pull request.")
-    second = activity.announce_voice("I'm opening the pull request.")
+    first = activity.announce_voice("I'm running a health check.")
+    second = activity.announce_voice("I'm running the health check.")
 
     assert first is not None
     assert second is None

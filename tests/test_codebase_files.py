@@ -18,7 +18,7 @@ def test_list_all_app_files_includes_every_py_file(tmp_path, monkeypatch) -> Non
 
 
 def test_package_for_path() -> None:
-    assert package_for_path("app/tools/pr_service.py") == "app/tools"
+    assert package_for_path("app/tools/file_tools.py") == "app/tools"
 
 
 def test_file_content_hash_is_stable(tmp_path, monkeypatch) -> None:

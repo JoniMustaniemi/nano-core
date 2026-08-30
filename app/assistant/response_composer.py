@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from app.assistant.prompts import (
     COMPOSE_HINTS,
@@ -12,7 +11,6 @@ from app.assistant.response_guard import looks_like_refusal
 from app.assistant.response_source import ResponseSource
 from app.assistant.rules import confirmation_followup, wipe_confirmation_prompt
 from app.llm.protocol import LLMClient
-from app.runtime.status_copy import lint_failure_user_message
 
 
 class ResponseComposer:
@@ -38,12 +36,6 @@ class ResponseComposer:
 
         if source.kind == "tool_result" and source.tool_name == "check_health":
             return self._compose_health_result(source.facts)
-
-        if source.kind == "tool_result" and source.tool_name == "create_pull_request":
-            return self._compose_pr_result(source.facts)
-
-        if source.kind == "tool_error" and source.tool_name == "create_pull_request":
-            return self._compose_pr_result(source.facts)
 
         if source.kind == "tool_result" and source.tool_name in COMPOSE_HINTS:
             return self._compose_with_hint(client, source)
@@ -175,61 +167,6 @@ class ResponseComposer:
             else:
                 lines.append(f"My {name} check is failing.")
         return " ".join(lines)
-
-    def _compose_pr_result(self, tool_result: str) -> str:
-        """
-        Return a deterministic pull request announcement without URLs.
-
-        Args:
-            tool_result: Serialized pull request workflow JSON.
-
-        Returns:
-            Voice-friendly pull request summary text.
-        """
-        return self._pr_message(self._parse_json_dict(tool_result))
-
-    def _pr_message(self, payload: dict[str, Any]) -> str:
-        """
-        Build a personality-driven pull request announcement.
-
-        Args:
-            payload: Parsed pull request result payload.
-
-        Returns:
-            First-person announcement without URLs or markdown.
-        """
-        if payload.get("ok"):
-            return "I opened the pull request. Review it on GitHub when you are ready."
-
-        step = str(payload.get("step", "unknown")).strip()
-        error = str(payload.get("error", "")).strip()
-        if step == "lint":
-            return lint_failure_user_message(error)
-        if step == "verify":
-            return "Your tests failed, so I declined to commit anything or open a pull request."
-        if step == "preflight" and "nothing" in error.lower():
-            return "There is nothing to publish, so I did not open a pull request."
-        if step == "preflight" and "already open" in error.lower():
-            title = str(payload.get("title", "")).strip()
-            if title:
-                return (
-                    f"An open pull request is already waiting for your review ({title}). "
-                    "Resolve it on GitHub before I open another."
-                )
-            return (
-                "An open pull request is already waiting for your review. "
-                "Resolve it on GitHub before I open another."
-            )
-        if error:
-            return f"I could not complete the pull request during {step}: {error}"
-        return "I could not complete the pull request."
-
-    def _parse_json_dict(self, value: str) -> dict[str, Any]:
-        try:
-            payload = json.loads(value)
-        except json.JSONDecodeError:
-            return {}
-        return payload if isinstance(payload, dict) else {}
 
     def _tool_error_fallback(self, source: ResponseSource) -> str:
         """

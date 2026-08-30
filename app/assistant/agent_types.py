@@ -20,7 +20,6 @@ AgentToolName = Literal[
     "rename_stopwatch",
     "clear_all_timers",
     "check_health",
-    "create_pull_request",
 ]
 
 

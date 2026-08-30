@@ -28,7 +28,6 @@ def test_format_capability_catalog_lists_tool_descriptions() -> None:
     assert "Available capabilities (grouped):" in catalog
     assert "Memory:" in catalog
     assert "check_health:" in catalog
-    assert "create_pull_request:" in catalog
 
 
 def test_draft_capabilities_uses_tool_catalog_in_prompt() -> None:

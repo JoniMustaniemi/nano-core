@@ -128,7 +128,6 @@ class CapabilityQuestionClient:
         mentioned = []
         for tool_name in (
             "check_health",
-            "create_pull_request",
             "list_internal_notes",
             "run_python",
             "start_timer",

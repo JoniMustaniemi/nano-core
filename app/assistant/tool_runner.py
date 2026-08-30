@@ -8,21 +8,12 @@ from app.runtime.activity import activity
 from app.runtime.status_copy import (
     RUNNING_TOOL_DETAIL,
     could_not_call_tool_title,
-    failed_tool_title,
-    pr_failure_voice_message,
     running_tool_title,
     tool_error_title,
 )
 from app.tools import get_tool, list_tools
 from app.tools.errors import ToolError
 from app.tools.registry import tool_announcement_for
-
-_STRUCTURED_RESULT_TOOLS = frozenset({"create_pull_request"})
-_SERVER_ANNOUNCE_SKIP: frozenset[str] = frozenset({"create_pull_request"})
-_STRUCTURED_FAILURE_TITLES: dict[str, str] = {
-    "create_pull_request": failed_tool_title("create_pull_request"),
-}
-_STRUCTURED_FAILURE_SPOKEN: dict[str, str] = {}
 
 
 class ToolRunner:
@@ -64,39 +55,11 @@ class ToolRunner:
             detail=RUNNING_TOOL_DETAIL,
             source="assistant.tool_runner",
         )
-        if announce and tool_name not in _SERVER_ANNOUNCE_SKIP:
+        if announce:
             self.announce_message(tool_announcement_for(tool_name))
 
         try:
             content = tool.handler(args)
-            structured = self._parse_structured_result(content)
-            if (
-                tool_name in _STRUCTURED_RESULT_TOOLS
-                and structured is not None
-                and structured.get("ok") is False
-            ):
-                error_message = str(structured.get("error", "")).strip()
-                spoken_message = self._structured_failure_spoken(
-                    tool_name,
-                    error_message,
-                    structured,
-                )
-                failure_title = _STRUCTURED_FAILURE_TITLES.get(
-                    tool_name,
-                    tool_error_title(tool_name),
-                )
-                failure_detail = error_message or "The tool reported a failure."
-                if tool_name not in _SERVER_ANNOUNCE_SKIP:
-                    self.report_error(
-                        title=failure_title,
-                        detail=failure_detail,
-                        spoken_message=spoken_message,
-                    )
-                return ToolResult(
-                    tool=tool_name,
-                    content=content if isinstance(content, str) else json.dumps(structured),
-                    ok=False,
-                )
             return ToolResult(tool=tool_name, content=content, ok=True)
         except ToolError as exc:
             error_message = str(exc)
@@ -175,31 +138,3 @@ class ToolRunner:
             None.
         """
         activity.announce_voice(message)
-
-    def _parse_structured_result(self, content: Any) -> dict[str, Any] | None:
-        if isinstance(content, dict):
-            payload = content
-        elif isinstance(content, str) and content.strip().startswith("{"):
-            try:
-                payload = json.loads(content)
-            except json.JSONDecodeError:
-                return None
-        else:
-            return None
-        return payload if isinstance(payload, dict) and "ok" in payload else None
-
-    @staticmethod
-    def _structured_failure_spoken(
-        tool_name: str,
-        error_message: str,
-        structured: dict[str, Any],
-    ) -> str:
-        if tool_name == "create_pull_request":
-            return pr_failure_voice_message(
-                error_message,
-                str(structured.get("step", "")),
-            )
-        return _STRUCTURED_FAILURE_SPOKEN.get(
-            tool_name,
-            "I hit an error while trying to complete the task.",
-        )

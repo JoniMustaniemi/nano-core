@@ -7,33 +7,20 @@ import httpx
 
 from app.config import get_settings
 from app.llm.context_sizing import LocalModelLoadError, load_local_model, pop_context_load_notice
-from app.llm.roles import ModelRole
 
 _OLLAMA_CHAT_PATH = "/api/chat"
 _LLAMA_CPP_CHAT_PATH = "/v1/chat/completions"
 
 
 class LocalLLMClient:
-    def __init__(self, *, role: ModelRole = ModelRole.CHAT) -> None:
-        self._role = role
-
     def _local_model_path(self) -> str:
-        settings = get_settings()
-        if self._role == ModelRole.CODE:
-            return settings.llm_code_model_path or settings.llm_model_path
-        return settings.llm_model_path
+        return get_settings().llm_model_path
 
     def _remote_model_name(self) -> str:
-        settings = get_settings()
-        if self._role == ModelRole.CODE:
-            return settings.llm_code_model or settings.llm_model
-        return settings.llm_model
+        return get_settings().llm_model
 
     def _context_size(self) -> int:
-        settings = get_settings()
-        if self._role == ModelRole.CODE:
-            return settings.llm_code_context_size
-        return settings.llm_context_size
+        return get_settings().llm_context_size
 
     def complete(
         self,

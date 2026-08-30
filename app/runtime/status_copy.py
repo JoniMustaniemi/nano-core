@@ -1,7 +1,6 @@
 """Centralized activity status strings for the UI and SSE stream."""
 
 import random
-import re
 
 STANDBY_TITLE = "I'm in standby."
 STANDBY_DETAIL_DEFAULT = "Awaiting your input."
@@ -123,40 +122,10 @@ CANCELLED_SERVICE_RESTART_TITLE = "I cancelled the restart."
 CANCELLED_SERVICE_RESTART_DETAIL = "I wasn't restarted."
 SERVICE_RESTART_DISABLED_TITLE = "Service restart is disabled."
 SERVICE_RESTART_DISABLED_DETAIL = "Set SERVICE_RESTART_ENABLED=true to allow service restarts."
-PREPARING_PR_TITLE = "I'm preparing a pull request."
-PREPARING_PR_PREFLIGHT_DETAIL = "Running preflight checks."
-PREPARING_PR_LINT_DETAIL = "Running lint and type checks before any git writes."
-PREPARING_PR_VERIFY_DETAIL = "Running tests before any git writes."
-COLLECTED_CHANGE_CONTEXT_TITLE = "I collected change context."
-VERIFYING_PROJECT_TITLE = "I'm verifying the project."
-NAMING_PR_TITLE = "I'm naming the pull request."
-NAMING_PR_DETAIL = "Choosing a name for these changes."
-CREATING_FEATURE_BRANCH_TITLE = "I'm creating a feature branch."
-COMMITTING_CHANGES_TITLE = "I'm committing changes."
-PUSHING_BRANCH_TITLE = "I'm pushing the branch."
-OPENING_PR_TITLE = "I'm opening the pull request."
-PR_CREATED_TITLE = "I created the pull request."
-PR_WORKFLOW_FAILED_TITLE = "I could not complete the pull request."
-PR_WORKFLOW_CANCELLED_TITLE = "I cancelled the pull request workflow."
-PR_NAMING_FAILED_TITLE = "I could not name the pull request."
-LINT_AUTO_FIXED_TITLE = "I auto-fixed lint issues."
-LINT_CHECKS_FAILED_TITLE = "Lint checks failed."
-LINT_CHECKS_PASSED_TITLE = "Lint checks passed."
-VERIFICATION_FAILED_TITLE = "I could not verify the project."
-VERIFICATION_PASSED_TITLE = "Verification passed."
-SCANNED_SOURCE_FILE_TITLE = "I scanned a source file."
 HEALTH_ISSUE_DETECTED_TITLE = "I detected a health issue."
 NOTED_FOR_LATER_TITLE = "I noted something to discuss later."
 DISMISSED_FOLLOW_UP_TITLE = "I dismissed a follow-up note."
 RESCHEDULED_FOLLOW_UP_TITLE = "I rescheduled a follow-up note."
-
-PR_LINT_TIMER_LABEL = "Lint checks"
-PR_VERIFY_TIMER_LABEL = "Running tests"
-PR_NAMING_TIMER_LABEL = "Naming pull request"
-PR_OPENING_TIMER_LABEL = "Opening pull request"
-PR_LINT_TIMER_SECONDS = 60
-PR_NAMING_TIMER_SECONDS = 120
-PR_OPENING_TIMER_SECONDS = 120
 
 _TOOL_ACTIVITY_TITLES: dict[str, str] = {
     "analyze_system": "I'm analyzing system specs.",
@@ -166,7 +135,6 @@ _TOOL_ACTIVITY_TITLES: dict[str, str] = {
     "rename_stopwatch": "I'm renaming a stopwatch.",
     "stop_stopwatches": "I'm stopping stopwatches.",
     "check_health": "I'm running a health check.",
-    "create_pull_request": "I'm opening a pull request.",
     "list_files": "I'm listing files.",
     "list_internal_notes": "I'm reviewing internal notes.",
     "list_timers": "I'm checking timers.",
@@ -186,7 +154,6 @@ _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
     "rename_timer": "I renamed the timer.",
     "rename_stopwatch": "I renamed the stopwatch.",
     "check_health": "I finished the health check.",
-    "create_pull_request": "I opened a pull request.",
     "list_files": "I listed files.",
     "list_internal_notes": "I reviewed internal notes.",
     "list_timers": "I checked timers.",
@@ -201,11 +168,6 @@ _TOOL_ACTIVITY_COMPLETED_TITLES: dict[str, str] = {
 }
 
 
-_TOOL_ACTIVITY_FAILED_TITLES: dict[str, str] = {
-    "create_pull_request": PR_WORKFLOW_FAILED_TITLE,
-}
-
-
 def running_tool_title(tool_name: str) -> str:
     return _TOOL_ACTIVITY_TITLES.get(tool_name, "I'm working on something.")
 
@@ -215,7 +177,8 @@ def ran_tool_title(tool_name: str) -> str:
 
 
 def failed_tool_title(tool_name: str) -> str:
-    return _TOOL_ACTIVITY_FAILED_TITLES.get(tool_name, COULD_NOT_FINISH_TITLE)
+    del tool_name
+    return COULD_NOT_FINISH_TITLE
 
 
 def could_not_call_tool_title(tool_name: str) -> str:
@@ -264,94 +227,6 @@ def route_acknowledgment(
         }
         return interaction_titles.get(interaction or "", (RECEIVED_TITLE, RECEIVED_DETAIL))
     return RECEIVED_TITLE, RECEIVED_DETAIL
-
-
-def _check_failure_file_hint(error: str) -> str | None:
-    match = re.search(r"([\w./\\]+\.py):\d+", error)
-    if not match:
-        return None
-    path = match.group(1).replace("\\", "/")
-    return path.rsplit("/", 1)[-1]
-
-
-def lint_failure_detail(error: str, output: str | None = None) -> str:
-    """
-    Build a Brains-friendly lint/type failure detail with full checker output.
-
-    Args:
-        error: Short failure summary from the checker.
-        output: Optional captured stdout/stderr from the checker.
-
-    Returns:
-        Combined detail text for activity logging.
-    """
-    parts = [part.strip() for part in (error, output or "") if part and part.strip()]
-    return "\n\n".join(parts)
-
-
-def lint_failure_user_message(error: str) -> str:
-    """
-    Build a user-facing lint/type failure message for the answer area.
-
-    Args:
-        error: Checker failure summary.
-
-    Returns:
-        Readable failure message without URLs.
-    """
-    cleaned = error.strip()
-    if not cleaned:
-        return "Lint checks failed, so I declined to commit anything or open a pull request."
-
-    file_hint = _check_failure_file_hint(cleaned)
-    if file_hint:
-        return (
-            f"I couldn't open a pull request because type checks failed in {file_hint}. {cleaned}"
-        )
-    return f"I couldn't open a pull request because checks failed. {cleaned}"
-
-
-def lint_failure_voice_message(error: str) -> str:
-    """
-    Build a short spoken lint/type failure summary.
-
-    Args:
-        error: Checker failure summary.
-
-    Returns:
-        Voice-friendly failure line.
-    """
-    file_hint = _check_failure_file_hint(error)
-    if file_hint:
-        return (
-            f"Lint checks failed. There's a type error in {file_hint}. "
-            "Open Brains for the full message."
-        )
-    if error.strip():
-        return f"Lint checks failed. {error.strip()}"
-    return "Lint checks failed, so I didn't open a pull request."
-
-
-def pr_failure_voice_message(error: str, step: str | None = None) -> str:
-    """
-    Build a spoken pull-request failure summary.
-
-    Args:
-        error: Workflow error text.
-        step: Optional workflow step name.
-
-    Returns:
-        Voice-friendly failure line.
-    """
-    step_name = (step or "").strip().lower()
-    if step_name == "lint":
-        return lint_failure_voice_message(error)
-    if step_name == "verify":
-        return "Your tests failed, so I didn't open a pull request."
-    cleaned = error.strip()
-    if cleaned:
-        return cleaned.rstrip(".")
-    return PR_WORKFLOW_FAILED_TITLE.rstrip(".")
 
 
 def client_copy_payload() -> dict[str, str]:

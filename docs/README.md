@@ -107,8 +107,7 @@ flowchart TD
 
 ## LLM routing
 
-Two `ModelRole` clients (`app/llm/roles.py`), created by `get_llm_client()` and
-`get_code_llm_client()` in `app/llm/factory.py`. Both implement `LLMClient.complete()`.
+`get_llm_client()` in `app/llm/factory.py` implements `LLMClient.complete()`.
 Local models are loaded lazily via `load_local_model` in `app/llm/context_sizing.py`
 (RAM-aware ladder: 32k → 512). If configured context is too large, Nano probes free
 memory, tries smaller sizes, and prefixes the next reply with a downgrade notice.
@@ -118,9 +117,8 @@ estimated context limits.
 | Role | Config path | Context setting | Call sites |
 |------|-------------|-----------------|------------|
 | Chat | `llm_model_path` | `llm_context_size` (32k) | Orchestrator, service, planner, answer/response pipeline |
-| Code | `llm_code_model_path` or fallback to chat path | `llm_code_context_size` (32k) | `github_tools` / `pr_naming` |
 
-Remote providers (`ollama`, `llama_cpp_server`) use `llm_model` / `llm_code_model` for model names.
+Remote providers (`ollama`, `llama_cpp_server`) use `llm_model` for the model name.
 Defaults live in `app/config.py`.
 
 ## Project layout
@@ -132,7 +130,7 @@ Defaults live in `app/config.py`.
 | `app/integrations/` | Google Calendar OAuth and event fetching |
 | `app/workspace/` | Workspace file-walking utilities |
 | `app/assistant/` | Orchestrator, router, planner, flows (timer, wipe, reboot), response pipeline |
-| `app/tools/` | Registered tool handlers + PR services |
+| `app/tools/` | Registered tool handlers |
 | `app/memory/` | SQLModel tables and repositories |
 | `app/proactive/` | Proactive offer state for the web UI |
 | `app/llm/` | Client, factory, protocol |
@@ -260,5 +258,4 @@ flowchart TB
 ```
 
 Data stays on disk (SQLite, workspace files). LLM inference is local unless
-`llm_provider` targets Ollama or an external llama.cpp server. GitHub PR flow
-shells out to `git` and `gh` on the host.
+`llm_provider` targets Ollama or an external llama.cpp server.

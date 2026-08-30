@@ -82,16 +82,6 @@ SYSTEM_ANALYSIS_PATTERNS: tuple[str, ...] = (
     r"\bhow\s+much\s+memory\b",
 )
 
-PULL_REQUEST_PATTERNS: tuple[str, ...] = (
-    r"\b(?:create|open|make|start|begin|publish|submit|send|file|raise)\b.*\b(?:pull request|pool request|pr)\b",
-    r"\b(?:pull request|pool request|pr)\b.*\b(?:create|open|make|start|begin|publish|submit|send|file|raise)\b",
-    r"\b(?:need|want)\s+(?:a\s+|to\s+open\s+(?:a\s+)?)?(?:pull request|pool request|pr)\b",
-    r"\b(?:can|could|may|would|let)\s+(?:you|me|us|i)\s+(?:open|create|make|start|submit|publish)\b.*\b(?:pull request|pool request|pr)\b",
-    r"\b(?:i|we)\s+(?:need|want)\s+(?:a\s+|to\s+open\s+(?:a\s+)?)?(?:pull request|pool request|pr)\b",
-    r"\bopen\s+up\s+(?:a\s+)?(?:pull request|pool request|pr)\b",
-    r"^\s*(?:pr|pull request|pool request)\s*$",
-)
-
 REBOOT_REQUEST_PATTERNS: tuple[str, ...] = (
     r"\breboot\b.*\b(?:pi|raspberry|raspberry pi|device|system)\b",
     r"\b(?:pi|raspberry|raspberry pi)\b.*\breboot\b",
@@ -114,30 +104,10 @@ _SERVICE_RESTART_EXCLUSIONS: tuple[str, ...] = (
 )
 
 
-def _normalize_pull_request_homophones(message: str) -> str:
-    """Treat speech-recognition homophones like pool/pull as equivalent for PR intent."""
-    normalized = re.sub(r"\bpool\s+request\b", "pull request", message)
-    return re.sub(r"\bpool\s+pr\b", "pull pr", normalized)
-
-
 def _contains_term(lowered_message: str, term: str) -> bool:
     if " " in term:
         return term in lowered_message
     return re.search(rf"\b{re.escape(term)}\b", lowered_message) is not None
-
-
-def is_pull_request_request(message: str) -> bool:
-    """
-    Return whether the message is a pull request creation request.
-
-    Args:
-        message: User message or prompt text.
-
-    Returns:
-        True when the message requests pull request creation.
-    """
-    lowered = _normalize_pull_request_homophones(" ".join(message.lower().split()))
-    return any(re.search(pattern, lowered) for pattern in PULL_REQUEST_PATTERNS)
 
 
 def needs_reboot_confirmation(message: str) -> bool:
@@ -313,8 +283,6 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_health_check_request(message)
     if tool_name == "analyze_system":
         return is_system_analysis_request(message)
-    if tool_name == "create_pull_request":
-        return is_pull_request_request(message)
     if tool_name == "list_internal_notes":
         return is_internal_note_list_request(message)
     return any(keyword in lowered for keyword in rule.keywords)

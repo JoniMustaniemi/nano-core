@@ -12,7 +12,6 @@ from app.assistant.rules import (
     is_health_check_request,
     is_identity_question,
     is_internal_note_list_request,
-    is_pull_request_request,
     is_stopwatch_start_request,
     is_stopwatch_stop_request,
     is_system_analysis_request,
@@ -70,12 +69,11 @@ class AgentRouter:
     8. Reboot confirmation
     9. Health check tool
     10. System analysis tool
-    11. Pull request tool
-    12. Internal note list tool
-    13. Direct answer without tools
-    14. Capabilities answer from tool catalog
-    15. Identity answer with dynamic context
-    16. Planner fallback
+    11. Internal note list tool
+    12. Direct answer without tools
+    13. Capabilities answer from tool catalog
+    14. Identity answer with dynamic context
+    15. Planner fallback
     """
 
     def decide(
@@ -191,9 +189,6 @@ class AgentRouter:
 
         if is_system_analysis_request(message):
             return RouteDecision(mode="tool", tool_name="analyze_system", tool_args={})
-
-        if is_pull_request_request(message):
-            return RouteDecision(mode="tool", tool_name="create_pull_request", tool_args={})
 
         if is_internal_note_list_request(message):
             return RouteDecision(mode="tool", tool_name="list_internal_notes", tool_args={})

@@ -146,10 +146,6 @@ def _llm_health_check() -> HealthCheckResult:
             detail="LLM base URL is not configured.",
         )
     detail = f"LLM provider {settings.llm_provider} is configured."
-    code_model_path = getattr(settings, "llm_code_model_path", "")
-    code_model = getattr(settings, "llm_code_model", "")
-    if code_model_path or code_model:
-        detail = f"{detail} Chat and code models configured."
     return HealthCheckResult(
         name="llm",
         ok=True,
