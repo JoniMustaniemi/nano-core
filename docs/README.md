@@ -1,9 +1,9 @@
-# Nano — Setup & Technical Reference
+# Nano — Technical Reference
 
 Product overview and capabilities: [README.md](../README.md).
 
-This document covers the full HTTP
-API, architecture, and project layout.
+This document covers the stack, HTTP API, request pipeline, project layout,
+background jobs, and architecture.
 
 ## Stack
 

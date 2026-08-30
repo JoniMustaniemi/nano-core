@@ -89,5 +89,5 @@ flowchart LR
 
 [**nano-ui**](../nano-ui) is a browser interface you can connect to Nano.
 
-For setup and API reference, see
+For the full HTTP API, architecture, and project layout, see
 [docs/README.md](docs/README.md).
