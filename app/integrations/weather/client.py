@@ -55,7 +55,7 @@ def _normalize_current_weather(
 def fetch_current_weather(latitude: float, longitude: float) -> dict[str, Any]:
     """Fetch current weather for the given coordinates from Open-Meteo."""
     settings = get_settings()
-    params = {
+    params: dict[str, str | float] = {
         "latitude": latitude,
         "longitude": longitude,
         "current": "temperature_2m,weather_code,wind_speed_10m",

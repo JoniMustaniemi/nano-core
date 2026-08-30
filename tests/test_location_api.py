@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from app.runtime.location import location_store
-
 
 def test_post_location_updates_store(api_client) -> None:
     response = api_client.post(
