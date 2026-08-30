@@ -13,6 +13,7 @@ from app.runtime.activity import activity
 from app.runtime.status_copy import BOOT_DETAIL, BOOT_SOURCE, BOOT_TITLE, choose_standby_greeting
 from app.scheduler.jobs import register_jobs, scheduler
 from app.voice.listener import start_voice_listener, stop_voice_listener
+from app.voice.mode import get_voice_mode_enabled, init_voice_mode_from_settings
 
 
 @asynccontextmanager
@@ -20,7 +21,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     create_db_and_tables()
     register_jobs()
     scheduler.start()
-    start_voice_listener()
+    init_voice_mode_from_settings()
+    if get_voice_mode_enabled():
+        start_voice_listener()
     activity.log(
         title=BOOT_TITLE,
         detail=BOOT_DETAIL,

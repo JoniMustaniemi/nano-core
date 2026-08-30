@@ -9,6 +9,7 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.voice.command_service import VoiceCommandService
+from app.voice.mode import get_voice_mode_enabled
 from app.voice.stt import SpeechToTextError, transcribe_audio
 
 _listener_thread: threading.Thread | None = None
@@ -24,8 +25,7 @@ def is_local_listener_running() -> bool:
 def start_voice_listener() -> None:
     global _listener_thread
 
-    settings = get_settings()
-    if not settings.voice_input_enabled:
+    if not get_voice_mode_enabled():
         return
     if _listener_thread is not None and _listener_thread.is_alive():
         return
@@ -38,6 +38,7 @@ def start_voice_listener() -> None:
 
 
 def stop_voice_listener() -> None:
+    # Stop is checked between 3s recording cycles; disabling may take up to one clip.
     _stop_event.set()
     if _listener_thread is not None and _listener_thread.is_alive():
         _listener_thread.join(timeout=2.0)

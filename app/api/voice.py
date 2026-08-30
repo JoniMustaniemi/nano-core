@@ -5,7 +5,12 @@ from pydantic import BaseModel, Field
 from app.api.deps import get_assistant_service, get_voice_service
 from app.assistant.service import AssistantService
 from app.voice.audio_convert import normalize_audio_to_wav
-from app.voice.listener import is_local_listener_running
+from app.voice.listener import (
+    is_local_listener_running,
+    start_voice_listener,
+    stop_voice_listener,
+)
+from app.voice.mode import get_voice_mode_enabled, set_voice_mode_enabled
 from app.voice.protocol import VoiceOutput
 from app.voice.service import VoiceUnavailableError
 from app.voice.stt import SpeechToTextError, transcribe_audio
@@ -22,6 +27,10 @@ class VoiceVolumeRequest(BaseModel):
     volume: float = Field(ge=0.0, le=1.0)
 
 
+class VoiceModeRequest(BaseModel):
+    enabled: bool
+
+
 class TranscriptResponse(BaseModel):
     transcript: str
 
@@ -33,13 +42,30 @@ def voice_status(voice: VoiceOutput = Depends(get_voice_service)) -> dict[str, s
     from app.config import get_settings
 
     settings = get_settings()
-    status["input_enabled"] = settings.voice_input_enabled
+    status["input_enabled"] = get_voice_mode_enabled()
     status["input_device"] = settings.voice_input_device
     status["output_device"] = settings.voice_output_device
     status["stt_backend"] = settings.stt_backend
     status["listening"] = is_local_listener_running()
     status["playback_mode"] = settings.voice_playback_mode
     return status
+
+
+@router.get("/mode")
+def voice_mode() -> dict[str, bool]:
+    """Return the current Pi-side wake-word listening mode."""
+    return {"enabled": get_voice_mode_enabled()}
+
+
+@router.put("/mode")
+def update_voice_mode(request: VoiceModeRequest) -> dict[str, bool]:
+    """Enable or disable Pi-side wake-word listening."""
+    enabled = set_voice_mode_enabled(request.enabled)
+    if enabled:
+        start_voice_listener()
+    else:
+        stop_voice_listener()
+    return {"enabled": enabled}
 
 
 @router.get("/volume")

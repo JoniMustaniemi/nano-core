@@ -88,6 +88,104 @@ def test_voice_volume_endpoint_updates_server_volume(api_client) -> None:
     set_voice_volume(0.8)
 
 
+def test_voice_mode_put_enables_listener(api_client, monkeypatch) -> None:
+    """
+    Verify that PUT /api/voice/mode enables Pi-side wake-word listening.
+
+    Returns:
+        None.
+    """
+    from app.voice.mode import set_voice_mode_enabled
+
+    set_voice_mode_enabled(False)
+    started: list[bool] = []
+    monkeypatch.setattr(
+        "app.api.voice.start_voice_listener",
+        lambda: started.append(True),
+    )
+
+    response = api_client.put("/api/voice/mode", json={"enabled": True})
+
+    assert response.status_code == 200
+    assert response.json() == {"enabled": True}
+    assert started == [True]
+
+    set_voice_mode_enabled(False)
+
+
+def test_voice_mode_put_disables_listener(api_client, monkeypatch) -> None:
+    """
+    Verify that PUT /api/voice/mode disables Pi-side wake-word listening.
+
+    Returns:
+        None.
+    """
+    from app.voice.mode import set_voice_mode_enabled
+
+    set_voice_mode_enabled(True)
+    stopped: list[bool] = []
+    monkeypatch.setattr(
+        "app.api.voice.stop_voice_listener",
+        lambda: stopped.append(True),
+    )
+
+    response = api_client.put("/api/voice/mode", json={"enabled": False})
+
+    assert response.status_code == 200
+    assert response.json() == {"enabled": False}
+    assert stopped == [True]
+
+    set_voice_mode_enabled(False)
+
+
+def test_voice_mode_get_reflects_state(api_client) -> None:
+    """
+    Verify that GET /api/voice/mode returns the current enabled state.
+
+    Returns:
+        None.
+    """
+    from app.voice.mode import set_voice_mode_enabled
+
+    set_voice_mode_enabled(True)
+    response = api_client.get("/api/voice/mode")
+
+    assert response.status_code == 200
+    assert response.json() == {"enabled": True}
+
+    set_voice_mode_enabled(False)
+
+
+def test_voice_status_input_enabled_matches_mode(api_client, monkeypatch) -> None:
+    """
+    Verify that voice status reflects runtime mode and listener state.
+
+    Returns:
+        None.
+    """
+    from app.voice.mode import set_voice_mode_enabled
+
+    set_voice_mode_enabled(True)
+    _patch_voice_service(
+        monkeypatch,
+        status=lambda: {
+            "available": True,
+            "backend": "glados",
+            "detail": "GLaDOS voice is ready.",
+        },
+    )
+    monkeypatch.setattr("app.api.voice.is_local_listener_running", lambda: True)
+
+    response = api_client.get("/api/voice/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["input_enabled"] is True
+    assert payload["listening"] is True
+
+    set_voice_mode_enabled(False)
+
+
 def test_audio_to_wav_bytes_applies_volume() -> None:
     """
     Verify that wav synthesis scales samples by volume.

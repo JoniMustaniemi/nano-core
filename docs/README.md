@@ -174,6 +174,8 @@ SQLite file from `database_url` (default `./data/nano_core.sqlite3`). Tables in 
 | `GET /api/calendar/default` | Default configured calendar ID |
 | `GET /api/calendar/events` | Events in a date range for one calendar |
 | `POST /api/voice` | TTS request |
+| `GET /api/voice/mode` | Current Pi wake-word listening mode |
+| `PUT /api/voice/mode` | Enable/disable Pi wake-word listening |
 | `POST /api/voice/transcribe` | STT for uploaded audio |
 | `POST /api/voice/command` | STT + agent command in one call |
 
@@ -216,7 +218,8 @@ sudo visudo -c
 
 Without sudoers, `sudo` prompts for a password and reboot/restart fails from the systemd service.
 
-Voice: `VOICE_INPUT_ENABLED`, `VOICE_INPUT_DEVICE`, `VOICE_OUTPUT_DEVICE`, `STT_MODEL_PATH`,
+Voice: `VOICE_INPUT_ENABLED` (boot default for Pi wake-word listening; runtime toggle via `PUT /api/voice/mode`),
+`VOICE_INPUT_DEVICE`, `VOICE_OUTPUT_DEVICE`, `STT_MODEL_PATH`,
 `VOICE_WAKE_PHRASE`, `VOICE_PLAYBACK_MODE` (`local`, `browser`, or `both`).
 
 Google Calendar settings: `GOOGLE_CREDENTIALS_PATH`, `GOOGLE_TOKEN_PATH`,
