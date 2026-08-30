@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.runtime.location import location_store
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/location", tags=["location"])
 
@@ -34,10 +38,18 @@ def get_location() -> LocationResponse:
 @router.post("")
 def update_location(body: LocationUpdateRequest) -> LocationResponse:
     """Store location reported by the web UI (browser geolocation)."""
-    snapshot = location_store.update(
-        body.latitude,
-        body.longitude,
-        accuracy_m=body.accuracy_m,
-        source="browser",
-    )
+    try:
+        snapshot = location_store.update(
+            body.latitude,
+            body.longitude,
+            accuracy_m=body.accuracy_m,
+            source="browser",
+        )
+    except Exception as exc:
+        logger.exception(
+            "POST /api/location failed lat=%s lon=%s",
+            body.latitude,
+            body.longitude,
+        )
+        raise HTTPException(status_code=500, detail="Location update failed.") from exc
     return LocationResponse(**snapshot)

@@ -58,3 +58,20 @@ def test_current_weather_returns_502_on_provider_error(
 
     response = api_client.get("/api/weather/current")
     assert response.status_code == 502
+
+
+def test_current_weather_returns_502_on_malformed_provider_json(
+    api_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    location_store.update(60.17, 24.94)
+    response = MagicMock()
+    response.raise_for_status = MagicMock()
+    response.json.side_effect = ValueError("invalid json")
+    monkeypatch.setattr(
+        "app.integrations.weather.client.httpx.get",
+        lambda *args, **kwargs: response,
+    )
+
+    api_response = api_client.get("/api/weather/current")
+    assert api_response.status_code == 502

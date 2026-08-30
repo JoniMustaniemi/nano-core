@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -10,6 +11,8 @@ from app.integrations.weather import (
     WeatherLocationRequiredError,
     get_current_weather_for_store,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/weather", tags=["weather"])
 
@@ -33,6 +36,9 @@ def current_weather() -> CurrentWeatherResponse:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except WeatherApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("GET /api/weather/current failed")
+        raise HTTPException(status_code=500, detail="Weather request failed.") from exc
 
     return CurrentWeatherResponse(**_response_payload(weather))
 

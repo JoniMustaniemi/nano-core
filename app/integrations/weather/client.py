@@ -35,6 +35,8 @@ def _normalize_current_weather(
 
     if not isinstance(temperature, (int, float)):
         raise WeatherApiError("Weather provider did not return a temperature.")
+    if isinstance(weather_code, float) and weather_code.is_integer():
+        weather_code = int(weather_code)
     if not isinstance(weather_code, int):
         raise WeatherApiError("Weather provider did not return a weather code.")
 
@@ -69,7 +71,10 @@ def fetch_current_weather(latitude: float, longitude: float) -> dict[str, Any]:
             timeout=settings.weather_timeout_seconds,
         )
         response.raise_for_status()
-        payload = response.json()
+        try:
+            payload = response.json()
+        except (ValueError, TypeError) as exc:
+            raise WeatherApiError("Weather provider returned an unexpected response.") from exc
     except httpx.HTTPError as exc:
         raise WeatherApiError("Could not reach the weather service.") from exc
 

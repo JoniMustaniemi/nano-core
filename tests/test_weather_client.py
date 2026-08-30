@@ -83,6 +83,40 @@ def test_fetch_current_weather_raises_on_http_error(monkeypatch: pytest.MonkeyPa
         fetch_current_weather(52.52, 13.41)
 
 
+def test_fetch_current_weather_raises_on_invalid_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = MagicMock()
+    response.raise_for_status = MagicMock()
+    response.json.side_effect = ValueError("invalid json")
+    monkeypatch.setattr(
+        "app.integrations.weather.client.httpx.get",
+        lambda *args, **kwargs: response,
+    )
+
+    with pytest.raises(WeatherApiError, match="unexpected response"):
+        fetch_current_weather(52.52, 13.41)
+
+
+def test_fetch_current_weather_accepts_float_weather_code(monkeypatch: pytest.MonkeyPatch) -> None:
+    response = MagicMock()
+    response.raise_for_status = MagicMock()
+    response.json.return_value = {
+        "current": {
+            "temperature_2m": 18.0,
+            "weather_code": 2.0,
+            "wind_speed_10m": 8.0,
+        },
+    }
+    monkeypatch.setattr(
+        "app.integrations.weather.client.httpx.get",
+        lambda *args, **kwargs: response,
+    )
+
+    weather = fetch_current_weather(52.52, 13.41)
+
+    assert weather["weather_code"] == 2
+    assert weather["condition"] == "Partly cloudy"
+
+
 def test_get_current_weather_for_store_requires_location() -> None:
     with pytest.raises(WeatherLocationRequiredError):
         get_current_weather_for_store()
