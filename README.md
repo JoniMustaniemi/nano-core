@@ -1,60 +1,93 @@
-# Nano Core
+# Nano
 
-Nano is a local-first personal assistant built in Python. It runs on your own machine,
-keeps data local, and uses a self-hosted AI model for reasoning. The project is
-aimed at everyday use today and installable assistant hardware like Raspberry Pi longer
-term.
+**Nano** is a local-first personal assistant that runs on your Raspberry Pi. Your
+conversations, timers, and files stay on the device. A self-hosted AI model handles
+reasoning — no cloud dependency required.
+
+## How it works
+
+You talk to Nano by chat or voice. Nano orchestrates tools, memory, and scheduling on
+the Pi. A local GGUF model powers conversation and planning. SQLite and a workspace
+folder keep your data on disk. Voice hardware lets Nano listen and speak. A background
+scheduler runs timers and health checks.
+
+```mermaid
+flowchart TB
+    You[You] -->|chat and voice| Nano[Nano on Raspberry Pi]
+    Nano --> Model[Local GGUF model]
+    Nano --> Data[(SQLite and workspace)]
+    Nano --> Voice[Voice I/O]
+    Nano --> Scheduler[Scheduler]
+    Scheduler --> Nano
+```
 
 ## What Nano can do
 
-- **Conversation** — answer questions and chat when no tool is needed
-- **Memory** — review internal follow-up notes; wipe stored data after confirmation
-- **Timers** — start, check, and cancel countdown timers
-- **Files and workspace** — read, write, and list files; run small Python scripts locally
-- **Health checks** — diagnose database, voice, and model issues in plain language
-- **System control** — reboot the Raspberry Pi or restart the nano-core service from the UI after confirmation (when enabled)
-- **Google Calendar** — connect a Google account, browse calendars in the UI and switch between calendars.
-- **Weather** — report current conditions via chat when the UI has reported browser location (`POST /api/location`); data from Open-Meteo (no API key)
-- **Voice** — spoken replies on the Pi speaker, push-to-talk from the remote UI, and wake-phrase listening with `"hey nano"` on Pi hardware
+### Chat and voice
 
-## Web UI
+Nano answers questions in plain conversation or coordinates tools when a task needs
+action. On Pi hardware, Nano listens for the wake phrase `"hey nano"` and speaks
+replies through the speaker. Push-to-talk and remote voice input are supported when
+a client is connected. Due timers can be announced out loud.
 
-The web UI lives in the sibling [**nano-ui**](../nano-ui) repository. Nano Core is API-only: run `nano-core serve` on your Pi and connect the hosted UI with your API URL and key.
+### Timers
 
-## Local model
+Nano runs countdown timers and stopwatches. Ask to start one, check what is running,
+rename an active timer, cancel it, or clear them all.
 
-Nano uses a single GGUF chat model for conversation, agent coordination, and response polish.
-The model loads on first use.
+### Calendar and weather
 
-| Role | Default file | Used for |
-|------|--------------|----------|
-| Chat | `qwen2.5-1.5b-instruct-q5_k_m.gguf` | Conversation, agent planning, response polish |
+Nano reads your Google Calendar — list calendars and events for a date range. When
+Nano knows your location, it reports current weather conditions from Open-Meteo.
 
-## Documentation
+### Memory and files
 
-For a technical overview — architecture and capabilities in more
-detail — see [docs/README.md](docs/README.md).
+Nano remembers your chat history and keeps private internal notes for follow-up topics
+you asked to discuss later. In the workspace, Nano can read, write, and list files and
+run small local Python scripts.
 
-## Local development
+### Stay informed
 
-```bash
-python -m pip install -e ".[dev]"
-pre-commit install
-nano-core dev
+Nano follows up on deferred topics from internal notes and surfaces proactive offers
+when something needs your attention. Boot and idle status keep you oriented. When a
+newer version is available, Nano can prompt you to update.
+
+### Startup
+
+Nano boots ready on the Pi and greets you when idle. Optional auto-update pulls the
+latest code on service start. Background health checks watch the database, model, and
+voice stack.
+
+### System actions
+
+Nano runs health diagnostics in plain language. After confirmation, Nano can wipe
+stored conversation and note data. When enabled, Nano can reboot the Raspberry Pi or
+restart its own service.
+
+## Technical
+
+**Stack:** FastAPI, SQLite, local GGUF (`llama-cpp-python`), voice (GLaDOS-TTS + Vosk),
+APScheduler.
+
+**HTTP API:**
+
+- **Chat** — `POST /api/chat`, `GET /api/chat/wake`
+- **Status & stream** — `GET /api/status`, `GET /api/greeting`, `GET /api/events` (SSE)
+- **Timers** — `PATCH`/`DELETE` on `/api/timers/{id}` and `/api/stopwatches/{id}`
+- **Voice** — `/api/voice/*` (TTS, STT, mode, command)
+- **Calendar** — `/api/calendar/*`
+- **Weather** — `GET /api/weather/current` (uses last reported location)
+- **Proactive** — `GET /api/proactive`, `POST /api/proactive/dismiss`
+- **Health** — `GET /api/health` (public)
+
+**Auth:** `Authorization: Bearer <API_KEY>`; SSE also accepts `?api_key=`.
+
+```mermaid
+flowchart LR
+    Client[Client] -->|REST and SSE| NanoAPI[Nano API on Pi]
 ```
 
-Run the full validation suite manually:
+[**nano-ui**](../nano-ui) is a browser interface you can connect to Nano.
 
-```bash
-python scripts/validate.py
-```
-
-Or run individual checks:
-
-```bash
-pytest
-ruff check app tests
-mypy app
-```
-
-`pre-commit install` sets up a git hook that runs `python scripts/validate.py` before every commit.
+For setup and API reference, see
+[docs/README.md](docs/README.md).

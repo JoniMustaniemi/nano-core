@@ -1,6 +1,9 @@
-# Nano — Technical Overview
+# Nano — Setup & Technical Reference
 
-User-facing capabilities and model overview: [README.md](../README.md).
+Product overview and capabilities: [README.md](../README.md).
+
+This document covers the full HTTP
+API, architecture, and project layout.
 
 ## Stack
 
@@ -17,6 +20,17 @@ User-facing capabilities and model overview: [README.md](../README.md).
 
 Entry points: `app.main` (API server), `app.cli` (`dev`, `serve`, `start-nano`).
 
+## Local model
+
+Nano uses a single GGUF chat model for conversation, agent coordination, and response polish.
+The model loads on first use.
+
+| Role | Default file | Used for |
+|------|--------------|----------|
+| Chat | `qwen2.5-1.5b-instruct-q5_k_m.gguf` | Conversation, agent planning, response polish |
+
+For config paths, context sizing, and remote providers, see [LLM routing](#llm-routing) below.
+
 ## Remote deployment
 
 1. Set `API_KEY` and `CORS_ALLOWED_ORIGINS` on the Pi.
@@ -24,61 +38,6 @@ Entry points: `app.main` (API server), `app.cli` (`dev`, `serve`, `start-nano`).
 3. Deploy **nano-ui** and enter the Pi URL + API key in connection settings.
 
 All processing happens on the Pi. The UI displays state from `GET /api/events` (SSE) and sends commands via REST.
-
-## Pi deployment
-
-One-time setup on the Raspberry Pi:
-
-1. Clone the repo via SSH: `git clone git@github.com:ORG/nano-core.git`
-2. Generate a deploy key on the Pi and add the read-only public key to the GitHub repo.
-3. Create a venv, install extras, copy models, and configure `.env`:
-
-```env
-API_KEY=...
-CORS_ALLOWED_ORIGINS=["http://localhost:3000"]
-AUTO_UPDATE_ON_START=true
-AUTO_UPDATE_BRANCH=main
-```
-
-4. Install passwordless sudo rules for reboot and service restart (required before enabling system control in `.env`):
-
-```bash
-sudo cp deploy/sudoers/nano-reboot /etc/sudoers.d/nano-reboot
-sudo cp deploy/sudoers/nano-service /etc/sudoers.d/nano-service
-sudo chmod 440 /etc/sudoers.d/nano-reboot /etc/sudoers.d/nano-service
-sudo visudo -c
-```
-
-Test as the `nano` user (should not ask for a password):
-
-```bash
-sudo -n /bin/systemctl status nano-core
-# sudo -n /usr/sbin/reboot   # only when you intend to reboot
-```
-
-5. Install and enable the systemd unit:
-
-```bash
-sudo cp deploy/nano-core.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now nano-core
-```
-
-With `AUTO_UPDATE_ON_START=true`, every boot or service restart runs `git fetch` + `git merge --ff-only origin/main` before `nano-core serve`. Pull failures (no network, dirty tree, merge conflict) are logged and startup continues with the local checkout.
-
-Optional: set `AUTO_UPDATE_INSTALL=true` to run `pip install -e ".[local-llm,voice]"` after a successful pull (slow on Pi; only needed when dependencies change).
-
-After the initial setup, push to `main` and restart the service (or reboot) to deploy code changes — no manual `scp` required.
-
-To let Nano reboot or restart itself from chat, enable the flags in `.env` **only after** sudoers is configured:
-
-```env
-REBOOT_ENABLED=true
-SERVICE_RESTART_ENABLED=true
-```
-
-Never grant `NOPASSWD: ALL` — use only the narrow command lists in `deploy/sudoers/`.
-Keep both flags `false` on dev machines and non-Pi hosts.
 
 ## Request pipeline
 
@@ -189,50 +148,6 @@ Registered in `app/scheduler/jobs.py`:
 |-----|------------------|--------|
 | `check_due_timers` | `timer_poll_interval_seconds` | Fire due timers, announce via voice |
 | `check_system_health` | `health_check_interval_seconds` | DB, LLM, voice checks; log/announce failures |
-
-## Configuration
-
-Settings live in `app/config.py`. Override any value in `.env` if needed — most
-defaults work out of the box, including model paths under `models/`.
-
-Remote API: `API_KEY`, `CORS_ALLOWED_ORIGINS`, `API_BIND_HOST`, `API_BIND_PORT`.
-
-Pi auto-update: `AUTO_UPDATE_ON_START`, `AUTO_UPDATE_BRANCH`, `AUTO_UPDATE_INSTALL`.
-
-Pi reboot: `REBOOT_ENABLED` (requires passwordless reboot commands for the service user).
-
-Pi service restart: `SERVICE_RESTART_ENABLED`, `SERVICE_UNIT_NAME` (default `nano-core`).
-
-On the Pi, install narrow sudoers rules from the repo (do this before enabling the flags above):
-
-```bash
-sudo cp deploy/sudoers/nano-reboot /etc/sudoers.d/nano-reboot
-sudo cp deploy/sudoers/nano-service /etc/sudoers.d/nano-service
-sudo chmod 440 /etc/sudoers.d/nano-reboot /etc/sudoers.d/nano-service
-sudo visudo -c
-```
-
-`nano-reboot` allows only: `/usr/sbin/reboot`, `/usr/sbin/shutdown`, `/bin/systemctl reboot`, `/bin/systemctl poweroff`.
-
-`nano-service` allows only: `/bin/systemctl restart nano-core`, `/bin/systemctl status nano-core`.
-
-Without sudoers, `sudo` prompts for a password and reboot/restart fails from the systemd service.
-
-Voice: `VOICE_INPUT_ENABLED` (boot default for Pi wake-word listening; runtime toggle via `PUT /api/voice/mode`),
-`VOICE_INPUT_DEVICE`, `VOICE_OUTPUT_DEVICE`, `STT_MODEL_PATH`,
-`VOICE_WAKE_PHRASE`, `VOICE_PLAYBACK_MODE` (`local`, `browser`, or `both`).
-
-Google Calendar settings: `GOOGLE_CREDENTIALS_PATH`, `GOOGLE_TOKEN_PATH`,
-`GOOGLE_CALENDAR_TIMEZONE`, `GOOGLE_CALENDAR_IDS`. CLI: `auth-google-calendar`,
-`google-calendars`.
-
-Weather: `WEATHER_TIMEOUT_SECONDS` (default 10). No API key — forecasts come from
-Open-Meteo. Location is not configured in `.env`; the web UI reports coordinates via
-`POST /api/location` (browser geolocation). Weather endpoints and the
-`get_current_weather` tool use that in-memory location until the next UI report.
-
-Install extras from `pyproject.toml` as needed: `local-llm` for GGUF models,
-`voice` for Vosk STT, `dev` for tests and linting.
 
 ## Architecture
 
