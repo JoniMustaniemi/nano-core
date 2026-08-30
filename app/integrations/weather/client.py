@@ -93,4 +93,8 @@ def get_current_weather_for_store() -> dict[str, Any]:
             "Location has not been reported yet. Open the Nano UI and allow location access."
         )
     latitude, longitude = coordinates
-    return fetch_current_weather(latitude, longitude)
+    weather = fetch_current_weather(latitude, longitude)
+    location_name = location_store.get_place_name()
+    if location_name:
+        weather["location_name"] = location_name
+    return weather

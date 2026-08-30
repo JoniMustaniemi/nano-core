@@ -18,6 +18,7 @@ def test_current_weather_returns_normalized_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     location_store.update(60.17, 24.94)
+    location_store._state.place_name = "Helsinki"
     response = MagicMock()
     response.raise_for_status = MagicMock()
     response.json.return_value = {
@@ -37,10 +38,12 @@ def test_current_weather_returns_normalized_payload(
     payload = api_response.json()
     assert payload["temperature_c"] == 18.0
     assert payload["weather_code"] == 2
-    assert payload["condition"] == "Partly cloudy"
+    assert payload["condition"] == "Puolipilvistä"
     assert payload["wind_speed_kmh"] == 8.0
     assert payload["latitude"] == 60.17
     assert payload["longitude"] == 24.94
+    assert payload["location_name"] == "Helsinki"
+    assert payload["display"] == "Helsinki · 18°C · Puolipilvistä"
     assert payload["fetched_at"]
 
 

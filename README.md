@@ -39,18 +39,22 @@ detail — see [docs/README.md](docs/README.md).
 
 ```bash
 python -m pip install -e ".[dev]"
+pre-commit install
 nano-core dev
 ```
 
-Run the test suite:
+Run the full validation suite manually:
+
+```bash
+python scripts/validate.py
+```
+
+Or run individual checks:
 
 ```bash
 pytest
-```
-
-Lint and type-check:
-
-```bash
 ruff check app tests
 mypy app
 ```
+
+`pre-commit install` sets up a git hook that runs `python scripts/validate.py` before every commit.

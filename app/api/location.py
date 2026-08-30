@@ -24,6 +24,7 @@ class LocationResponse(BaseModel):
     accuracy_m: float | None = None
     updated_at: str | None = None
     source: str | None = None
+    place_name: str | None = None
 
 
 @router.get("")

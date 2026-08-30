@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from app.integrations.weather import (
     WeatherApiError,
     WeatherLocationRequiredError,
+    format_weather_display,
     get_current_weather_for_store,
 )
 
@@ -25,6 +26,8 @@ class CurrentWeatherResponse(BaseModel):
     latitude: float
     longitude: float
     fetched_at: str
+    location_name: str | None = None
+    display: str
 
 
 @router.get("/current")
@@ -44,6 +47,8 @@ def current_weather() -> CurrentWeatherResponse:
 
 
 def _response_payload(weather: dict[str, Any]) -> dict[str, Any]:
+    location_name = weather.get("location_name")
+    place_name = location_name if isinstance(location_name, str) else None
     return {
         "temperature_c": weather["temperature_c"],
         "weather_code": weather["weather_code"],
@@ -52,4 +57,6 @@ def _response_payload(weather: dict[str, Any]) -> dict[str, Any]:
         "latitude": weather["latitude"],
         "longitude": weather["longitude"],
         "fetched_at": weather["fetched_at"],
+        "location_name": place_name,
+        "display": format_weather_display(weather, place_name=place_name),
     }

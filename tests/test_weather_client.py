@@ -10,39 +10,66 @@ from app.integrations.weather.client import (
     fetch_current_weather,
     get_current_weather_for_store,
 )
-from app.integrations.weather.formatting import format_current_weather, weather_code_to_condition
+from app.integrations.weather.formatting import (
+    format_current_weather,
+    format_weather_display,
+    weather_code_to_condition,
+)
 from app.runtime.location import location_store
 
 
 def test_weather_code_to_condition_known_codes() -> None:
-    assert weather_code_to_condition(0) == "Clear sky"
-    assert weather_code_to_condition(2) == "Partly cloudy"
-    assert weather_code_to_condition(95) == "Thunderstorm"
+    assert weather_code_to_condition(0) == "Selkeä taivas"
+    assert weather_code_to_condition(2) == "Puolipilvistä"
+    assert weather_code_to_condition(95) == "Ukkonen"
 
 
 def test_weather_code_to_condition_unknown_code() -> None:
-    assert weather_code_to_condition(123) == "Unknown conditions"
+    assert weather_code_to_condition(123) == "Tuntematon sää"
+
+
+def test_format_weather_display_with_location() -> None:
+    text = format_weather_display(
+        {
+            "temperature_c": 20.0,
+            "condition": "Pilvistä",
+        },
+        place_name="Helsinki",
+    )
+    assert text == "Helsinki · 20°C · Pilvistä"
+
+
+def test_format_weather_display_without_location() -> None:
+    text = format_weather_display(
+        {
+            "temperature_c": 20.0,
+            "condition": "Pilvistä",
+        },
+    )
+    assert text == "20°C · Pilvistä"
 
 
 def test_format_current_weather() -> None:
     text = format_current_weather(
         {
+            "location_name": "Helsinki",
             "temperature_c": 18.2,
-            "condition": "Partly cloudy",
+            "condition": "Puolipilvistä",
             "wind_speed_kmh": 12.4,
         }
     )
-    assert text == "18°C, Partly cloudy, wind 12 km/h"
+    assert text == "Helsinki, 18°C, Puolipilvistä, tuuli 12 km/h"
 
 
 def test_format_current_weather_without_wind() -> None:
     text = format_current_weather(
         {
+            "location_name": "Helsinki",
             "temperature_c": 5.0,
-            "condition": "Clear sky",
+            "condition": "Selkeä taivas",
         }
     )
-    assert text == "5°C, Clear sky"
+    assert text == "Helsinki, 5°C, Selkeä taivas"
 
 
 def test_fetch_current_weather_normalizes_response(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -64,7 +91,7 @@ def test_fetch_current_weather_normalizes_response(monkeypatch: pytest.MonkeyPat
 
     assert weather["temperature_c"] == 18.2
     assert weather["weather_code"] == 2
-    assert weather["condition"] == "Partly cloudy"
+    assert weather["condition"] == "Puolipilvistä"
     assert weather["wind_speed_kmh"] == 12.4
     assert weather["latitude"] == 52.52
     assert weather["longitude"] == 13.41
@@ -114,7 +141,7 @@ def test_fetch_current_weather_accepts_float_weather_code(monkeypatch: pytest.Mo
     weather = fetch_current_weather(52.52, 13.41)
 
     assert weather["weather_code"] == 2
-    assert weather["condition"] == "Partly cloudy"
+    assert weather["condition"] == "Puolipilvistä"
 
 
 def test_get_current_weather_for_store_requires_location() -> None:
@@ -124,12 +151,21 @@ def test_get_current_weather_for_store_requires_location() -> None:
 
 def test_get_current_weather_for_store_uses_location(monkeypatch: pytest.MonkeyPatch) -> None:
     location_store.update(60.17, 24.94)
+    location_store._state.place_name = "Helsinki"
     monkeypatch.setattr(
         "app.integrations.weather.client.fetch_current_weather",
-        lambda lat, lon: {"temperature_c": 10.0, "latitude": lat, "longitude": lon},
+        lambda lat, lon: {
+            "temperature_c": 10.0,
+            "weather_code": 0,
+            "condition": "Selkeä taivas",
+            "latitude": lat,
+            "longitude": lon,
+            "fetched_at": "2026-01-01T00:00:00+00:00",
+        },
     )
 
     weather = get_current_weather_for_store()
 
     assert weather["latitude"] == 60.17
     assert weather["longitude"] == 24.94
+    assert weather["location_name"] == "Helsinki"

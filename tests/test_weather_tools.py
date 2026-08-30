@@ -18,6 +18,10 @@ def test_get_current_weather_tool_without_location() -> None:
 def test_get_current_weather_tool_returns_formatted_weather(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(
+        "app.integrations.weather.geocoding.resolve_place_name",
+        lambda lat, lon: "Helsinki",
+    )
     location_store.update(60.17, 24.94)
     response = MagicMock()
     response.raise_for_status = MagicMock()
@@ -36,5 +40,7 @@ def test_get_current_weather_tool_returns_formatted_weather(
     tool = get_tool("get_current_weather")
     assert tool is not None
     result = tool.handler({})
+    assert "Helsinki" in result
     assert "12°C" in result
-    assert "Clear sky" in result
+    assert "Selkeä taivas" in result
+    assert "tuuli 5 km/h" in result

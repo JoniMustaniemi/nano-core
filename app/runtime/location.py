@@ -12,6 +12,7 @@ class LocationState:
     accuracy_m: float | None = None
     updated_at: datetime | None = None
     source: str | None = None
+    place_name: str | None = None
 
 
 class LocationStore:
@@ -29,12 +30,19 @@ class LocationStore:
         accuracy_m: float | None = None,
         source: str = "browser",
     ) -> dict[str, object]:
+        from app.integrations.weather.geocoding import resolve_place_name
+
         with self._lock:
+            coordinates_changed = (
+                self._state.latitude != latitude or self._state.longitude != longitude
+            )
             self._state.latitude = latitude
             self._state.longitude = longitude
             self._state.accuracy_m = accuracy_m
             self._state.updated_at = datetime.now(UTC)
             self._state.source = source
+            if coordinates_changed or not self._state.place_name:
+                self._state.place_name = resolve_place_name(latitude, longitude)
             return self._snapshot_unlocked()
 
     def has_location(self) -> bool:
@@ -46,6 +54,10 @@ class LocationStore:
             if self._state.latitude is None or self._state.longitude is None:
                 return None
             return self._state.latitude, self._state.longitude
+
+    def get_place_name(self) -> str | None:
+        with self._lock:
+            return self._state.place_name
 
     def snapshot(self) -> dict[str, object] | None:
         with self._lock:
@@ -61,6 +73,7 @@ class LocationStore:
             "accuracy_m": self._state.accuracy_m,
             "updated_at": updated_at.isoformat() if updated_at is not None else None,
             "source": self._state.source,
+            "place_name": self._state.place_name,
         }
 
     def reset(self) -> None:
