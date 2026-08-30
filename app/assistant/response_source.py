@@ -26,6 +26,7 @@ class ResponseSource:
     conversation_id: str = "default"
     persist: bool = True
     speak: bool = True
+    skip_enrichment: bool = False
 
 
 def answer_source(
@@ -35,6 +36,7 @@ def answer_source(
     conversation_id: str = "default",
     persist: bool = True,
     speak: bool = True,
+    skip_enrichment: bool = False,
 ) -> ResponseSource:
     """
     Build an answer response source from a factual draft.
@@ -43,6 +45,9 @@ def answer_source(
         user_message: Original user message.
         facts: Tone-neutral factual draft.
         conversation_id: Conversation identifier.
+        persist: Whether to persist the assistant reply.
+        speak: Whether the reply should be spoken.
+        skip_enrichment: Skip guard and polish LLM passes.
 
     Returns:
         ResponseSource for composition.
@@ -54,6 +59,7 @@ def answer_source(
         conversation_id=conversation_id,
         persist=persist,
         speak=speak,
+        skip_enrichment=skip_enrichment,
     )
 
 

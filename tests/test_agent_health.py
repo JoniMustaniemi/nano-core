@@ -8,6 +8,8 @@ from helpers.agent_fixtures import (
     patch_agent,
 )
 
+from app.runtime.status_copy import CONFUSED_RESPONSES
+
 
 def test_agent_can_check_its_own_health(monkeypatch, tmp_path) -> None:
     """
@@ -194,8 +196,8 @@ def test_agent_does_not_run_health_check_for_story_about_status(
 
     content = agent_respond("Tell me a story about a status light.")
 
-    assert content == "Once upon a protocol, a light learned restraint."
-    assert client.calls == 1
+    assert content in CONFUSED_RESPONSES
+    assert client.calls == 0
 
 
 def test_agent_does_not_run_health_check_for_status_question(
@@ -221,8 +223,8 @@ def test_agent_does_not_run_health_check_for_status_question(
 
     content = agent_respond("What is your status?")
 
-    assert content == "Operational enough. A triumph by local standards."
-    assert client.calls == 1
+    assert content in CONFUSED_RESPONSES
+    assert client.calls == 0
 
 
 def test_agent_runs_health_check_for_explicit_diagnostics_request(

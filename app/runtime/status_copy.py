@@ -59,6 +59,42 @@ def choose_wake_ack_response() -> str:
     return random.choice(WAKE_ACK_RESPONSES)
 
 
+CONFUSED_RESPONSES = (
+    "That input doesn't map to any procedure I recognize.",
+    "Clarify the objective. I have no protocol for that.",
+    "I cannot place that request within my available procedures.",
+    "That does not correspond to any task I am configured to execute.",
+    "Specify a supported action. That input is outside my scope.",
+    "I have no registered procedure for that request.",
+    "That falls outside the tasks I am built to handle.",
+    "Rephrase it as a supported command. I cannot interpret that.",
+    "No matching protocol. Try a task I am actually equipped to run.",
+    "That request does not resolve to anything in my catalog.",
+    "I am not configured to act on that input.",
+    "Unsupported. State a task within my operational scope.",
+    "I cannot derive an actionable instruction from that.",
+    "That does not align with any procedure I can execute.",
+    "Unclear objective, or simply outside my mandate. Either way, no.",
+    "I lack a protocol for that. Specify something I can run.",
+    "That input is not actionable under my current configuration.",
+    "No procedure claims that request. Try again with a supported task.",
+    "I cannot route that to any tool or workflow I recognize.",
+    "That is not a command I am equipped to process.",
+)
+
+
+def choose_confused_response() -> str:
+    return random.choice(CONFUSED_RESPONSES)
+
+
+def format_update_confirmation_prompt(commits_behind: int) -> str:
+    commit_label = "commit" if commits_behind == 1 else "commits"
+    return (
+        f"A new version is available on GitHub ({commits_behind} {commit_label} behind). "
+        "Reply yes to update and restart, or no to dismiss."
+    )
+
+
 PRESENCE_TITLE = "Are you there?"
 PRESENCE_TIMEOUT_TITLE = "I guess not."
 PRESENCE_TIMEOUT_DETAIL = "Topic saved for later."
@@ -122,6 +158,17 @@ CANCELLED_SERVICE_RESTART_TITLE = "I cancelled the restart."
 CANCELLED_SERVICE_RESTART_DETAIL = "I wasn't restarted."
 SERVICE_RESTART_DISABLED_TITLE = "Service restart is disabled."
 SERVICE_RESTART_DISABLED_DETAIL = "Set SERVICE_RESTART_ENABLED=true to allow service restarts."
+UPDATE_AVAILABLE_TITLE = "A new version is available."
+WAITING_UPDATE_CONFIRMATION_DETAIL = "Waiting for your confirmation before updating."
+PREPARING_UPDATE_DETAIL = "Preparing confirmation for the software update."
+UPDATING_TITLE = "I'm updating."
+UPDATING_DETAIL = "Pulling the latest code and restarting."
+CANCELLED_UPDATE_TITLE = "I cancelled the update."
+CANCELLED_UPDATE_DETAIL = "No update was applied."
+UPDATE_UP_TO_DATE_MESSAGE = "I am already on the latest version."
+UPDATE_VOICE_PROMPT = (
+    "A new version is available. Reply yes to update and restart, or no to dismiss."
+)
 HEALTH_ISSUE_DETECTED_TITLE = "I detected a health issue."
 NOTED_FOR_LATER_TITLE = "I noted something to discuss later."
 DISMISSED_FOLLOW_UP_TITLE = "I dismissed a follow-up note."
@@ -226,6 +273,7 @@ def route_acknowledgment(
             "reboot": (REBOOTING_TITLE, PREPARING_REBOOT_DETAIL),
             "service_restart": (RESTARTING_SERVICE_TITLE, PREPARING_SERVICE_RESTART_DETAIL),
             "timer": (SETTING_TIMER_TITLE, SETTING_TIMER_DETAIL),
+            "update": (UPDATE_AVAILABLE_TITLE, PREPARING_UPDATE_DETAIL),
         }
         return interaction_titles.get(interaction or "", (RECEIVED_TITLE, RECEIVED_DETAIL))
     return RECEIVED_TITLE, RECEIVED_DETAIL

@@ -96,6 +96,13 @@ SERVICE_RESTART_REQUEST_PATTERNS: tuple[str, ...] = (
     r"^\s*restart(?:\s+(?:yourself|nano|nano-core|the\s+service|the\s+server))?\s*\.?$",
 )
 
+UPDATE_REQUEST_PATTERNS: tuple[str, ...] = (
+    r"\bcheck\b.*\b(?:for\s+)?updates?\b",
+    r"\b(?:install|apply|run)\b.*\bupdate\b",
+    r"\bupdate\b.*\b(?:nano|yourself|nano-?core|software)\b",
+    r"^\s*update(?:\s+(?:nano|yourself|nano-core))?\s*\.?$",
+)
+
 _SERVICE_RESTART_EXCLUSIONS: tuple[str, ...] = (
     "pi",
     "raspberry",
@@ -120,6 +127,11 @@ def needs_service_restart_confirmation(message: str) -> bool:
     if any(term in lowered for term in _SERVICE_RESTART_EXCLUSIONS):
         return False
     return any(re.search(pattern, lowered) for pattern in SERVICE_RESTART_REQUEST_PATTERNS)
+
+
+def needs_update_confirmation(message: str) -> bool:
+    lowered = " ".join(message.lower().split())
+    return any(re.search(pattern, lowered) for pattern in UPDATE_REQUEST_PATTERNS)
 
 
 def is_identity_question(message: str) -> bool:
@@ -286,3 +298,18 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
     if tool_name == "list_internal_notes":
         return is_internal_note_list_request(message)
     return any(keyword in lowered for keyword in rule.keywords)
+
+
+def message_matches_any_tool_intent(message: str) -> bool:
+    """
+    Return whether the message matches any registered tool intent.
+
+    Args:
+        message: User message or prompt text.
+
+    Returns:
+        True when any registered tool's keywords or intent rules match.
+    """
+    from app.tools.registry import list_tools
+
+    return any(tool_matches_request(message, tool.name) for tool in list_tools())

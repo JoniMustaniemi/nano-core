@@ -8,6 +8,7 @@ from app.api.auth import ApiKeyAuthMiddleware
 from app.api.errors import register_exception_handlers
 from app.api.router import api_router
 from app.config import get_settings
+from app.deploy.update import record_session_baseline
 from app.memory.db import create_db_and_tables
 from app.runtime.activity import activity
 from app.runtime.status_copy import BOOT_DETAIL, BOOT_SOURCE, BOOT_TITLE, choose_standby_greeting
@@ -19,6 +20,7 @@ from app.voice.mode import get_voice_mode_enabled, init_voice_mode_from_settings
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     create_db_and_tables()
+    record_session_baseline()
     register_jobs()
     scheduler.start()
     init_voice_mode_from_settings()

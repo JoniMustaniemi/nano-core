@@ -4,7 +4,10 @@ from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 
+from app.assistant.flows.update import update_interaction_handler
 from app.config import get_settings
+from app.deploy.update import check_for_updates
+from app.deploy.update_state import update_store
 from app.health import HealthCheckResult, run_health_checks
 from app.memory import repository
 from app.memory.repository import COUNTDOWN_KIND, delete_timer, get_timer, list_due_timers
@@ -176,6 +179,26 @@ def check_system_health() -> list[HealthCheckResult]:
     return results
 
 
+def check_for_available_updates() -> None:
+    """
+    Check whether origin has new commits and offer a mid-session update prompt.
+
+    Returns:
+        None.
+    """
+    settings = get_settings()
+    if not settings.update_check_enabled:
+        return
+
+    result = check_for_updates()
+    update_store.record_check(result)
+    if not result.behind:
+        return
+    if not update_store.should_prompt(result.remote_sha):
+        return
+    update_interaction_handler.offer_update(result=result)
+
+
 def register_jobs() -> None:
     """
     Register jobs.
@@ -200,6 +223,15 @@ def register_jobs() -> None:
         "interval",
         seconds=settings.health_check_interval_seconds,
         id="check_system_health",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    scheduler.add_job(
+        check_for_available_updates,
+        "interval",
+        seconds=settings.update_check_interval_seconds,
+        id="check_for_available_updates",
         replace_existing=True,
         max_instances=1,
     )

@@ -31,6 +31,8 @@ def should_polish(source: ResponseSource, content: str) -> bool:
     """
     if not content.strip():
         return False
+    if source.skip_enrichment:
+        return False
     if source.kind in {"follow_up", "confirmation"}:
         return False
     if source.tool_name in _POLISH_EXEMPT_TOOLS:

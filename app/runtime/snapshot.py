@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.assistant.pending import pending_interactions
 from app.config import get_settings
+from app.deploy.update_state import update_store
 from app.proactive.store import proactive_store
 from app.runtime.activity import activity
 from app.runtime.location import location_store
@@ -14,8 +15,11 @@ def build_runtime_snapshot() -> dict[str, object]:
     """Compose the full runtime snapshot exposed to clients and APIs."""
     hub = activity.snapshot()
     settings = get_settings()
-    pending = pending_interactions.get(settings.proactive_conversation_id)
+    pending = pending_interactions.get("default") or pending_interactions.get(
+        settings.proactive_conversation_id
+    )
     pending_kind = pending.kind if pending is not None else None
+    update_snapshot = update_store.snapshot()
     return {
         **hub,
         "copy": client_copy_payload(),
@@ -23,6 +27,11 @@ def build_runtime_snapshot() -> dict[str, object]:
         "active_stopwatches": serialize_active_stopwatches(),
         "proactive": proactive_store.snapshot(),
         "pending": {"kind": pending_kind},
+        "update": {
+            "available": update_snapshot.available,
+            "commits_behind": update_snapshot.commits_behind,
+            "remote_sha": (update_snapshot.remote_sha[:7] if update_snapshot.remote_sha else None),
+        },
         "system": serialize_system_metrics(),
         "location": location_store.snapshot(),
     }

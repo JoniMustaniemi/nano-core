@@ -10,6 +10,7 @@ from app.assistant.flows.planner import AgentPlanner
 from app.assistant.flows.reboot import RebootInteractionHandler
 from app.assistant.flows.service_restart import ServiceRestartInteractionHandler
 from app.assistant.flows.timer import TimerInteractionHandler
+from app.assistant.flows.update import UpdateInteractionHandler
 from app.assistant.flows.wipe import WipeInteractionHandler
 from app.assistant.pending import pending_interactions
 from app.assistant.response_composer import ResponseComposer
@@ -55,6 +56,7 @@ class AgentOrchestrator:
         wipe_handler: WipeInteractionHandler | None = None,
         reboot_handler: RebootInteractionHandler | None = None,
         service_restart_handler: ServiceRestartInteractionHandler | None = None,
+        update_handler: UpdateInteractionHandler | None = None,
         planner: AgentPlanner | None = None,
     ) -> None:
         self.tool_runner = tool_runner or ToolRunner()
@@ -70,6 +72,7 @@ class AgentOrchestrator:
         self.wipe_handler = wipe_handler or WipeInteractionHandler()
         self.reboot_handler = reboot_handler or RebootInteractionHandler()
         self.service_restart_handler = service_restart_handler or ServiceRestartInteractionHandler()
+        self.update_handler = update_handler or UpdateInteractionHandler()
         self.planner = planner or AgentPlanner(
             tool_runner=self.tool_runner,
             chat_flow=self.chat_flow,
@@ -80,6 +83,7 @@ class AgentOrchestrator:
             wipe_handler=self.wipe_handler,
             reboot_handler=self.reboot_handler,
             service_restart_handler=self.service_restart_handler,
+            update_handler=self.update_handler,
             answer_executor=self.answer_executor,
         )
         self.route_dispatcher = RouteDispatcher(

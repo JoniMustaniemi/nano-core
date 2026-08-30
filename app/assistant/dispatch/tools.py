@@ -8,6 +8,7 @@ from app.assistant.flows.planner import AgentPlanner
 from app.assistant.response_source import ResponseSource, answer_source
 from app.assistant.tool_executor import ToolExecutor
 from app.llm.protocol import LLMClient
+from app.runtime.status_copy import choose_confused_response
 
 
 class RouteDispatcher:
@@ -68,6 +69,14 @@ class RouteDispatcher:
                 message=message,
                 conversation_id=conversation_id,
                 history=history,
+            )
+
+        if decision.mode == "confused":
+            return answer_source(
+                user_message=message,
+                facts=choose_confused_response(),
+                conversation_id=conversation_id,
+                skip_enrichment=True,
             )
 
         return self.planner.run(

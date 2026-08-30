@@ -99,6 +99,13 @@ register_tool(
         },
         handler=_list_upcoming_calendar_events,
         announcement="Checking your calendar.",
+        keywords=(
+            "calendar",
+            "event",
+            "schedule",
+            "appointment",
+            "meeting",
+        ),
     )
 )
 
@@ -111,5 +118,9 @@ register_tool(
         args_schema={},
         handler=_list_google_calendars,
         announcement="Listing your Google calendars.",
+        keywords=(
+            "google calendar",
+            "calendars",
+        ),
     )
 )

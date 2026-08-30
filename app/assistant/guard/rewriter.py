@@ -92,7 +92,7 @@ def enforce_user_facing_answer(
     source: ResponseSource,
     content: str,
 ) -> str:
-    if not content.strip():
+    if not content.strip() or source.skip_enrichment:
         return content
 
     for _ in range(MAX_GUARD_PASSES):

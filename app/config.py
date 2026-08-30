@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     auto_update_on_start: bool = False
     auto_update_branch: str = "main"
     auto_update_install: bool = False
+    update_check_enabled: bool = False
+    update_check_interval_seconds: int = Field(default=21600, ge=60)
     reboot_enabled: bool = False
     service_restart_enabled: bool = False
     service_unit_name: str = "nano-core"

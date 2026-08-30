@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.config import get_settings
-from app.deploy.update import PullResult, install_dependencies, pull_latest
+from app.deploy.update import PullResult, check_for_updates, install_dependencies, pull_latest
 
 
 def test_pull_latest_skipped_when_fetch_fails(
@@ -99,3 +99,74 @@ def test_install_dependencies_runs_pip(monkeypatch: pytest.MonkeyPatch, tmp_path
 
     assert install_dependencies(repo_root=tmp_path) is True
     assert calls == [["/venv/bin/python", "-m", "pip", "install", "-e", ".[local-llm,voice]"]]
+
+
+def test_check_for_updates_reports_behind(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("AUTO_UPDATE_BRANCH", "main")
+    get_settings.cache_clear()
+
+    def fake_run(args: list[str], **kwargs: object) -> MagicMock:
+        if args[:3] == ["git", "fetch", "origin"]:
+            return MagicMock(returncode=0, stdout="", stderr="")
+        if args == ["git", "rev-parse", "HEAD"]:
+            return MagicMock(returncode=0, stdout="abc123\n", stderr="")
+        if args == ["git", "rev-parse", "origin/main"]:
+            return MagicMock(returncode=0, stdout="def456\n", stderr="")
+        if args == ["git", "rev-list", "--count", "HEAD..origin/main"]:
+            return MagicMock(returncode=0, stdout="2\n", stderr="")
+        raise AssertionError(f"unexpected git args: {args}")
+
+    monkeypatch.setattr("app.deploy.update.subprocess.run", fake_run)
+
+    result = check_for_updates(repo_root=tmp_path)
+
+    assert result.behind is True
+    assert result.commits_behind == 2
+    assert result.local_sha == "abc123"
+    assert result.remote_sha == "def456"
+    get_settings.cache_clear()
+
+
+def test_check_for_updates_reports_up_to_date(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("AUTO_UPDATE_BRANCH", "main")
+    get_settings.cache_clear()
+
+    def fake_run(args: list[str], **kwargs: object) -> MagicMock:
+        if args[:3] == ["git", "fetch", "origin"]:
+            return MagicMock(returncode=0, stdout="", stderr="")
+        if args == ["git", "rev-parse", "HEAD"]:
+            return MagicMock(returncode=0, stdout="abc123\n", stderr="")
+        if args == ["git", "rev-parse", "origin/main"]:
+            return MagicMock(returncode=0, stdout="abc123\n", stderr="")
+        if args == ["git", "rev-list", "--count", "HEAD..origin/main"]:
+            return MagicMock(returncode=0, stdout="0\n", stderr="")
+        raise AssertionError(f"unexpected git args: {args}")
+
+    monkeypatch.setattr("app.deploy.update.subprocess.run", fake_run)
+
+    result = check_for_updates(repo_root=tmp_path)
+
+    assert result.behind is False
+    assert result.commits_behind == 0
+    assert result.message == "Already up to date."
+    get_settings.cache_clear()
+
+
+def test_check_for_updates_handles_fetch_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("AUTO_UPDATE_BRANCH", "main")
+    get_settings.cache_clear()
+
+    def fake_run(args: list[str], **kwargs: object) -> MagicMock:
+        return MagicMock(returncode=1, stdout="", stderr="offline")
+
+    monkeypatch.setattr("app.deploy.update.subprocess.run", fake_run)
+
+    result = check_for_updates(repo_root=tmp_path)
+
+    assert result.behind is False
+    assert "offline" in result.message
+    get_settings.cache_clear()

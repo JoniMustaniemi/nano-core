@@ -7,6 +7,7 @@ from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.reboot import RebootInteractionHandler
 from app.assistant.flows.service_restart import ServiceRestartInteractionHandler
 from app.assistant.flows.timer import TimerInteractionHandler
+from app.assistant.flows.update import UpdateInteractionHandler
 from app.assistant.flows.wipe import WipeInteractionHandler
 from app.assistant.pending import PendingInteraction, pending_interactions
 from app.assistant.response_source import ResponseSource
@@ -25,6 +26,7 @@ class InteractionDispatcher:
         wipe_handler: WipeInteractionHandler,
         reboot_handler: RebootInteractionHandler,
         service_restart_handler: ServiceRestartInteractionHandler,
+        update_handler: UpdateInteractionHandler,
         answer_executor: AnswerExecutor,
     ) -> None:
         self.timer_handler = timer_handler
@@ -33,12 +35,14 @@ class InteractionDispatcher:
             "wipe": wipe_handler.start,
             "reboot": reboot_handler.start,
             "service_restart": service_restart_handler.start,
+            "update": update_handler.start,
         }
         self._pending_handlers = (
             timer_handler,
             wipe_handler,
             service_restart_handler,
             reboot_handler,
+            update_handler,
         )
 
     def dispatch(

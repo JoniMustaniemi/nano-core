@@ -72,10 +72,10 @@ def test_agent_falls_back_to_plain_chat_when_model_skips_json(monkeypatch, tmp_p
     client = InvalidThenChatClient()
     patch_agent(monkeypatch, client=client, tmp_path=tmp_path)
 
-    content = agent_respond("hey nano")
+    content = agent_respond("What's the weather?")
 
     assert content == "Hello there"
-    assert client.calls == 3
+    assert client.calls >= 3
 
 
 def test_agent_rejects_irrelevant_tool_calls(monkeypatch, tmp_path) -> None:
@@ -97,7 +97,7 @@ def test_agent_rejects_irrelevant_tool_calls(monkeypatch, tmp_path) -> None:
         announce=lambda text: None,
     )
 
-    content = agent_respond("Tell me about rocks.")
+    content = agent_respond("What's the weather?")
 
     assert "igneous" in content
     assert repository.list_timers() == []

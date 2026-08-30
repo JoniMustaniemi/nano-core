@@ -18,9 +18,11 @@ from app.assistant.rules import (
     is_timer_cancel_request,
     is_timer_start_request,
     is_timer_status_request,
+    message_matches_any_tool_intent,
     needs_reboot_confirmation,
     needs_service_restart_confirmation,
     needs_timer_duration,
+    needs_update_confirmation,
     needs_wipe_confirmation,
     parse_stopwatch_rename_args,
     parse_stopwatch_stop_args,
@@ -42,6 +44,7 @@ class RouteDecision:
         "interaction",
         "planner",
         "pending",
+        "confused",
     ]
 
     tool_name: str | None = None
@@ -73,7 +76,8 @@ class AgentRouter:
     12. Direct answer without tools
     13. Capabilities answer from tool catalog
     14. Identity answer with dynamic context
-    15. Planner fallback
+    15. Planner fallback when tool keywords match
+    16. Confused fast path when no tool keywords match
     """
 
     def decide(
@@ -181,6 +185,9 @@ class AgentRouter:
         if needs_service_restart_confirmation(message):
             return RouteDecision(mode="interaction", interaction="service_restart")
 
+        if needs_update_confirmation(message):
+            return RouteDecision(mode="interaction", interaction="update")
+
         if needs_reboot_confirmation(message):
             return RouteDecision(mode="interaction", interaction="reboot")
 
@@ -202,4 +209,7 @@ class AgentRouter:
         if should_answer_without_tools(message):
             return RouteDecision(mode="answer")
 
-        return RouteDecision(mode="planner")
+        if message_matches_any_tool_intent(message):
+            return RouteDecision(mode="planner")
+
+        return RouteDecision(mode="confused")
