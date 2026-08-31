@@ -10,6 +10,7 @@ from helpers.agent_fixtures import (
 )
 
 from app.memory import repository
+from app.runtime.status_copy import CONFUSED_RESPONSES
 
 
 def test_agent_runs_a_legitimate_tool_call(monkeypatch, tmp_path) -> None:
@@ -58,9 +59,9 @@ def test_agent_announces_tool_calls(monkeypatch, tmp_path) -> None:
     assert announcements == ["Running a local procedure"]
 
 
-def test_agent_falls_back_to_plain_chat_when_model_skips_json(monkeypatch, tmp_path) -> None:
+def test_agent_falls_back_to_confused_when_model_skips_json(monkeypatch, tmp_path) -> None:
     """
-    Verify that agent falls back to plain chat when model skips json.
+    Verify that agent returns a confused response when the model never returns valid JSON.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture.
@@ -74,8 +75,8 @@ def test_agent_falls_back_to_plain_chat_when_model_skips_json(monkeypatch, tmp_p
 
     content = agent_respond("What's the weather?")
 
-    assert content == "Hello there"
-    assert client.calls >= 3
+    assert content in CONFUSED_RESPONSES
+    assert client.calls >= 2
 
 
 def test_agent_rejects_irrelevant_tool_calls(monkeypatch, tmp_path) -> None:
@@ -99,7 +100,7 @@ def test_agent_rejects_irrelevant_tool_calls(monkeypatch, tmp_path) -> None:
 
     content = agent_respond("What's the weather?")
 
-    assert "igneous" in content
+    assert content in CONFUSED_RESPONSES
     assert repository.list_timers() == []
 
 
@@ -159,3 +160,21 @@ def test_agent_announces_step_limit_errors(monkeypatch, tmp_path) -> None:
 
     assert content == "I tried to complete the task, but I hit the step limit."
     assert announcements[-1] == "I could not finish the task."
+
+
+class AnswerIntentNoToolClient:
+    def complete(self, messages) -> str:
+        return '{"type":"final","content":"Some prose answer without running a tool."}'
+
+
+def test_agent_returns_confused_when_planner_finishes_without_tools(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    client = AnswerIntentNoToolClient()
+    patch_agent(monkeypatch, client=client, tmp_path=tmp_path)
+
+    content = agent_respond("What's the weather?")
+
+    assert content in CONFUSED_RESPONSES
+    assert "prose answer" not in content.lower()

@@ -5,7 +5,12 @@ from typing import Any, TypeGuard
 from app.assistant.agent_types import AnswerIntentDecision, Decision, FinalDecision, ToolResult
 from app.assistant.answer_executor import AnswerExecutor
 from app.assistant.flows.chat import AgentChatFlow
-from app.assistant.response_source import ResponseSource, answer_source, tool_result_source
+from app.assistant.response_source import (
+    ResponseSource,
+    answer_source,
+    confused_answer_source,
+    tool_result_source,
+)
 from app.assistant.rules import parse_decision, tool_matches_request, tool_signature
 from app.assistant.tool_runner import ToolRunner
 from app.llm.protocol import LLMClient
@@ -98,11 +103,9 @@ class AgentPlanner:
             if decision["type"] != "tool_call":
                 invalid_json_attempts += 1
                 if invalid_json_attempts >= 2:
-                    return self.answer_executor.draft(
-                        client=client,
-                        message=message,
+                    return confused_answer_source(
+                        user_message=message,
                         conversation_id=conversation_id,
-                        history=history,
                     )
                 self._append_model_correction(
                     messages=messages,
@@ -154,6 +157,12 @@ class AgentPlanner:
                 )
             self._append_model_result(messages=messages, raw=raw, result=result)
 
+        if not executed_tools:
+            return confused_answer_source(
+                user_message=message,
+                conversation_id=conversation_id,
+            )
+
         fallback = "I tried to complete the task, but I hit the step limit."
         self.tool_runner.report_error(
             title=COULD_NOT_FINISH_TITLE,
@@ -192,6 +201,12 @@ class AgentPlanner:
         """
         _ = client
         _ = history
+        if not executed_tools:
+            return confused_answer_source(
+                user_message=message,
+                conversation_id=conversation_id,
+            )
+
         content = decision.get("content")
         if isinstance(content, str) and content.strip():
             return answer_source(
@@ -200,20 +215,12 @@ class AgentPlanner:
                 conversation_id=conversation_id,
             )
 
-        if executed_tools:
-            latest = next(reversed(executed_tools.values()))
-            return tool_result_source(
-                user_message=message,
-                facts=latest.content,
-                tool_name=latest.tool,
-                conversation_id=conversation_id,
-            )
-
-        return self.answer_executor.draft(
-            client=client,
-            message=message,
+        latest = next(reversed(executed_tools.values()))
+        return tool_result_source(
+            user_message=message,
+            facts=latest.content,
+            tool_name=latest.tool,
             conversation_id=conversation_id,
-            history=history,
         )
 
     def _append_model_correction(

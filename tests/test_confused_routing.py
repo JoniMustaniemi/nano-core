@@ -64,3 +64,21 @@ def test_agent_returns_confused_response_for_joke_request(monkeypatch, tmp_path)
     content = agent_respond("Tell me a joke")
 
     assert content in CONFUSED_RESPONSES
+
+
+def test_agent_returns_confused_response_for_help_without_llm(monkeypatch, tmp_path) -> None:
+    client = NoCallClient()
+    patch_agent(monkeypatch, client=client, tmp_path=tmp_path)
+
+    content = agent_respond("help")
+
+    assert content in CONFUSED_RESPONSES
+
+
+def test_agent_router_returns_answer_for_help() -> None:
+    decision = AgentRouter().decide(
+        "help",
+        conversation_id="default",
+        history=[],
+    )
+    assert decision.mode == "answer"

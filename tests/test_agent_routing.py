@@ -28,9 +28,9 @@ def test_agent_rewrites_third_person_final_answer(monkeypatch, tmp_path) -> None
     content = agent_respond("What's the weather?")
 
     assert content == "I am operating normally."
-    assert client.calls == 2
-    assert "third person" in client.messages[1][0]["content"].lower()
-    assert "problems to fix" in client.messages[1][1]["content"].lower()
+    assert client.calls == 3
+    assert "third person" in client.messages[2][0]["content"].lower()
+    assert "problems to fix" in client.messages[2][1]["content"].lower()
 
 
 def test_agent_rewrites_self_description_for_unknown_fact_question(
@@ -53,9 +53,9 @@ def test_agent_rewrites_self_description_for_unknown_fact_question(
     content = agent_respond("What's the weather?")
 
     assert content == "No usable record surfaced for that name. A tragic shortage of evidence."
-    assert client.calls == 2
-    assert "personality-driven" in client.messages[1][0]["content"]
-    assert "I am Nano" in client.messages[1][1]["content"]
+    assert client.calls == 3
+    assert "personality-driven" in client.messages[2][0]["content"]
+    assert "I am Nano" in client.messages[2][1]["content"]
 
 
 def test_agent_rewrites_apology_disclaimer_for_missing_information(
@@ -81,9 +81,9 @@ def test_agent_rewrites_apology_disclaimer_for_missing_information(
         content
         == "No verified record presents itself. Evidently the archive declined to cooperate."
     )
-    assert client.calls == 2
-    assert "Do not apologize" in client.messages[1][0]["content"]
-    assert "I apologize" in client.messages[1][1]["content"]
+    assert client.calls == 3
+    assert "Do not apologize" in client.messages[2][0]["content"]
+    assert "I apologize" in client.messages[2][1]["content"]
 
 
 def test_agent_rewrites_unsupported_continuation_promise(monkeypatch, tmp_path) -> None:
@@ -103,8 +103,8 @@ def test_agent_rewrites_unsupported_continuation_promise(monkeypatch, tmp_path) 
     content = agent_respond("What's the weather?")
 
     assert content == "Current result only: no ongoing work is running."
-    assert client.calls == 2
-    assert "unsupported continued work" in client.messages[1][1]["content"].lower()
+    assert client.calls == 3
+    assert "unsupported continued work" in client.messages[2][1]["content"].lower()
 
 
 def test_agent_answers_capability_questions_without_tool_use(monkeypatch, tmp_path) -> None:

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from app.runtime.status_copy import choose_confused_response
+
 ResponseKind = Literal["answer", "tool_result", "tool_error", "follow_up", "confirmation"]
 ConfirmationAction = Literal["wipe", "reboot", "service_restart"]
 
@@ -62,6 +64,29 @@ def answer_source(
         persist=persist,
         speak=speak,
         skip_enrichment=skip_enrichment,
+    )
+
+
+def confused_answer_source(
+    *,
+    user_message: str,
+    conversation_id: str = "default",
+) -> ResponseSource:
+    """
+    Build a fast confused response without guard or polish LLM passes.
+
+    Args:
+        user_message: Original user message.
+        conversation_id: Conversation identifier.
+
+    Returns:
+        ResponseSource with a deterministic confused reply.
+    """
+    return answer_source(
+        user_message=user_message,
+        facts=choose_confused_response(),
+        conversation_id=conversation_id,
+        skip_enrichment=True,
     )
 
 

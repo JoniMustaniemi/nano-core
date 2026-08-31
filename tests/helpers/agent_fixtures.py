@@ -186,6 +186,8 @@ class ThirdPersonFinalClient:
         self.calls += 1
         self.messages.append(messages)
         if self.calls == 1:
+            return '{"type":"tool_call","tool":"get_current_weather","args":{}}'
+        if self.calls == 2:
             return '{"type":"final","content":"Nano is operating normally."}'
         return "I am operating normally."
 
@@ -217,6 +219,8 @@ class UnknownPersonSelfDescriptionClient:
         self.calls += 1
         self.messages.append(messages)
         if self.calls == 1:
+            return '{"type":"tool_call","tool":"get_current_weather","args":{}}'
+        if self.calls == 2:
             return '{"type":"final","content":"I am Nano, a local-first personal assistant."}'
         return "No usable record surfaced for that name. A tragic shortage of evidence."
 
@@ -230,6 +234,8 @@ class ApologyDisclaimerClient:
         self.calls += 1
         self.messages.append(messages)
         if self.calls == 1:
+            return '{"type":"tool_call","tool":"get_current_weather","args":{}}'
+        if self.calls == 2:
             return (
                 '{"type":"final","content":"I apologize, but I do not have the ability '
                 "to verify or correct factual information about fictional characters. "
@@ -249,6 +255,8 @@ class ContinuationFinalClient:
         self.calls += 1
         self.messages.append(messages)
         if self.calls == 1:
+            return '{"type":"tool_call","tool":"get_current_weather","args":{}}'
+        if self.calls == 2:
             return (
                 '{"type":"final","content":"I will continue to monitor this and '
                 'provide the results as they are determined."}'
