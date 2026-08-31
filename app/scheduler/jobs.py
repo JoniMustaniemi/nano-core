@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.deploy.update import check_for_updates
 from app.deploy.update_state import update_store
 from app.health import HealthCheckResult, run_health_checks
+from app.memory import meeting_reminders as reminder_repo
 from app.memory import repository
 from app.memory.repository import COUNTDOWN_KIND, delete_timer, get_timer, list_due_timers
 from app.runtime.activity import activity
@@ -19,6 +20,7 @@ scheduler = BackgroundScheduler(daemon=True)
 
 _LAST_HEALTH_STATUS: dict[str, bool] = {}
 _TIMER_JOB_PREFIX = "timer:"
+_REMINDER_JOB_PREFIX = "meeting_reminder:"
 
 
 def _timer_job_id(timer_id: int) -> str:
@@ -131,6 +133,53 @@ def check_due_timers() -> None:
         complete_timer(timer.id)
 
 
+def _reminder_job_id(reminder_id: str) -> str:
+    return f"{_REMINDER_JOB_PREFIX}{reminder_id}"
+
+
+def complete_reminder(reminder_id: str) -> None:
+    from app.meeting_reminders.service import fire_reminder
+
+    fire_reminder(reminder_id)
+
+
+def schedule_reminder(reminder_id: str, remind_at: datetime | None) -> None:
+    if remind_at is None:
+        unschedule_reminder(reminder_id)
+        return
+    if remind_at.tzinfo is None:
+        remind_at = remind_at.replace(tzinfo=UTC)
+    run_at = max(remind_at, datetime.now(UTC))
+    scheduler.add_job(
+        complete_reminder,
+        trigger=DateTrigger(run_date=run_at),
+        args=[reminder_id],
+        id=_reminder_job_id(reminder_id),
+        replace_existing=True,
+        max_instances=1,
+        misfire_grace_time=60,
+    )
+
+
+def unschedule_reminder(reminder_id: str) -> None:
+    try:
+        scheduler.remove_job(_reminder_job_id(reminder_id))
+    except JobLookupError:
+        return
+
+
+def sync_reminder_schedules() -> None:
+    now = datetime.now(UTC)
+    for reminder in reminder_repo.list_schedulable_reminders(now):
+        schedule_reminder(reminder.id, reminder.remind_at)
+
+
+def check_due_reminders() -> None:
+    now = datetime.now(UTC)
+    for reminder in reminder_repo.list_due_reminders(now):
+        complete_reminder(reminder.id)
+
+
 def check_system_health() -> list[HealthCheckResult]:
     """
     Check system health.
@@ -219,6 +268,15 @@ def register_jobs() -> None:
     )
 
     scheduler.add_job(
+        check_due_reminders,
+        "interval",
+        seconds=settings.timer_poll_interval_seconds,
+        id="check_due_reminders",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    scheduler.add_job(
         check_system_health,
         "interval",
         seconds=settings.health_check_interval_seconds,
@@ -237,3 +295,4 @@ def register_jobs() -> None:
     )
 
     sync_timer_schedules()
+    sync_reminder_schedules()

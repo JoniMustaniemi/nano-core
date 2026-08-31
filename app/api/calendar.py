@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from googleapiclient.errors import HttpError
 from pydantic import BaseModel
 
+from app.api.meeting_reminders import router as meeting_reminders_router
 from app.integrations.google_calendar import (
     GoogleCalendarAuthenticationError,
     GoogleCalendarNotFoundError,
@@ -15,6 +16,7 @@ from app.integrations.google_calendar import (
 )
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
+router.include_router(meeting_reminders_router)
 
 
 class CalendarSummary(BaseModel):
