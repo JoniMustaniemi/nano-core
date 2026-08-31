@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nano-core"
-version = "0.1.16"
+version = "0.1.17"
 description = ""
 readme = "README.md"
 requires-python = ">=3.12"
@@ -76,6 +76,7 @@ module = ["vosk"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-q --basetemp=.pytest-tmp --cov=app --cov-report=term-missing:skip-covered --cov-fail-under=75"
 tmp_path_retention_policy = "failed"

@@ -29,6 +29,7 @@ def build_runtime_snapshot() -> dict[str, object]:
             "id": boot_snapshot.id,
             "booted_at": boot_snapshot.booted_at,
             "reboot_pending": boot_snapshot.reboot_pending,
+            "restart_pending": boot_snapshot.restart_pending,
         },
         "active_timers": serialize_active_timers(),
         "active_stopwatches": serialize_active_stopwatches(),

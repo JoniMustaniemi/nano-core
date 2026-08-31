@@ -92,7 +92,7 @@ def schedule_service_restart(*, delay_seconds: float = 1.0) -> bool:
     settings = get_settings()
     unit = settings.service_unit_name.strip() or "nano-core"
     commands = (["sudo", "/bin/systemctl", "restart", unit],)
-    return _schedule_when_enabled(
+    scheduled = _schedule_when_enabled(
         enabled=settings.service_restart_enabled,
         disabled_message="Service restart skipped: SERVICE_RESTART_ENABLED is false.",
         commands=lambda: commands,
@@ -100,3 +100,6 @@ def schedule_service_restart(*, delay_seconds: float = 1.0) -> bool:
         action="Service restart",
         delay_seconds=delay_seconds,
     )
+    if scheduled:
+        boot_store.mark_restart_pending()
+    return scheduled

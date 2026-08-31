@@ -5,7 +5,7 @@ import pytest
 from app.config import get_settings
 from app.runtime.boot_state import boot_store
 from app.runtime.snapshot import build_runtime_snapshot
-from app.system.reboot import schedule_reboot
+from app.system.reboot import schedule_reboot, schedule_service_restart
 
 
 def test_boot_store_record_boot_is_stable_within_session() -> None:
@@ -19,6 +19,7 @@ def test_boot_store_record_boot_is_stable_within_session() -> None:
     assert first.id.startswith("boot_")
     assert first.booted_at == second.booted_at
     assert first.reboot_pending is False
+    assert first.restart_pending is False
 
 
 def test_build_runtime_snapshot_includes_boot() -> None:
@@ -32,6 +33,7 @@ def test_build_runtime_snapshot_includes_boot() -> None:
     assert boot["id"].startswith("boot_")
     assert boot["booted_at"]
     assert boot["reboot_pending"] is False
+    assert boot["restart_pending"] is False
 
 
 def test_status_endpoint_includes_boot(api_client) -> None:
@@ -42,6 +44,7 @@ def test_status_endpoint_includes_boot(api_client) -> None:
     assert boot["id"].startswith("boot_")
     assert boot["booted_at"]
     assert boot["reboot_pending"] is False
+    assert boot["restart_pending"] is False
 
 
 def test_schedule_reboot_marks_reboot_pending(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -57,4 +60,20 @@ def test_schedule_reboot_marks_reboot_pending(monkeypatch: pytest.MonkeyPatch) -
 
     assert schedule_reboot(delay_seconds=0) is True
     assert boot_store.snapshot().reboot_pending is True
+    get_settings.cache_clear()
+
+
+def test_schedule_service_restart_marks_restart_pending(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SERVICE_RESTART_ENABLED", "true")
+    get_settings.cache_clear()
+    boot_store.reset()
+    boot_store.record_boot()
+    monkeypatch.setattr("app.system.reboot.time.sleep", lambda _seconds: None)
+    monkeypatch.setattr(
+        "app.system.reboot.subprocess.run",
+        lambda *args, **kwargs: type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})(),
+    )
+
+    assert schedule_service_restart(delay_seconds=0) is True
+    assert boot_store.snapshot().restart_pending is True
     get_settings.cache_clear()

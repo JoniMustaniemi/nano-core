@@ -1,0 +1,24 @@
+---
+description: Bump project version on code commits
+alwaysApply: true
+---
+
+# Versioning
+
+When committing or preparing to push code changes, bump the patch version in `pyproject.toml` (`[project].version`).
+
+A **pre-commit hook** (`scripts/bump_version.py`) auto-bumps the patch version when staged files include code changes. It updates `pyproject.toml` and stages it — no manual step needed.
+
+## When to bump
+- Bump on commits that include code changes (`.py`, config, tests, workflows, etc.)
+- Do NOT bump for docs-only commits (README, markdown, comments-only)
+
+## How to bump
+- Increment the patch segment only: `0.1.17` → `0.1.18`
+- Edit only `pyproject.toml` — no other version files exist
+- Include the version bump in the same commit as the code changes (not a separate "version update" commit)
+- If committing manually outside Cursor, run `pre-commit install` once so the hook runs automatically
+
+## Before push
+- If code changed since the last version bump, bump before pushing
+- Do not push code changes without a corresponding version bump
