@@ -12,6 +12,7 @@ def test_agent_requires_confirmation_before_reboot(monkeypatch, tmp_path) -> Non
 
     assert "yes" in content.lower()
     assert "no" in content.lower()
+    assert "create the branch" not in content.lower()
     get_settings.cache_clear()
 
 

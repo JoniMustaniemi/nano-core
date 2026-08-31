@@ -68,6 +68,7 @@ class RebootInteractionHandler:
             user_message=message,
             facts=f'User requested: "{message.strip()}"',
             conversation_id=conversation_id,
+            confirmation_action="reboot",
         )
 
     def handle_direct_request(self, **kwargs: Any) -> ResponseSource | None:

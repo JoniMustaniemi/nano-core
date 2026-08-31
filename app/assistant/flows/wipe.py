@@ -71,6 +71,7 @@ class WipeInteractionHandler:
             user_message=message,
             facts=f'User requested: "{normalize_wipe_request(message)}"',
             conversation_id=conversation_id,
+            confirmation_action="wipe",
         )
 
     def handle_direct_request(self, **kwargs: Any) -> ResponseSource | None:

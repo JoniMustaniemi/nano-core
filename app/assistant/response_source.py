@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 ResponseKind = Literal["answer", "tool_result", "tool_error", "follow_up", "confirmation"]
+ConfirmationAction = Literal["wipe", "reboot", "service_restart"]
 
 
 @dataclass(frozen=True)
@@ -14,7 +15,7 @@ class ResponseSource:
     Compose strategy by kind:
     - answer: pass-through (draft already uses SYSTEM_PROMPT)
     - follow_up: pass-through
-    - confirmation: LLM wording for wipe prompts; pass-through otherwise
+    - confirmation: deterministic system prompts when confirmation_action is set
     - tool_result: deterministic for health; hinted/LLM for JSON payloads
     - tool_error: LLM for JSON payloads; pass-through for plain text
     """
@@ -27,6 +28,7 @@ class ResponseSource:
     persist: bool = True
     speak: bool = True
     skip_enrichment: bool = False
+    confirmation_action: ConfirmationAction | None = None
 
 
 def answer_source(
@@ -93,6 +95,7 @@ def confirmation_source(
     user_message: str,
     facts: str,
     conversation_id: str = "default",
+    confirmation_action: ConfirmationAction | None = None,
 ) -> ResponseSource:
     """
     Build a confirmation response source.
@@ -101,6 +104,7 @@ def confirmation_source(
         user_message: Original user message.
         facts: Confirmation context or draft text.
         conversation_id: Conversation identifier.
+        confirmation_action: System action requiring yes/no confirmation.
 
     Returns:
         ResponseSource for composition.
@@ -110,6 +114,7 @@ def confirmation_source(
         user_message=user_message,
         facts=facts,
         conversation_id=conversation_id,
+        confirmation_action=confirmation_action,
     )
 
 

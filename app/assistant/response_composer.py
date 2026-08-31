@@ -2,14 +2,9 @@ from __future__ import annotations
 
 import json
 
-from app.assistant.guard import looks_like_refusal
-from app.assistant.prompts import (
-    COMPOSE_HINTS,
-    RESPONSE_COMPOSER_PROMPT,
-    WIPE_CONFIRMATION_SYSTEM_PROMPT,
-)
+from app.assistant.prompts import COMPOSE_HINTS, RESPONSE_COMPOSER_PROMPT
 from app.assistant.response_source import ResponseSource
-from app.assistant.rules import confirmation_followup, wipe_confirmation_prompt
+from app.assistant.rules import system_confirmation_prompt, wipe_confirmation_prompt
 from app.llm.protocol import LLMClient
 
 
@@ -31,7 +26,7 @@ class ResponseComposer:
         """
         if source.kind in {"follow_up", "confirmation", "answer"}:
             if source.kind == "confirmation":
-                return self._compose_confirmation(client, source)
+                return self._compose_confirmation(source)
             return source.facts
 
         if source.kind == "tool_result" and source.tool_name == "check_health":
@@ -45,28 +40,21 @@ class ResponseComposer:
 
         return self._compose_with_llm(client, source)
 
-    def _compose_confirmation(self, client: LLMClient, source: ResponseSource) -> str:
+    def _compose_confirmation(self, source: ResponseSource) -> str:
         """
         Compose a destructive-action confirmation prompt.
 
         Args:
-            client: LLM client used for confirmation wording.
             source: Confirmation response source.
 
         Returns:
             Confirmation prompt text.
         """
+        if source.confirmation_action is not None:
+            return system_confirmation_prompt(source.confirmation_action, source.user_message)
         if not source.facts.startswith("User requested:"):
             return source.facts
-        summary_messages = [
-            {"role": "system", "content": WIPE_CONFIRMATION_SYSTEM_PROMPT},
-            {"role": "user", "content": source.facts},
-        ]
-        draft = client.complete(messages=summary_messages).strip()
-        if not draft or looks_like_refusal(draft):
-            return wipe_confirmation_prompt(source.user_message)
-        cleaned = draft.replace("\n", " ").strip().rstrip(". ")
-        return f"{cleaned}. {confirmation_followup(source.user_message)}"
+        return wipe_confirmation_prompt(source.user_message)
 
     def _compose_with_hint(self, client: LLMClient, source: ResponseSource) -> str:
         """

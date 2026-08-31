@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 
 from app.config import get_settings
+from app.runtime.boot_state import boot_store
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ def _schedule_when_enabled(
 def schedule_reboot(*, delay_seconds: float = 1.0) -> bool:
     """Schedule a full Raspberry Pi reboot. Returns False when disabled or scheduling fails."""
     settings = get_settings()
-    return _schedule_when_enabled(
+    scheduled = _schedule_when_enabled(
         enabled=settings.reboot_enabled,
         disabled_message="Reboot skipped: REBOOT_ENABLED is false.",
         commands=lambda: _REBOOT_COMMANDS,
@@ -81,6 +82,9 @@ def schedule_reboot(*, delay_seconds: float = 1.0) -> bool:
         action="Reboot",
         delay_seconds=delay_seconds,
     )
+    if scheduled:
+        boot_store.mark_reboot_pending()
+    return scheduled
 
 
 def schedule_service_restart(*, delay_seconds: float = 1.0) -> bool:

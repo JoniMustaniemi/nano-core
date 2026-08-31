@@ -19,8 +19,9 @@ def test_agent_requires_confirmation_before_wiping_database(monkeypatch, tmp_pat
 
     content = agent_respond("Wipe your database.")
 
-    assert "erase what I remember" in content
-    assert "say yes" in content.lower()
+    assert "wipe your database" in content.lower()
+    assert "yes" in content.lower()
+    assert "no" in content.lower()
     assert list_recent_chat_messages()[0].content == "keep me for now"
 
 
@@ -30,7 +31,8 @@ def test_agent_wipe_confirmation_recovers_from_refusal_draft(monkeypatch, tmp_pa
 
     content = agent_respond("Wipe your database.")
 
-    assert "say yes" in content.lower()
+    assert "yes" in content.lower()
+    assert "no" in content.lower()
     assert "afraid" not in content.lower()
     assert "can't assist" not in content.lower()
     assert list_recent_chat_messages()[0].content == "keep me for now"
@@ -42,7 +44,8 @@ def test_agent_requires_confirmation_for_local_data_removal(monkeypatch, tmp_pat
 
     content = agent_respond("Remove local data.")
 
-    assert "say yes" in content.lower()
+    assert "yes" in content.lower()
+    assert "no" in content.lower()
     assert list_recent_chat_messages()[0].content == "keep me for now"
 
 

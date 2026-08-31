@@ -21,6 +21,9 @@ from app.assistant.rules.messages import (
     is_rejection_message,
     is_wipe_confirmation_prompt,
     normalize_wipe_request,
+    reboot_confirmation_prompt,
+    service_restart_confirmation_prompt,
+    system_confirmation_prompt,
     wipe_confirmation_prompt,
 )
 from app.assistant.rules.parsing import extract_json, parse_decision
@@ -94,6 +97,8 @@ __all__ = [
     "parse_stopwatch_stop_args",
     "parse_timer_cancel_args",
     "parse_timer_rename_args",
+    "reboot_confirmation_prompt",
+    "service_restart_confirmation_prompt",
     "is_silent_rename_command",
     "is_silent_stopwatch_stop_command",
     "is_silent_timer_cancel_command",
@@ -104,5 +109,6 @@ __all__ = [
     "tool_announcement",
     "tool_matches_request",
     "tool_signature",
+    "system_confirmation_prompt",
     "wipe_confirmation_prompt",
 ]

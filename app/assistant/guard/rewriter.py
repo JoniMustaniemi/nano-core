@@ -12,7 +12,7 @@ from app.assistant.guard.detectors import (
 )
 from app.assistant.prompts import ALIGNMENT_CHECK_SYSTEM_PROMPT, GUARD_REWRITE_SYSTEM_PROMPT
 from app.assistant.response_source import ResponseSource
-from app.assistant.rules import wipe_confirmation_prompt
+from app.assistant.rules import system_confirmation_prompt, wipe_confirmation_prompt
 from app.llm.protocol import LLMClient
 
 
@@ -102,5 +102,8 @@ def enforce_user_facing_answer(
         content = rewrite_with_context(client, source, content, problems)
 
     if source.kind == "confirmation" and looks_like_refusal(content):
-        content = wipe_confirmation_prompt(source.user_message)
+        if source.confirmation_action is not None:
+            content = system_confirmation_prompt(source.confirmation_action, source.user_message)
+        else:
+            content = wipe_confirmation_prompt(source.user_message)
     return content

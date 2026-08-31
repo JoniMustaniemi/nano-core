@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from typing import Literal
+
+ConfirmationAction = Literal["wipe", "reboot", "service_restart"]
+
 
 def is_presence_confirmation(message: str) -> bool:
     lowered = " ".join(message.strip().lower().strip(" .!?").split())
@@ -104,6 +108,26 @@ def wipe_confirmation_prompt(message: str) -> str:
     """
     subject = normalize_wipe_request(message)
     return f"{_confirmation_lead(subject)} {confirmation_followup(subject)}"
+
+
+def reboot_confirmation_prompt(message: str) -> str:
+    subject = message.strip() or "reboot the Raspberry Pi"
+    return f"{_confirmation_lead(subject)} {confirmation_followup(subject)}"
+
+
+def service_restart_confirmation_prompt(message: str) -> str:
+    subject = message.strip() or "restart my service"
+    return f"{_confirmation_lead(subject)} {confirmation_followup(subject)}"
+
+
+def system_confirmation_prompt(action: ConfirmationAction, message: str) -> str:
+    if action == "wipe":
+        return wipe_confirmation_prompt(message)
+    if action == "reboot":
+        return reboot_confirmation_prompt(message)
+    if action == "service_restart":
+        return service_restart_confirmation_prompt(message)
+    return wipe_confirmation_prompt(message)
 
 
 def normalize_wipe_request(message: str) -> str:

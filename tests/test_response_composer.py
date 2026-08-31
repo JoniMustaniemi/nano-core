@@ -60,26 +60,49 @@ def test_compose_wipe_confirmation_includes_yes_no_prompt() -> None:
         user_message="Wipe your database.",
         facts='User requested: "Wipe your database."',
         conversation_id="default",
+        confirmation_action="wipe",
     )
     client = _StubClient(response="You want me to erase what I remember.")
 
     content = composer.compose(client, source)
 
+    assert client.messages is None
     assert "say yes" in content.lower()
     assert "no" in content.lower()
 
 
-def test_compose_wipe_confirmation_uses_fallback_for_refusal_draft() -> None:
+def test_compose_wipe_confirmation_uses_deterministic_prompt() -> None:
     composer = ResponseComposer()
     source = confirmation_source(
         user_message="Wipe your database.",
         facts='User requested: "Wipe your database."',
         conversation_id="default",
+        confirmation_action="wipe",
     )
     client = _StubClient(response="I'm afraid I can't assist with that.")
 
     content = composer.compose(client, source)
 
+    assert client.messages is None
     assert "say yes" in content.lower()
     assert "afraid" not in content.lower()
     assert "wipe your database" in content.lower()
+
+
+def test_compose_reboot_confirmation_is_deterministic() -> None:
+    composer = ResponseComposer()
+    source = confirmation_source(
+        user_message="Reboot the Raspberry Pi.",
+        facts='User requested: "Reboot the Raspberry Pi."',
+        conversation_id="default",
+        confirmation_action="reboot",
+    )
+    client = _StubClient(response="I'm ready. I wasn't restarted. I create the branch.")
+
+    content = composer.compose(client, source)
+
+    assert client.messages is None
+    assert "reboot" in content.lower()
+    assert "create the branch" not in content.lower()
+    assert "yes" in content.lower()
+    assert "no" in content.lower()

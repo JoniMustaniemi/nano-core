@@ -9,6 +9,7 @@ import app.memory.db as db
 from app.assistant.pending import pending_interactions
 from app.memory import models  # noqa: F401
 from app.runtime.activity import activity
+from app.runtime.boot_state import boot_store
 from app.runtime.location import location_store
 
 
@@ -32,6 +33,7 @@ def reset_runtime_state() -> None:
     activity.reset()
     pending_interactions.reset()
     location_store.reset()
+    boot_store.reset()
 
 
 @pytest.fixture(autouse=True)
