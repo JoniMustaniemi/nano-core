@@ -3,7 +3,7 @@
 ## AI HAT+ 2 + Nano
 
 Nano uses `hailo-ollama` on port **8000** for LLM inference on the Hailo-10H NPU.
-Nano's HTTP API should use a different port (default in `.env.example`: **8080**).
+Nano's HTTP API uses port **8080** by default so it does not conflict with hailo on reboot.
 
 ### Prerequisites on the Pi
 
@@ -12,11 +12,12 @@ Nano's HTTP API should use a different port (default in `.env.example`: **8080**
 3. `.env` in the repo root with at least:
 
 ```env
-API_BIND_PORT=8080
 LLM_PROVIDER=ollama
 LLM_BASE_URL=http://localhost:8000
 LLM_MODEL=qwen2.5-instruct:1.5b
 ```
+
+`API_BIND_PORT` defaults to **8080**; only set it if you need a different port.
 
 Pull the model once:
 

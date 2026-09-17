@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     service_restart_enabled: bool = False
     service_unit_name: str = "nano-core"
     api_bind_host: str = "0.0.0.0"
-    api_bind_port: int = Field(default=8000, ge=1, le=65535)
+    api_bind_port: int = Field(default=8080, ge=1, le=65535)
     voice_input_enabled: bool = False
     voice_input_device: str = ""
     voice_output_device: str = ""

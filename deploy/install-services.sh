@@ -25,13 +25,12 @@ if [[ "${HAILO_BIN}" != "/usr/bin/hailo-ollama" ]]; then
   sed -i "s|^ExecStart=.*|ExecStart=${HAILO_BIN} serve|" /etc/systemd/system/hailo-ollama.service
 fi
 
+chmod +x "${SCRIPT_DIR}/wait-for-llm.sh"
+
 systemctl daemon-reload
 systemctl enable hailo-ollama.service nano-core.service
 systemctl restart hailo-ollama.service
-
-if systemctl is-active --quiet nano-core.service; then
-  systemctl restart nano-core.service
-fi
+systemctl restart nano-core.service || systemctl start nano-core.service
 
 echo "Installed and enabled:"
 echo "  hailo-ollama.service  (LLM on http://127.0.0.1:8000)"

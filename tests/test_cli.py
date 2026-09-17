@@ -70,7 +70,7 @@ def test_start_entrypoint_launches_uvicorn_with_defaults(monkeypatch) -> None:
     assert calls == [
         (
             ("app.main:app",),
-            {"host": "0.0.0.0", "port": 8000, "reload": False, "reload_dirs": None},
+            {"host": "0.0.0.0", "port": 8080, "reload": False, "reload_dirs": None},
         )
     ]
 
@@ -90,7 +90,7 @@ def test_start_cmd_command_launches_uvicorn_with_defaults(monkeypatch) -> None:
     assert calls == [
         (
             ("app.main:app",),
-            {"host": "0.0.0.0", "port": 8000, "reload": False, "reload_dirs": None},
+            {"host": "0.0.0.0", "port": 8080, "reload": False, "reload_dirs": None},
         )
     ]
 
