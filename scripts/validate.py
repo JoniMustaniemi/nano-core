@@ -16,12 +16,17 @@ def run(command: list[str]) -> None:
 
 
 def main() -> None:
+    python = sys.executable
     run(["ruff", "check", "app", "tests"])
     run(["ruff", "format", "--check", "app", "tests"])
     run(["mypy", "app"])
     run(
         [
+            python,
+            "-m",
             "pytest",
+            "-n",
+            "auto",
             "--cov=app",
             "--cov-report=term-missing:skip-covered",
             "--cov-fail-under=75",

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import threading
 from importlib import import_module
 from pathlib import Path
 
 from app.tools.base import ToolSpec
 
 _REGISTERED_TOOLS: dict[str, ToolSpec] = {}
+_BUILTIN_TOOLS_LOADED = False
+_BUILTIN_TOOLS_LOAD_LOCK = threading.Lock()
 
 # Tools owned by multi-turn interaction flows; excluded from planner prompts.
 FLOW_OWNED_TOOLS: frozenset[str] = frozenset(
@@ -119,9 +122,14 @@ def _load_builtin_tool_modules() -> None:
     Returns:
         None.
     """
-    if _REGISTERED_TOOLS:
+    global _BUILTIN_TOOLS_LOADED
+    if _BUILTIN_TOOLS_LOADED:
         return
 
-    package_dir = Path(__file__).resolve().parent
-    for path in package_dir.glob("*_tools.py"):
-        import_module(f"{__package__}.{path.stem}")
+    with _BUILTIN_TOOLS_LOAD_LOCK:
+        if _BUILTIN_TOOLS_LOADED:
+            return
+        package_dir = Path(__file__).resolve().parent
+        for path in sorted(package_dir.glob("*_tools.py"), key=lambda item: item.name):
+            import_module(f"{__package__}.{path.stem}")
+        _BUILTIN_TOOLS_LOADED = True
