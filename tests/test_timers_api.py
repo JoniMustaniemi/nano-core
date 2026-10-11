@@ -44,6 +44,52 @@ def test_post_timer_rejects_invalid_duration(api_client: TestClient) -> None:
     assert zero.status_code == 422
 
 
+def test_post_stopwatch_creates_active_stopwatch(api_client: TestClient) -> None:
+    response = api_client.post("/api/stopwatches", json={"label": "Lap"})
+    status = api_client.get("/api/status")
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["kind"] == "stopwatch"
+    assert payload["label"] == "Lap"
+    assert payload["id"] is not None
+    started_at = datetime.fromisoformat(str(payload["started_at"]))
+    assert 0 <= payload["elapsed_seconds"] <= 2
+
+    active = status.json()["active_stopwatches"]
+    assert len(active) == 1
+    assert active[0]["id"] == payload["id"]
+    assert active[0]["label"] == "Lap"
+    assert datetime.fromisoformat(str(active[0]["started_at"])) == started_at
+
+    events = activity.snapshot()["events"]
+    titles = [event["title"] for event in events if event.get("title")]
+    assert COMPOSING_TITLE not in titles
+    assert any("Stopwatch started" in str(title) for title in titles)
+
+
+def test_post_stopwatch_accepts_start_at_epoch_ms(api_client: TestClient) -> None:
+    started_at = datetime.now(UTC)
+    start_ms = int(started_at.timestamp() * 1000)
+    response = api_client.post(
+        "/api/stopwatches",
+        json={"label": "Run", "start_at": start_ms},
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    parsed = datetime.fromisoformat(str(payload["started_at"]))
+    assert abs((parsed - started_at).total_seconds()) < 2
+
+
+def test_post_stopwatch_rejects_past_start_at(api_client: TestClient) -> None:
+    past = (datetime.now(UTC) - timedelta(minutes=1)).isoformat()
+    response = api_client.post("/api/stopwatches", json={"label": "Lap", "start_at": past})
+
+    assert response.status_code == 400
+    assert "past" in response.json()["detail"].lower()
+
+
 def test_post_timer_rejects_past_start_at(api_client: TestClient) -> None:
     past = (datetime.now(UTC) - timedelta(minutes=1)).isoformat()
     response = api_client.post(

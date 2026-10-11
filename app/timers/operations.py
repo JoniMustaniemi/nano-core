@@ -74,14 +74,26 @@ def start_timer(args: dict[str, Any]) -> str:
     return f"started timer {timer.id}: {label} for {duration_seconds} seconds, due at {due_iso}"
 
 
-def start_stopwatch(args: dict[str, Any]) -> str:
-    label = str(args.get("label", "")).strip() or "Stopwatch"
-    repository.add_stopwatch(label)
+def create_stopwatch(
+    *,
+    label: str = "Stopwatch",
+    started_at: datetime | None = None,
+) -> Timer:
+    start_time = started_at or datetime.now(UTC)
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=UTC)
+    timer = repository.add_stopwatch(label, started_at=start_time)
     activity.log(
         title=STOPWATCH_STARTED_MESSAGE,
         detail=label,
-        source="assistant.flows.timer",
+        source="scheduler.timers",
     )
+    return timer
+
+
+def start_stopwatch(args: dict[str, Any]) -> str:
+    label = str(args.get("label", "")).strip() or "Stopwatch"
+    create_stopwatch(label=label)
     return STOPWATCH_STARTED_MESSAGE
 
 
