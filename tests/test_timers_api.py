@@ -3,7 +3,56 @@ from datetime import UTC, datetime, timedelta
 from starlette.testclient import TestClient
 
 from app.memory import repository
+from app.runtime.activity import activity
 from app.runtime.snapshot import build_runtime_snapshot
+from app.runtime.status_copy import COMPOSING_TITLE
+
+
+def test_post_timer_creates_countdown_with_exact_duration(api_client: TestClient) -> None:
+    response = api_client.post(
+        "/api/timers",
+        json={"duration_seconds": 300, "label": "Timer"},
+    )
+    status = api_client.get("/api/status")
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["duration_seconds"] == 300
+    assert payload["kind"] == "countdown"
+    assert payload["label"] == "Timer"
+    assert 299 <= payload["remaining_seconds"] <= 300
+
+    started_at = datetime.fromisoformat(str(payload["started_at"]))
+    due_at = datetime.fromisoformat(str(payload["due_at"]))
+    assert int((due_at - started_at).total_seconds()) == 300
+
+    active = status.json()["active_timers"]
+    assert len(active) == 1
+    assert active[0]["duration_seconds"] == 300
+
+    events = activity.snapshot()["events"]
+    titles = [event["title"] for event in events if event.get("title")]
+    assert COMPOSING_TITLE not in titles
+    assert any("Timer started" in str(title) for title in titles)
+
+
+def test_post_timer_rejects_invalid_duration(api_client: TestClient) -> None:
+    missing = api_client.post("/api/timers", json={"label": "Timer"})
+    zero = api_client.post("/api/timers", json={"duration_seconds": 0})
+
+    assert missing.status_code == 422
+    assert zero.status_code == 422
+
+
+def test_post_timer_rejects_past_start_at(api_client: TestClient) -> None:
+    past = (datetime.now(UTC) - timedelta(minutes=1)).isoformat()
+    response = api_client.post(
+        "/api/timers",
+        json={"duration_seconds": 60, "start_at": past},
+    )
+
+    assert response.status_code == 400
+    assert "past" in response.json()["detail"].lower()
 
 
 def test_patch_timer_updates_label_and_status(api_client: TestClient) -> None:

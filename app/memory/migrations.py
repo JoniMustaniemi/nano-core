@@ -29,6 +29,11 @@ def run_migrations(engine: Engine) -> None:
         if version < 1:
             _migrate_timer_stopwatch(conn)
             conn.execute(text(f"INSERT INTO {_SCHEMA_VERSION_TABLE} (version) VALUES (1)"))
+            version = 1
+
+        if version < 2:
+            _migrate_timer_duration_seconds(conn)
+            conn.execute(text(f"INSERT INTO {_SCHEMA_VERSION_TABLE} (version) VALUES (2)"))
 
 
 def _sqlite_path(database_url: str) -> Path | None:
@@ -77,3 +82,31 @@ def _migrate_timer_stopwatch(conn: Connection) -> None:
     conn.execute(text("ALTER TABLE timer_new RENAME TO timer"))
     conn.execute(text("CREATE INDEX ix_timer_kind ON timer (kind)"))
     conn.execute(text("CREATE INDEX ix_timer_due_at ON timer (due_at)"))
+
+
+def _migrate_timer_duration_seconds(conn: Connection) -> None:
+    settings = get_settings()
+    if _sqlite_path(settings.database_url) is None:
+        return
+
+    rows = conn.execute(text("PRAGMA table_info(timer)")).fetchall()
+    if not rows:
+        return
+    column_names = {row[1] for row in rows}
+    if "duration_seconds" not in column_names:
+        conn.execute(text("ALTER TABLE timer ADD COLUMN duration_seconds INTEGER"))
+
+    conn.execute(
+        text(
+            """
+            UPDATE timer
+            SET duration_seconds = MAX(
+                1,
+                CAST((julianday(due_at) - julianday(created_at)) * 86400 AS INTEGER)
+            )
+            WHERE kind = 'countdown'
+              AND due_at IS NOT NULL
+              AND (duration_seconds IS NULL OR duration_seconds = 0)
+            """
+        )
+    )

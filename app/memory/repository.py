@@ -82,19 +82,44 @@ def list_recent_chat_messages(limit: int = 20) -> list[ChatMessage]:
     return list(reversed(rows))
 
 
-def add_timer(label: str, due_at: datetime) -> Timer:
+def add_timer(
+    label: str,
+    due_at: datetime,
+    *,
+    duration_seconds: int | None = None,
+    started_at: datetime | None = None,
+) -> Timer:
     """
     Add timer.
 
     Args:
         label: Timer label.
         due_at: Timer due timestamp.
+        duration_seconds: Authoritative countdown length when set.
+        started_at: When counting began; defaults to now for test helpers.
 
     Returns:
         Timer result.
     """
+    start_time = started_at or datetime.now(UTC)
+    if duration_seconds is None:
+        if due_at.tzinfo is None:
+            due_at_norm = due_at.replace(tzinfo=UTC)
+        else:
+            due_at_norm = due_at
+        if start_time.tzinfo is None:
+            start_norm = start_time.replace(tzinfo=UTC)
+        else:
+            start_norm = start_time
+        duration_seconds = max(1, int((due_at_norm - start_norm).total_seconds()))
     with Session(db.get_engine()) as session:
-        timer = Timer(label=label or "Timer", due_at=due_at, kind=COUNTDOWN_KIND)
+        timer = Timer(
+            label=label or "Timer",
+            due_at=due_at,
+            kind=COUNTDOWN_KIND,
+            duration_seconds=duration_seconds,
+            created_at=start_time,
+        )
         session.add(timer)
         session.commit()
         session.refresh(timer)

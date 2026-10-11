@@ -39,9 +39,20 @@ def timer_elapsed_text(started_at: datetime, now: datetime) -> str:
     return humanize_duration_seconds(elapsed_seconds)
 
 
-def format_due_timer(label: str, created_at: datetime, due_at: datetime) -> tuple[str, str]:
+def format_due_timer(
+    label: str,
+    created_at: datetime,
+    due_at: datetime,
+    *,
+    duration_seconds: int | None = None,
+) -> tuple[str, str]:
     display_label = label.strip() or "Timer"
-    duration_seconds = max(1, int((due_at - created_at).total_seconds()))
+    if duration_seconds is None or duration_seconds <= 0:
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=UTC)
+        if due_at.tzinfo is None:
+            due_at = due_at.replace(tzinfo=UTC)
+        duration_seconds = max(1, int((due_at - created_at).total_seconds()))
     label_suffix = "" if display_label == "Timer" else f" for {display_label}"
     return (
         "Timer complete.",

@@ -28,12 +28,21 @@ def isolated_db(monkeypatch: pytest.MonkeyPatch):
     engine.dispose()
 
 
+def _clear_scheduled_timer_jobs() -> None:
+    from app.scheduler.jobs import scheduler
+
+    for job in list(scheduler.get_jobs()):
+        if job.id.startswith("timer:"):
+            scheduler.remove_job(job.id)
+
+
 @pytest.fixture(autouse=True)
 def reset_runtime_state() -> None:
     activity.reset()
     pending_interactions.reset()
     location_store.reset()
     boot_store.reset()
+    _clear_scheduled_timer_jobs()
 
 
 @pytest.fixture(autouse=True)

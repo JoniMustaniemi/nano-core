@@ -17,6 +17,7 @@ class Timer(SQLModel, table=True):
     kind: str = Field(default="countdown", index=True)
     label: str = Field(default="Timer")
     due_at: datetime | None = Field(default=None, index=True)
+    duration_seconds: int | None = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 

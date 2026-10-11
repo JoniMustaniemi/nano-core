@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.common.duration import duration_seconds_from_tool_args
+from app.common.duration import duration_seconds_from_tool_args, humanize_duration_seconds
 from app.memory import repository
 from app.memory.models import Timer
 from app.memory.repository import COUNTDOWN_KIND, STOPWATCH_KIND
@@ -34,20 +34,44 @@ def remove_stopwatch(stopwatch_id: int) -> bool:
     return repository.delete_timer(stopwatch_id)
 
 
-def start_timer(args: dict[str, Any]) -> str:
-    duration_seconds = duration_seconds_from_tool_args(args)
+def create_countdown_timer(
+    *,
+    duration_seconds: int,
+    label: str = "Timer",
+    started_at: datetime | None = None,
+) -> Timer:
     if duration_seconds <= 0:
         raise ToolError("Timer duration is required. Ask the user how long the timer should run.")
 
-    label = str(args.get("label", "")).strip() or "Timer"
-    due_at = datetime.now(UTC) + timedelta(seconds=duration_seconds)
-    timer = repository.add_timer(label, due_at)
+    start_time = started_at or datetime.now(UTC)
+    if start_time.tzinfo is None:
+        start_time = start_time.replace(tzinfo=UTC)
+    due_at = start_time + timedelta(seconds=duration_seconds)
+    timer = repository.add_timer(
+        label,
+        due_at,
+        duration_seconds=duration_seconds,
+        started_at=start_time,
+    )
     if timer.id is not None:
         schedule_timer(timer.id, due_at)
-    return (
-        f"started timer {timer.id}: {label} "
-        f"for {duration_seconds} seconds, due at {due_at.isoformat()}"
+    activity.log(
+        title=f"Timer started ({humanize_duration_seconds(duration_seconds)})",
+        detail=label,
+        source="scheduler.timers",
     )
+    return timer
+
+
+def start_timer(args: dict[str, Any]) -> str:
+    duration_seconds = duration_seconds_from_tool_args(args)
+    label = str(args.get("label", "")).strip() or "Timer"
+    timer = create_countdown_timer(duration_seconds=duration_seconds, label=label)
+    due_at = timer.due_at
+    if due_at is not None and due_at.tzinfo is None:
+        due_at = due_at.replace(tzinfo=UTC)
+    due_iso = due_at.isoformat() if due_at is not None else ""
+    return f"started timer {timer.id}: {label} for {duration_seconds} seconds, due at {due_iso}"
 
 
 def start_stopwatch(args: dict[str, Any]) -> str:

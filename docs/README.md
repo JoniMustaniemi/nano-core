@@ -137,6 +137,13 @@ SQLite file from `database_url` (default `./data/nano_core.sqlite3`). Tables in 
 | `PUT /api/voice/mode` | Enable/disable Pi wake-word listening |
 | `POST /api/voice/transcribe` | STT for uploaded audio |
 | `POST /api/voice/command` | STT + agent command in one call |
+| `POST /api/timers` | Create countdown timer (`duration_seconds`, optional `label`, optional `start_at`) |
+| `PATCH /api/timers/{id}` | Rename active countdown timer |
+| `DELETE /api/timers/{id}` | Cancel active countdown timer |
+| `PATCH /api/stopwatches/{id}` | Rename active stopwatch |
+| `DELETE /api/stopwatches/{id}` | Stop active stopwatch |
+
+`GET /api/status` includes `active_timers[]` entries with `id`, `kind` (`countdown`), `label`, `duration_seconds`, `started_at`, `due_at`, and `remaining_seconds` (UTC instants in ISO-8601).
 
 Protected routes require `Authorization: Bearer <API_KEY>`. SSE also accepts `?api_key=`.
 

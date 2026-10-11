@@ -37,11 +37,13 @@ def finalize_response(
         Final user-facing assistant text.
     """
     try:
-        activity.working(
-            title=COMPOSING_TITLE,
-            detail=COMPOSING_DETAIL,
-            source=standby_source,
-        )
+        skip_composing = source.skip_enrichment or source.kind in {"follow_up", "confirmation"}
+        if not skip_composing:
+            activity.working(
+                title=COMPOSING_TITLE,
+                detail=COMPOSING_DETAIL,
+                source=standby_source,
+            )
         content = composer.compose(client, source)
         content = enforce_user_facing_answer(client, source, content)
         content = polish_user_facing_answer(client, source, content)

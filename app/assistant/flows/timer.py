@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from app.assistant.pending import PendingInteraction, pending_interactions
@@ -27,7 +26,6 @@ from app.runtime.status_copy import (
     TIMER_DURATION_RETRY_PROMPT,
     TIMER_START_FAILED_PROMPT,
     WAITING_TIMER_DURATION_DETAIL,
-    ran_tool_title,
 )
 
 
@@ -205,7 +203,12 @@ class TimerInteractionHandler:
         Returns:
             Timer confirmation response source.
         """
-        result = self.tool_runner.execute("start_timer", args, announce=False)
+        result = self.tool_runner.execute(
+            "start_timer",
+            args,
+            announce=False,
+            update_activity=False,
+        )
         if not result.ok:
             pending_interactions.clear(conversation_id)
             activity.standby(
@@ -219,11 +222,6 @@ class TimerInteractionHandler:
                 conversation_id=conversation_id,
             )
 
-        activity.log(
-            title=ran_tool_title("start_timer"),
-            detail=json.dumps(args, ensure_ascii=False),
-            source="assistant.flows.timer",
-        )
         pending_interactions.clear(conversation_id)
         return confirmation_source(
             user_message=user_message,

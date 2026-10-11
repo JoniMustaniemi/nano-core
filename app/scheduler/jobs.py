@@ -54,7 +54,12 @@ def complete_timer(timer_id: int) -> None:
         schedule_timer(timer_id, due_at)
         return
 
-    title, detail = format_due_timer(timer.label, timer.created_at, timer.due_at)
+    title, detail = format_due_timer(
+        timer.label,
+        timer.created_at,
+        timer.due_at,
+        duration_seconds=timer.duration_seconds,
+    )
     activity.log(title=title, detail=detail, source="scheduler.timers")
     activity.announce_voice(detail)
     delete_timer(timer_id)

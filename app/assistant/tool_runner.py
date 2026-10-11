@@ -23,6 +23,7 @@ class ToolRunner:
         args: dict[str, Any],
         *,
         announce: bool = True,
+        update_activity: bool = True,
     ) -> ToolResult:
         """
         Execute the requested operation.
@@ -31,6 +32,7 @@ class ToolRunner:
             tool_name: Registered tool name.
             args: Tool argument dictionary.
             announce: When True, speak a short confirmation that work has started.
+            update_activity: When True, set working status before running the tool.
 
         Returns:
             ToolResult result.
@@ -50,11 +52,12 @@ class ToolRunner:
                 ok=False,
             )
 
-        activity.working(
-            title=running_tool_title(tool_name),
-            detail=RUNNING_TOOL_DETAIL,
-            source="assistant.tool_runner",
-        )
+        if update_activity:
+            activity.working(
+                title=running_tool_title(tool_name),
+                detail=RUNNING_TOOL_DETAIL,
+                source="assistant.tool_runner",
+            )
         if announce:
             self.announce_message(tool_announcement_for(tool_name))
 
