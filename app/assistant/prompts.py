@@ -125,6 +125,8 @@ _AGENT_PLAN = _section(
     "If the user asks for a timer but does not specify a duration, ask a brief follow-up question for the duration instead of calling the timer tool.",
     "If you call a tool, explicitly acknowledge that the tool has been used.",
     "When you call tools, you must return JSON only.",
+    "If the user message includes a Google Drive file URL or file ID (often on the first line) and a question, call read_google_drive_file with that url or file_id before answering.",
+    "Answer in the same language as the user's question.",
 )
 
 _WAKE = _section(

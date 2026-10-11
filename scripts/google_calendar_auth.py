@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Authorize Google Calendar and Drive read-only access (writes token.json)."""
+
 from app.integrations.google_calendar import run_authorization_flow
 
 

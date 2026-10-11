@@ -87,7 +87,9 @@ Defaults live in `app/config.py`.
 |------|----------------|
 | `app/api/` | REST routers under `/api/*`, API key auth, tool command metadata |
 | `app/common/` | Shared JSON parsing, duration parsing, and domain types (`ProactiveOffer`) |
-| `app/integrations/google_calendar/` | Google Calendar auth, client, and formatting |
+| `app/integrations/google/` | Shared Google OAuth (Calendar + Drive read-only scopes) |
+| `app/integrations/google_calendar/` | Google Calendar client and formatting |
+| `app/integrations/google_drive/` | Google Drive read-only client, ID parsing, and formatting |
 | `app/integrations/weather/` | Open-Meteo client, WMO formatting, and weather errors |
 | `app/runtime/location.py` | In-memory client-reported geographic location |
 | `app/workspace/` | Workspace file-walking and inventory hashing |
@@ -132,6 +134,8 @@ SQLite file from `database_url` (default `./data/nano_core.sqlite3`). Tables in 
 | `GET /api/calendar/calendars` | Available Google calendars |
 | `GET /api/calendar/default` | Default configured calendar ID |
 | `GET /api/calendar/events` | Events in a date range for one calendar |
+| `GET /api/drive/files/{file_id}` | Google Drive file metadata (read-only) |
+| `GET /api/drive/files/{file_id}/content` | Google Drive file content as text (read-only) |
 | `POST /api/voice` | TTS request |
 | `GET /api/voice/mode` | Current Pi wake-word listening mode |
 | `PUT /api/voice/mode` | Enable/disable Pi wake-word listening |
@@ -146,6 +150,38 @@ SQLite file from `database_url` (default `./data/nano_core.sqlite3`). Tables in 
 `GET /api/status` includes `active_timers[]` entries with `id`, `kind` (`countdown`), `label`, `duration_seconds`, `started_at`, `due_at`, and `remaining_seconds` (UTC instants in ISO-8601).
 
 Protected routes require `Authorization: Bearer <API_KEY>`. SSE also accepts `?api_key=`.
+
+### nano-ui Google Drive contract
+
+Read-only Drive integration for the nano-ui Drive view. Bookmarks stay in browser `localStorage` (`nano.driveLinks`); nano-core has no link registry.
+
+**Preview (optional, non-blocking for chat)**
+
+| Route | Response |
+|-------|----------|
+| `GET /api/drive/files/{file_id}` | JSON: `id`, `name`, `mime_type`, `size` |
+| `GET /api/drive/files/{file_id}/content` | `text/plain`; headers `X-File-Name`, `X-Content-Truncated=true` when clipped |
+
+`file_id` is parsed client-side (same rules as `parse_drive_file_id` / `extract_drive_file_reference` on the server).
+
+**HTTP errors (UI mapping)**
+
+| Status | Meaning |
+|--------|---------|
+| 503 | Google token missing or invalid — run `nano-core auth-google` on the Pi |
+| 404 | File not found |
+| 403 | Access denied (sharing) |
+| 415 | Binary/non-text file not supported for text preview |
+| 502 | Google API failure |
+
+Preview failure does not block chat; the UI may still `POST /api/chat`.
+
+**Ask flow**
+
+- `POST /api/chat` with `mode: "agent"` (unchanged).
+- Typical body from nano-ui: `{drive_url_or_file_id}\n\n{user_question}` (question verbatim, any language; no extra scaffolding).
+- Agent routing treats a leading Drive URL or file ID as `read_google_drive_file` intent; the planner should call that tool then answer in the user's language.
+- Content size is capped by `GOOGLE_DRIVE_MAX_EXPORT_BYTES` (default 1_000_000).
 
 ## Background jobs
 

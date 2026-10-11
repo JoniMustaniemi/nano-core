@@ -118,9 +118,10 @@ def test_list_upcoming_events_missing_token(
     tmp_path: Path,
 ) -> None:
     monkeypatch.setattr(
-        "app.integrations.google_calendar.auth.get_settings",
+        "app.integrations.google.auth.get_settings",
         lambda: SimpleNamespace(
             google_token_path=str(tmp_path / "missing-token.json"),
+            google_credentials_path=str(tmp_path / "credentials.json"),
             google_calendar_ids="primary",
         ),
     )

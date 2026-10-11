@@ -62,6 +62,10 @@ _CAPABILITY_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
         "Weather",
         ("get_current_weather",),
     ),
+    (
+        "Google Drive",
+        ("read_google_drive_file",),
+    ),
 )
 
 

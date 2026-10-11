@@ -297,7 +297,22 @@ def tool_matches_request(message: str, tool_name: str) -> bool:
         return is_system_analysis_request(message)
     if tool_name == "list_internal_notes":
         return is_internal_note_list_request(message)
+    if tool_name == "read_google_drive_file":
+        from app.integrations.google_drive.ids import extract_drive_file_reference
+
+        return extract_drive_file_reference(message) is not None or any(
+            keyword in lowered for keyword in rule.keywords
+        )
     return any(keyword in lowered for keyword in rule.keywords)
+
+
+def message_contains_drive_file_reference(message: str) -> bool:
+    """
+    Return whether the message includes a Google Drive file URL or ID (nano-ui Ask prefix).
+    """
+    from app.integrations.google_drive.ids import extract_drive_file_reference
+
+    return extract_drive_file_reference(message) is not None
 
 
 def message_matches_any_tool_intent(message: str) -> bool:

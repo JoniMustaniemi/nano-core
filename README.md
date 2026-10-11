@@ -37,7 +37,9 @@ rename an active timer, cancel it, or clear them all.
 
 ### Calendar and weather
 
-Nano reads your Google Calendar — list calendars and events for a date range. When
+Nano reads your Google Calendar — list calendars and events for a date range. With
+Google authorization, Nano can read Google Drive files by link or file ID (read-only;
+OAuth grants account-wide read access, but Nano only fetches files you ask for). When
 Nano knows your location, it reports current weather conditions from Open-Meteo.
 
 ### Memory and files
@@ -76,6 +78,7 @@ APScheduler.
 - **Timers** — `PATCH`/`DELETE` on `/api/timers/{id}` and `/api/stopwatches/{id}`
 - **Voice** — `/api/voice/*` (TTS, STT, mode, command)
 - **Calendar** — `/api/calendar/*`
+- **Drive** — `GET /api/drive/files/{file_id}`, `GET /api/drive/files/{file_id}/content`
 - **Weather** — `GET /api/weather/current` (uses last reported location)
 - **Proactive** — `GET /api/proactive`, `POST /api/proactive/dismiss`
 - **Health** — `GET /api/health` (public)

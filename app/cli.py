@@ -38,9 +38,7 @@ def health() -> None:
     typer.echo(f"{settings.app_name} is configured for {settings.app_env}.")
 
 
-@app.command("auth-google-calendar")
-def auth_google_calendar() -> None:
-    """Run one-time Google Calendar OAuth and save token.json."""
+def _run_google_authorization() -> None:
     try:
         token_file = run_authorization_flow()
     except FileNotFoundError as exc:
@@ -48,6 +46,18 @@ def auth_google_calendar() -> None:
         raise typer.Exit(code=1) from exc
 
     typer.echo(f"Created {token_file.resolve()}")
+
+
+@app.command("auth-google")
+def auth_google() -> None:
+    """Run one-time Google OAuth (Calendar read-only and Drive read-only) and save token.json."""
+    _run_google_authorization()
+
+
+@app.command("auth-google-calendar")
+def auth_google_calendar() -> None:
+    """Run one-time Google OAuth (Calendar and Drive read-only) and save token.json."""
+    _run_google_authorization()
 
 
 @app.command("google-calendars")

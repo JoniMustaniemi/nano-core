@@ -30,6 +30,21 @@ def test_message_matches_any_tool_intent_for_unmatched_chat() -> None:
     assert message_matches_any_tool_intent("Tell me a joke") is False
 
 
+def test_message_matches_any_tool_intent_for_drive_bare_id_prefix() -> None:
+    message = "abcdefghijklmnop\n\nMitä tässä sanotaan?"
+    assert message_matches_any_tool_intent(message) is True
+
+
+def test_agent_router_returns_planner_for_drive_bare_id_prefix() -> None:
+    message = "abcdefghijklmnop\n\nMitä tässä sanotaan?"
+    decision = AgentRouter().decide(
+        message,
+        conversation_id="default",
+        history=[],
+    )
+    assert decision.mode == "planner"
+
+
 def test_agent_router_returns_confused_for_unmatched_message() -> None:
     decision = AgentRouter().decide(
         "How are you?",

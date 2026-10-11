@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     google_token_path: str = "./token.json"
     google_calendar_timezone: str = "Europe/Helsinki"
     google_calendar_ids: str = "primary"
+    google_drive_max_export_bytes: int = Field(default=1_000_000, ge=1)
     api_key: str = ""
     cors_allowed_origins: list[str] = Field(default_factory=list)
     auto_update_on_start: bool = False

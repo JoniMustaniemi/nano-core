@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api import (
     calendar,
     chat,
+    drive,
     health,
     location,
     memory,
@@ -17,6 +18,7 @@ from app.api import (
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(calendar.router)
+api_router.include_router(drive.router)
 api_router.include_router(chat.router)
 api_router.include_router(health.router)
 api_router.include_router(location.router)
