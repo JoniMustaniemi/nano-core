@@ -79,10 +79,7 @@ def create_stopwatch(
     label: str = "Stopwatch",
     started_at: datetime | None = None,
 ) -> Timer:
-    start_time = started_at or datetime.now(UTC)
-    if start_time.tzinfo is None:
-        start_time = start_time.replace(tzinfo=UTC)
-    timer = repository.add_stopwatch(label, started_at=start_time)
+    timer = repository.add_stopwatch(label, started_at=started_at)
     activity.log(
         title=STOPWATCH_STARTED_MESSAGE,
         detail=label,

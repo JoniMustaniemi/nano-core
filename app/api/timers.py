@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.memory import repository
 from app.memory.labels import InvalidTimerLabelError, normalize_timer_label
 from app.memory.repository import COUNTDOWN_KIND, STOPWATCH_KIND
+from app.timers.clock import MIN_VALID_TIMER_START, is_plausible_timer_start, normalize_utc
 from app.timers.operations import (
     create_countdown_timer,
     create_stopwatch,
@@ -39,13 +40,22 @@ def _coerce_start_at(value: Any) -> Any:
     return value
 
 
+def _require_usable_system_clock_when_needed(start_at: datetime | None) -> None:
+    if start_at is not None and is_plausible_timer_start(normalize_utc(start_at)):
+        return
+    if datetime.now(UTC) < MIN_VALID_TIMER_START:
+        raise HTTPException(
+            status_code=503,
+            detail="System clock is not set. Wait for network time sync, then try again.",
+        )
+
+
 def _normalize_request_start_at(value: datetime | None) -> datetime | None:
     if value is None:
         return None
-    if value.tzinfo is None:
-        started_at = value.replace(tzinfo=UTC)
-    else:
-        started_at = value.astimezone(UTC)
+    started_at = normalize_utc(value)
+    if not is_plausible_timer_start(started_at):
+        raise HTTPException(status_code=400, detail="start_at is not a valid timestamp.")
     now = datetime.now(UTC)
     if started_at < now - _START_AT_PAST_GRACE:
         raise HTTPException(status_code=400, detail="start_at cannot be in the past.")
@@ -82,6 +92,7 @@ def post_timer(body: TimerCreate) -> dict[str, int | str]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     started_at = _normalize_request_start_at(body.start_at)
+    _require_usable_system_clock_when_needed(started_at)
 
     try:
         timer = create_countdown_timer(
@@ -109,8 +120,12 @@ def post_stopwatch(body: StopwatchCreate) -> dict[str, int | str]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     started_at = _normalize_request_start_at(body.start_at)
+    _require_usable_system_clock_when_needed(started_at)
 
-    stopwatch = create_stopwatch(label=label, started_at=started_at)
+    try:
+        stopwatch = create_stopwatch(label=label, started_at=started_at)
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     if stopwatch.id is None:
         raise HTTPException(status_code=500, detail="Stopwatch could not be created.")
     serialized = serialize_stopwatch_by_id(stopwatch.id)

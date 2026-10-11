@@ -5,12 +5,7 @@ from datetime import UTC, datetime
 from app.memory import repository
 from app.memory.models import Timer
 from app.memory.repository import COUNTDOWN_KIND, STOPWATCH_KIND
-
-
-def _normalize_timestamp(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value
+from app.timers.clock import normalize_utc, resolve_stopwatch_started_at
 
 
 def _serialize_countdown(timer: Timer) -> dict[str, int | str] | None:
@@ -23,8 +18,8 @@ def _serialize_countdown(timer: Timer) -> dict[str, int | str] | None:
     if duration_seconds is None or duration_seconds <= 0:
         return None
     now = datetime.now(UTC)
-    due_at = _normalize_timestamp(due_at)
-    started_at = _normalize_timestamp(timer.created_at)
+    due_at = normalize_utc(due_at)
+    started_at = resolve_stopwatch_started_at(timer.created_at, now=now)
     label = str(timer.label).strip() or "Timer"
     return {
         "id": timer.id,
@@ -52,7 +47,7 @@ def serialize_active_stopwatches() -> list[dict[str, int | str]]:
     for stopwatch in repository.list_stopwatches():
         if stopwatch.id is None:
             continue
-        started_at = _normalize_timestamp(stopwatch.created_at)
+        started_at = resolve_stopwatch_started_at(stopwatch.created_at, now=now)
         label = str(stopwatch.label).strip() or "Stopwatch"
         serialized.append(
             {
@@ -78,7 +73,7 @@ def serialize_stopwatch_by_id(stopwatch_id: int) -> dict[str, int | str] | None:
     if stopwatch is None or stopwatch.kind != STOPWATCH_KIND or stopwatch.id is None:
         return None
     now = datetime.now(UTC)
-    started_at = _normalize_timestamp(stopwatch.created_at)
+    started_at = resolve_stopwatch_started_at(stopwatch.created_at, now=now)
     label = str(stopwatch.label).strip() or "Stopwatch"
     return {
         "id": stopwatch.id,

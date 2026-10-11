@@ -75,9 +75,21 @@ def isolate_api_auth(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.delenv("API_KEY", raising=False)
     monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("VOICE_PLAYBACK_MODE", "browser")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def stub_local_voice_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Never play TTS on the host speaker during tests (default mode is both)."""
+    from app.voice.output import get_voice_output
+
+    get_voice_output.cache_clear()
+    monkeypatch.setattr("app.voice.service._play_wav_bytes", lambda _data: None)
+    yield
+    get_voice_output.cache_clear()
 
 
 @pytest.fixture

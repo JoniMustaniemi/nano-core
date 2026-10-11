@@ -19,7 +19,14 @@ def main() -> None:
     run(["ruff", "check", "app", "tests"])
     run(["ruff", "format", "--check", "app", "tests"])
     run(["mypy", "app"])
-    run(["pytest"])
+    run(
+        [
+            "pytest",
+            "--cov=app",
+            "--cov-report=term-missing:skip-covered",
+            "--cov-fail-under=75",
+        ]
+    )
 
 
 if __name__ == "__main__":

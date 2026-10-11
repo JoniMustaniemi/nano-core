@@ -8,6 +8,7 @@ from app.memory.models import (
     InternalNote,
     Timer,
 )
+from app.timers.clock import resolve_timer_start_time
 
 COUNTDOWN_KIND = "countdown"
 STOPWATCH_KIND = "stopwatch"
@@ -101,7 +102,7 @@ def add_timer(
     Returns:
         Timer result.
     """
-    start_time = started_at or datetime.now(UTC)
+    start_time = resolve_timer_start_time(started_at)
     if duration_seconds is None:
         if due_at.tzinfo is None:
             due_at_norm = due_at.replace(tzinfo=UTC)
@@ -137,7 +138,7 @@ def add_stopwatch(label: str, started_at: datetime | None = None) -> Timer:
     Returns:
         Timer result.
     """
-    start_time = started_at or datetime.now(UTC)
+    start_time = resolve_timer_start_time(started_at)
     with Session(db.get_engine()) as session:
         timer = Timer(
             label=label or "Stopwatch",
